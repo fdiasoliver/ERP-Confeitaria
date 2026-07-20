@@ -1,0 +1,280 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "←" [ref=e5] [cursor=pointer]:
+          - /url: /
+        - heading "Produtos" [level=1] [ref=e6]
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - paragraph [ref=e9]: 9 produtos
+        - button "Novo" [active] [ref=e10]
+      - generic [ref=e13]:
+        - searchbox "Pesquisar produto por nome" [ref=e14]
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Categoria
+            - combobox "Categoria" [ref=e18]:
+              - option "Todas as categorias" [selected]
+              - option "Bolos de Aniversário"
+              - option "Doces & Docinhos"
+              - option "Kits & Coffee Break"
+              - option "QA Teste 2B6 Editado (inativa)"
+          - generic [ref=e19]:
+            - generic [ref=e20]: Ordenar por
+            - combobox "Ordenar por" [ref=e21]:
+              - option "Nome (A-Z)" [selected]
+              - option "Nome (Z-A)"
+              - option "Preço (menor primeiro)"
+              - option "Preço (maior primeiro)"
+              - option "Mais recentes"
+              - option "Mais antigos"
+        - generic [ref=e22]:
+          - paragraph [ref=e23]: Status
+          - generic [ref=e24]:
+            - button "Todos" [pressed] [ref=e25]
+            - button "Ativos" [ref=e26]
+            - button "Inativos" [ref=e27]
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - generic [ref=e48]:
+            - generic [ref=e49]:
+              - paragraph [ref=e50]: Bolo Chocolate 25cm
+              - generic [ref=e51]: Ativo
+            - paragraph [ref=e52]: Bolos de Aniversário
+            - generic [ref=e53]:
+              - generic [ref=e54]:
+                - paragraph [ref=e55]: R$ 145,00
+                - paragraph [ref=e56]: Preço
+              - generic [ref=e57]:
+                - paragraph [ref=e58]: R$ 0,00
+                - paragraph [ref=e59]: Custo
+              - generic [ref=e60]:
+                - paragraph [ref=e61]: 100%
+                - paragraph [ref=e62]: Margem
+          - generic [ref=e63]:
+            - button "Editar" [ref=e64]
+            - button "Desativar produto Bolo Chocolate 25cm" [ref=e67]: Desativar
+            - button "Excluir produto Bolo Chocolate 25cm" [ref=e70]: Excluir
+        - generic [ref=e73]:
+          - generic [ref=e79]:
+            - generic [ref=e80]:
+              - paragraph [ref=e81]: Bolo Corporativo Logo
+              - generic [ref=e82]: Ativo
+            - paragraph [ref=e83]: Bolos de Aniversário
+            - generic [ref=e84]:
+              - generic [ref=e85]:
+                - paragraph [ref=e86]: R$ 220,00
+                - paragraph [ref=e87]: Preço
+              - generic [ref=e88]:
+                - paragraph [ref=e89]: R$ 0,00
+                - paragraph [ref=e90]: Custo
+              - generic [ref=e91]:
+                - paragraph [ref=e92]: 100%
+                - paragraph [ref=e93]: Margem
+          - generic [ref=e94]:
+            - button "Editar" [ref=e95]
+            - button "Desativar produto Bolo Corporativo Logo" [ref=e98]: Desativar
+            - button "Excluir produto Bolo Corporativo Logo" [ref=e101]: Excluir
+        - generic [ref=e104]:
+          - generic [ref=e110]:
+            - generic [ref=e111]:
+              - paragraph [ref=e112]: Bolo de fubá
+              - generic [ref=e113]: Ativo
+              - generic [ref=e114]: Destaque
+            - paragraph [ref=e115]: Bolos de Aniversário
+            - generic [ref=e116]:
+              - generic [ref=e117]:
+                - paragraph [ref=e118]: R$ 35,05
+                - paragraph [ref=e119]: Preço
+              - generic [ref=e120]:
+                - paragraph [ref=e121]: R$ 0,00
+                - paragraph [ref=e122]: Custo
+              - generic [ref=e123]:
+                - paragraph [ref=e124]: 100%
+                - paragraph [ref=e125]: Margem
+          - generic [ref=e126]:
+            - button "Editar" [ref=e127]
+            - button "Desativar produto Bolo de fubá" [ref=e130]: Desativar
+            - button "Excluir produto Bolo de fubá" [ref=e133]: Excluir
+        - generic [ref=e136]:
+          - generic [ref=e142]:
+            - generic [ref=e143]:
+              - paragraph [ref=e144]: Bolo Red Velvet
+              - generic [ref=e145]: Ativo
+              - generic [ref=e146]: Destaque
+            - paragraph [ref=e147]: Bolos de Aniversário
+            - generic [ref=e148]:
+              - generic [ref=e149]:
+                - paragraph [ref=e150]: R$ 180,00
+                - paragraph [ref=e151]: Preço
+              - generic [ref=e152]:
+                - paragraph [ref=e153]: R$ 0,00
+                - paragraph [ref=e154]: Custo
+              - generic [ref=e155]:
+                - paragraph [ref=e156]: 100%
+                - paragraph [ref=e157]: Margem
+          - generic [ref=e158]:
+            - button "Editar" [ref=e159]
+            - button "Desativar produto Bolo Red Velvet" [ref=e162]: Desativar
+            - button "Excluir produto Bolo Red Velvet" [ref=e165]: Excluir
+        - generic [ref=e168]:
+          - generic [ref=e174]:
+            - generic [ref=e175]:
+              - paragraph [ref=e176]: Brigadeiro Gourmet
+              - generic [ref=e177]: Ativo
+              - generic [ref=e178]: Destaque
+            - paragraph [ref=e179]: Doces & Docinhos
+            - generic [ref=e180]:
+              - generic [ref=e181]:
+                - paragraph [ref=e182]: R$ 3,50
+                - paragraph [ref=e183]: Preço
+              - generic [ref=e184]:
+                - paragraph [ref=e185]: R$ 0,00
+                - paragraph [ref=e186]: Custo
+              - generic [ref=e187]:
+                - paragraph [ref=e188]: 100%
+                - paragraph [ref=e189]: Margem
+          - generic [ref=e190]:
+            - button "Editar" [ref=e191]
+            - button "Desativar produto Brigadeiro Gourmet" [ref=e194]: Desativar
+            - button "Excluir produto Brigadeiro Gourmet" [ref=e197]: Excluir
+        - generic [ref=e200]:
+          - generic [ref=e206]:
+            - generic [ref=e207]:
+              - paragraph [ref=e208]: Caixa Casamento (100 doces)
+              - generic [ref=e209]: Ativo
+            - paragraph [ref=e210]: Doces & Docinhos
+            - generic [ref=e211]:
+              - generic [ref=e212]:
+                - paragraph [ref=e213]: R$ 320,00
+                - paragraph [ref=e214]: Preço
+              - generic [ref=e215]:
+                - paragraph [ref=e216]: R$ 0,00
+                - paragraph [ref=e217]: Custo
+              - generic [ref=e218]:
+                - paragraph [ref=e219]: 100%
+                - paragraph [ref=e220]: Margem
+          - generic [ref=e221]:
+            - button "Editar" [ref=e222]
+            - button "Desativar produto Caixa Casamento (100 doces)" [ref=e225]: Desativar
+            - button "Excluir produto Caixa Casamento (100 doces)" [ref=e228]: Excluir
+        - generic [ref=e231]:
+          - generic [ref=e237]:
+            - generic [ref=e238]:
+              - paragraph [ref=e239]: Kit Coffee Break (20 pessoas)
+              - generic [ref=e240]: Ativo
+            - paragraph [ref=e241]: Kits & Coffee Break
+            - generic [ref=e242]:
+              - generic [ref=e243]:
+                - paragraph [ref=e244]: R$ 380,00
+                - paragraph [ref=e245]: Preço
+              - generic [ref=e246]:
+                - paragraph [ref=e247]: R$ 0,00
+                - paragraph [ref=e248]: Custo
+              - generic [ref=e249]:
+                - paragraph [ref=e250]: 100%
+                - paragraph [ref=e251]: Margem
+          - generic [ref=e252]:
+            - button "Editar" [ref=e253]
+            - button "Desativar produto Kit Coffee Break (20 pessoas)" [ref=e256]: Desativar
+            - button "Excluir produto Kit Coffee Break (20 pessoas)" [ref=e259]: Excluir
+        - generic [ref=e262]:
+          - generic [ref=e268]:
+            - generic [ref=e269]:
+              - paragraph [ref=e270]: Mini Naked Cake
+              - generic [ref=e271]: Ativo
+            - paragraph [ref=e272]: Bolos de Aniversário
+            - generic [ref=e273]:
+              - generic [ref=e274]:
+                - paragraph [ref=e275]: R$ 45,00
+                - paragraph [ref=e276]: Preço
+              - generic [ref=e277]:
+                - paragraph [ref=e278]: R$ 0,00
+                - paragraph [ref=e279]: Custo
+              - generic [ref=e280]:
+                - paragraph [ref=e281]: 100%
+                - paragraph [ref=e282]: Margem
+          - generic [ref=e283]:
+            - button "Editar" [ref=e284]
+            - button "Desativar produto Mini Naked Cake" [ref=e287]: Desativar
+            - button "Excluir produto Mini Naked Cake" [ref=e290]: Excluir
+        - generic [ref=e293]:
+          - generic [ref=e299]:
+            - generic [ref=e300]:
+              - paragraph [ref=e301]: Naked Cake Frutas
+              - generic [ref=e302]: Ativo
+            - paragraph [ref=e303]: Bolos de Aniversário
+            - generic [ref=e304]:
+              - generic [ref=e305]:
+                - paragraph [ref=e306]: R$ 195,00
+                - paragraph [ref=e307]: Preço
+              - generic [ref=e308]:
+                - paragraph [ref=e309]: R$ 0,00
+                - paragraph [ref=e310]: Custo
+              - generic [ref=e311]:
+                - paragraph [ref=e312]: 100%
+                - paragraph [ref=e313]: Margem
+          - generic [ref=e314]:
+            - button "Editar" [ref=e315]
+            - button "Desativar produto Naked Cake Frutas" [ref=e318]: Desativar
+            - button "Excluir produto Naked Cake Frutas" [ref=e321]: Excluir
+    - generic [ref=e326]:
+      - generic [ref=e327]:
+        - heading "Novo produto" [level=2] [ref=e328]
+        - button "Fechar" [ref=e329]
+      - generic [ref=e332]:
+        - generic [ref=e333]:
+          - heading "Informações gerais" [level=2] [ref=e334]
+          - generic [ref=e335]:
+            - generic [ref=e336]:
+              - generic [ref=e337]: Nome*
+              - textbox "Nome*" [ref=e338]:
+                - /placeholder: "Ex: Bolo de chocolate 25cm"
+            - generic [ref=e339]:
+              - generic [ref=e340]: Descrição (opcional)
+              - textbox "Descrição (opcional)" [ref=e341]
+            - generic [ref=e342]:
+              - generic [ref=e343]: Categoria*
+              - combobox "Categoria*" [ref=e344]:
+                - option "Selecione a categoria…" [selected]
+                - option "Bolos de Aniversário"
+                - option "Doces & Docinhos"
+                - option "Kits & Coffee Break"
+        - generic [ref=e345]:
+          - heading "Comercial" [level=2] [ref=e346]
+          - generic [ref=e347]:
+            - generic [ref=e348]:
+              - generic [ref=e349]:
+                - generic [ref=e350]: Preço de venda*
+                - textbox "Preço de venda*" [ref=e351]:
+                  - /placeholder: R$ 0,00
+              - generic [ref=e352]:
+                - generic [ref=e353]: Prazo de produção (dias)
+                - spinbutton "Prazo de produção (dias)" [ref=e354]: "0"
+            - generic [ref=e355]:
+              - checkbox "Produto em destaque" [ref=e356]
+              - text: Produto em destaque
+        - generic [ref=e357]:
+          - heading "Imagem" [level=2] [ref=e358]
+          - generic [ref=e360]:
+            - generic [ref=e361]: 🖼
+            - generic [ref=e363]:
+              - generic [ref=e364] [cursor=pointer]: Escolher imagem
+              - paragraph [ref=e365]: JPEG, PNG ou WebP · máx. 2 MB
+        - generic [ref=e366]:
+          - heading "Receitas vinculadas" [level=2] [ref=e367]
+          - generic [ref=e368]:
+            - generic [ref=e369]:
+              - paragraph [ref=e370]: Opcional — usado para calcular o custo do produto.
+              - button "Adicionar receita" [disabled] [ref=e371]
+            - paragraph [ref=e374]:
+              - text: Nenhuma receita ativa cadastrada — o vínculo é opcional, mas para usá-lo
+              - link "cadastre uma receita primeiro" [ref=e375] [cursor=pointer]:
+                - /url: /admin/receitas
+              - text: .
+      - generic [ref=e376]:
+        - button "Cancelar" [ref=e377]
+        - button "Criar produto" [ref=e378]
+  - button "Open Next.js Dev Tools" [ref=e37] [cursor=pointer]
+  - alert [ref=e324]

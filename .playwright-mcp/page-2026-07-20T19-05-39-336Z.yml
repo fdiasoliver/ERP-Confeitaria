@@ -1,0 +1,37 @@
+- generic [active] [ref=f5e1]:
+  - generic [ref=f5e2]:
+    - banner [ref=f5e3]:
+      - generic [ref=f5e4]:
+        - link "←" [ref=f5e5] [cursor=pointer]:
+          - /url: /
+        - heading "Receita" [level=1] [ref=f5e6]
+    - generic [ref=f5e7]:
+      - link "← Voltar para Receitas" [ref=f5e21] [cursor=pointer]:
+        - /url: /admin/receitas
+      - generic [ref=f5e22]:
+        - generic [ref=f5e23]:
+          - heading "Receita Teste QA I.3" [level=1] [ref=f5e24]
+          - generic [ref=f5e25]: Inativa
+        - paragraph [ref=f5e26]: Rende 1 unidade teste
+        - generic [ref=f5e27]:
+          - generic [ref=f5e28]:
+            - paragraph [ref=f5e29]: R$ 0,52
+            - paragraph [ref=f5e30]: Custo total
+          - generic [ref=f5e31]:
+            - paragraph [ref=f5e32]: R$ 0,52
+            - paragraph [ref=f5e33]: Custo por unidade teste
+        - generic [ref=f5e34]:
+          - button "Editar receita" [ref=f5e35]
+          - button "Ativar" [ref=f5e36]
+      - generic [ref=f5e37]:
+        - paragraph [ref=f5e38]: Ingredientes (1)
+        - button "+ Adicionar" [ref=f5e39]
+      - generic [ref=f5e41]:
+        - generic [ref=f5e42]:
+          - paragraph [ref=f5e43]: Açúcar Refinado
+          - paragraph [ref=f5e44]: 100 g
+        - generic [ref=f5e45]:
+          - button "Editar item Açúcar Refinado" [ref=f5e46]: Editar
+          - button "Remover item Açúcar Refinado" [disabled] [ref=f5e47]: Remover
+  - button "Open Next.js Dev Tools" [ref=f5e17] [cursor=pointer]
+  - alert [ref=f5e48]

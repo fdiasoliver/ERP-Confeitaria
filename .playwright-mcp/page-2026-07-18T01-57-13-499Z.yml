@@ -1,0 +1,12 @@
+- generic [active] [ref=f15e1]:
+  - generic [ref=f15e2]:
+    - banner [ref=f15e3]:
+      - generic [ref=f15e4]:
+        - link "←" [ref=f15e5] [cursor=pointer]:
+          - /url: /
+        - heading "Receitas" [level=1] [ref=f15e6]
+    - generic [ref=f15e8]:
+      - paragraph [ref=f15e9]: Carregando…
+      - button "+ Nova" [disabled] [ref=f15e10]
+  - button "Open Next.js Dev Tools" [ref=f15e20] [cursor=pointer]
+  - alert [ref=f15e24]

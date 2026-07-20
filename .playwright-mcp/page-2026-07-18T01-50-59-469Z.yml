@@ -1,0 +1,56 @@
+- generic [active] [ref=f9e1]:
+  - generic [ref=f9e2]:
+    - banner [ref=f9e3]:
+      - generic [ref=f9e4]:
+        - link "←" [ref=f9e5] [cursor=pointer]:
+          - /url: /
+        - heading "Ingredientes" [level=1] [ref=f9e6]
+    - generic [ref=f9e7]:
+      - link "Categorias de ingrediente →" [ref=f9e8] [cursor=pointer]:
+        - /url: /admin/ingredientes/categorias
+      - generic [ref=f9e9]:
+        - paragraph [ref=f9e10]: 1 ingrediente
+        - button "+ Novo" [ref=f9e11]
+      - generic [ref=f9e26]:
+        - searchbox "Pesquisar ingrediente por nome" [ref=f9e27]: Teste QA
+        - generic [ref=f9e28]:
+          - paragraph [ref=f9e29]: Status
+          - generic [ref=f9e30]:
+            - button "Todos" [pressed] [ref=f9e31]
+            - button "Ativos" [ref=f9e32]
+            - button "Inativos" [ref=f9e33]
+        - generic [ref=f9e34]:
+          - paragraph [ref=f9e35]: Categoria
+          - generic [ref=f9e36]:
+            - button "Todas" [pressed] [ref=f9e37]
+            - button "Farinhas e Açúcares" [ref=f9e38]
+            - button "Laticínios e Ovos" [ref=f9e39]
+        - generic [ref=f9e40]:
+          - checkbox "Somente estoque baixo" [ref=f9e41]
+          - text: Somente estoque baixo
+      - generic [ref=f9e189]:
+        - generic [ref=f9e191]:
+          - generic [ref=f9e192]:
+            - paragraph [ref=f9e193]: Teste QA I.3 Ingrediente
+            - generic [ref=f9e194]: Ativo
+            - generic [ref=f9e195]: Estoque baixo
+          - paragraph [ref=f9e196]: Sem categoria · Grama (g)
+        - generic [ref=f9e197]:
+          - generic [ref=f9e198]:
+            - paragraph [ref=f9e199]: R$ 12,00
+            - paragraph [ref=f9e200]: Preço/g
+          - generic [ref=f9e201]:
+            - paragraph [ref=f9e202]: "0"
+            - paragraph [ref=f9e203]: Estoque
+          - generic [ref=f9e204]:
+            - paragraph [ref=f9e205]: "0"
+            - paragraph [ref=f9e206]: Mínimo
+        - generic [ref=f9e207]:
+          - button "Editar ingrediente Teste QA I.3 Ingrediente" [disabled] [ref=f9e208]: Editar
+          - button "Desativar ingrediente Teste QA I.3 Ingrediente" [disabled] [ref=f9e209]: …
+    - generic [ref=f9e248]:
+      - generic [ref=f9e249]: ✓
+      - paragraph [ref=f9e250]: "\"Teste QA I.3 Ingrediente\" desativado."
+      - button "✕" [ref=f9e251]
+  - button "Open Next.js Dev Tools" [ref=f9e21] [cursor=pointer]
+  - alert [ref=f9e25]

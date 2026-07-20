@@ -1,0 +1,63 @@
+- generic [ref=f7e1]:
+  - generic [ref=f7e2]:
+    - banner [ref=f7e3]:
+      - generic [ref=f7e4]:
+        - link "←" [ref=f7e5] [cursor=pointer]:
+          - /url: /
+        - heading "Unidades" [level=1] [ref=f7e6]
+    - generic [ref=f7e7]:
+      - link "Conversões entre unidades →" [ref=f7e8] [cursor=pointer]:
+        - /url: /admin/unidades/conversoes
+      - generic [ref=f7e9]:
+        - paragraph [ref=f7e10]: 2 unidades
+        - button "+ Nova" [ref=f7e11]
+      - generic [ref=f7e26]:
+        - searchbox "Pesquisar unidade por nome" [ref=f7e27]
+        - generic [ref=f7e28]:
+          - paragraph [ref=f7e29]: Status
+          - generic [ref=f7e30]:
+            - button "Todos" [pressed] [ref=f7e31]
+            - button "Ativas" [ref=f7e32]
+            - button "Inativas" [ref=f7e33]
+        - generic [ref=f7e34]:
+          - paragraph [ref=f7e35]: Tipo
+          - generic [ref=f7e36]:
+            - button "Todos" [ref=f7e37]
+            - button "Massa" [active] [pressed] [ref=f7e38]
+            - button "Volume" [ref=f7e39]
+            - button "Unidade" [ref=f7e40]
+      - generic [ref=f7e41]:
+        - generic [ref=f7e191]:
+          - generic [ref=f7e193]:
+            - generic [ref=f7e194]:
+              - paragraph [ref=f7e195]: Quilograma
+              - generic [ref=f7e196]: Ativa
+            - paragraph [ref=f7e197]: Massa
+          - generic [ref=f7e198]:
+            - generic [ref=f7e199]:
+              - paragraph [ref=f7e200]: kg
+              - paragraph [ref=f7e201]: Sigla
+            - generic [ref=f7e202]:
+              - paragraph [ref=f7e203]: "2"
+              - paragraph [ref=f7e204]: Ordem
+          - generic [ref=f7e205]:
+            - button "Editar unidade Quilograma" [ref=f7e206]: Editar
+            - button "Desativar unidade Quilograma" [ref=f7e207]: Desativar
+        - generic [ref=f7e208]:
+          - generic [ref=f7e210]:
+            - generic [ref=f7e211]:
+              - paragraph [ref=f7e212]: Grama
+              - generic [ref=f7e213]: Ativa
+            - paragraph [ref=f7e214]: Massa
+          - generic [ref=f7e215]:
+            - generic [ref=f7e216]:
+              - paragraph [ref=f7e217]: g
+              - paragraph [ref=f7e218]: Sigla
+            - generic [ref=f7e219]:
+              - paragraph [ref=f7e220]: "3"
+              - paragraph [ref=f7e221]: Ordem
+          - generic [ref=f7e222]:
+            - button "Editar unidade Grama" [ref=f7e223]: Editar
+            - button "Desativar unidade Grama" [ref=f7e224]: Desativar
+  - button "Open Next.js Dev Tools" [ref=f7e21] [cursor=pointer]
+  - alert [ref=f7e25]

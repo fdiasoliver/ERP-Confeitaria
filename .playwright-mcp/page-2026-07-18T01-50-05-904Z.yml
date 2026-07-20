@@ -1,0 +1,180 @@
+- generic [ref=f9e1]:
+  - generic [ref=f9e2]:
+    - banner [ref=f9e3]:
+      - generic [ref=f9e4]:
+        - link "←" [ref=f9e5] [cursor=pointer]:
+          - /url: /
+        - heading "Ingredientes" [level=1] [ref=f9e6]
+    - generic [ref=f9e7]:
+      - link "Categorias de ingrediente →" [ref=f9e8] [cursor=pointer]:
+        - /url: /admin/ingredientes/categorias
+      - generic [ref=f9e9]:
+        - paragraph [ref=f9e10]: 5 ingredientes
+        - button "+ Novo" [ref=f9e11]
+      - generic [ref=f9e26]:
+        - searchbox "Pesquisar ingrediente por nome" [ref=f9e27]
+        - generic [ref=f9e28]:
+          - paragraph [ref=f9e29]: Status
+          - generic [ref=f9e30]:
+            - button "Todos" [pressed] [ref=f9e31]
+            - button "Ativos" [ref=f9e32]
+            - button "Inativos" [ref=f9e33]
+        - generic [ref=f9e34]:
+          - paragraph [ref=f9e35]: Categoria
+          - generic [ref=f9e36]:
+            - button "Todas" [pressed] [ref=f9e37]
+            - button "Farinhas e Açúcares" [ref=f9e38]
+            - button "Laticínios e Ovos" [ref=f9e39]
+        - generic [ref=f9e40]:
+          - checkbox "Somente estoque baixo" [ref=f9e41]
+          - text: Somente estoque baixo
+      - generic [ref=f9e42]:
+        - generic [ref=f9e43]:
+          - generic [ref=f9e45]:
+            - generic [ref=f9e46]:
+              - paragraph [ref=f9e47]: Açúcar Refinado
+              - generic [ref=f9e48]: Ativo
+              - generic [ref=f9e49]: Estoque baixo
+            - paragraph [ref=f9e50]: Farinhas e Açúcares · Quilograma (kg)
+          - generic [ref=f9e51]:
+            - generic [ref=f9e52]:
+              - paragraph [ref=f9e53]: R$ 5,20
+              - paragraph [ref=f9e54]: Preço/kg
+            - generic [ref=f9e55]:
+              - paragraph [ref=f9e56]: "0"
+              - paragraph [ref=f9e57]: Estoque
+            - generic [ref=f9e58]:
+              - paragraph [ref=f9e59]: "0"
+              - paragraph [ref=f9e60]: Mínimo
+          - generic [ref=f9e61]:
+            - button "Editar ingrediente Açúcar Refinado" [ref=f9e62]: Editar
+            - button "Desativar ingrediente Açúcar Refinado" [ref=f9e63]: Desativar
+        - generic [ref=f9e64]:
+          - generic [ref=f9e66]:
+            - generic [ref=f9e67]:
+              - paragraph [ref=f9e68]: Chocolate em Pó 50%
+              - generic [ref=f9e69]: Ativo
+              - generic [ref=f9e70]: Estoque baixo
+            - paragraph [ref=f9e71]: Farinhas e Açúcares · Quilograma (kg)
+          - generic [ref=f9e72]:
+            - generic [ref=f9e73]:
+              - paragraph [ref=f9e74]: R$ 32,00
+              - paragraph [ref=f9e75]: Preço/kg
+            - generic [ref=f9e76]:
+              - paragraph [ref=f9e77]: "0"
+              - paragraph [ref=f9e78]: Estoque
+            - generic [ref=f9e79]:
+              - paragraph [ref=f9e80]: "0"
+              - paragraph [ref=f9e81]: Mínimo
+          - generic [ref=f9e82]:
+            - button "Editar ingrediente Chocolate em Pó 50%" [ref=f9e83]: Editar
+            - button "Desativar ingrediente Chocolate em Pó 50%" [ref=f9e84]: Desativar
+        - generic [ref=f9e85]:
+          - generic [ref=f9e87]:
+            - generic [ref=f9e88]:
+              - paragraph [ref=f9e89]: Farinha de Trigo
+              - generic [ref=f9e90]: Ativo
+              - generic [ref=f9e91]: Estoque baixo
+            - paragraph [ref=f9e92]: Farinhas e Açúcares · Quilograma (kg)
+          - generic [ref=f9e93]:
+            - generic [ref=f9e94]:
+              - paragraph [ref=f9e95]: R$ 6,50
+              - paragraph [ref=f9e96]: Preço/kg
+            - generic [ref=f9e97]:
+              - paragraph [ref=f9e98]: "0"
+              - paragraph [ref=f9e99]: Estoque
+            - generic [ref=f9e100]:
+              - paragraph [ref=f9e101]: "0"
+              - paragraph [ref=f9e102]: Mínimo
+          - generic [ref=f9e103]:
+            - button "Editar ingrediente Farinha de Trigo" [ref=f9e104]: Editar
+            - button "Desativar ingrediente Farinha de Trigo" [ref=f9e105]: Desativar
+        - generic [ref=f9e106]:
+          - generic [ref=f9e108]:
+            - generic [ref=f9e109]:
+              - paragraph [ref=f9e110]: Manteiga sem Sal
+              - generic [ref=f9e111]: Ativo
+              - generic [ref=f9e112]: Estoque baixo
+            - paragraph [ref=f9e113]: Laticínios e Ovos · Quilograma (kg)
+          - generic [ref=f9e114]:
+            - generic [ref=f9e115]:
+              - paragraph [ref=f9e116]: R$ 38,00
+              - paragraph [ref=f9e117]: Preço/kg
+            - generic [ref=f9e118]:
+              - paragraph [ref=f9e119]: "0"
+              - paragraph [ref=f9e120]: Estoque
+            - generic [ref=f9e121]:
+              - paragraph [ref=f9e122]: "0"
+              - paragraph [ref=f9e123]: Mínimo
+          - generic [ref=f9e124]:
+            - button "Editar ingrediente Manteiga sem Sal" [ref=f9e125]: Editar
+            - button "Desativar ingrediente Manteiga sem Sal" [ref=f9e126]: Desativar
+        - generic [ref=f9e127]:
+          - generic [ref=f9e129]:
+            - generic [ref=f9e130]:
+              - paragraph [ref=f9e131]: Ovos
+              - generic [ref=f9e132]: Ativo
+              - generic [ref=f9e133]: Estoque baixo
+            - paragraph [ref=f9e134]: Laticínios e Ovos · Unidade (un)
+          - generic [ref=f9e135]:
+            - generic [ref=f9e136]:
+              - paragraph [ref=f9e137]: R$ 0,80
+              - paragraph [ref=f9e138]: Preço/un
+            - generic [ref=f9e139]:
+              - paragraph [ref=f9e140]: "0"
+              - paragraph [ref=f9e141]: Estoque
+            - generic [ref=f9e142]:
+              - paragraph [ref=f9e143]: "0"
+              - paragraph [ref=f9e144]: Mínimo
+          - generic [ref=f9e145]:
+            - button "Editar ingrediente Ovos" [ref=f9e146]: Editar
+            - button "Desativar ingrediente Ovos" [ref=f9e147]: Desativar
+    - generic [ref=f9e149]:
+      - generic [ref=f9e150]:
+        - heading "Novo ingrediente" [level=2] [ref=f9e151]
+        - button "Fechar" [ref=f9e152]: ✕
+      - generic [ref=f9e153]:
+        - generic [ref=f9e154]:
+          - generic [ref=f9e155]: Nome*
+          - textbox "Nome*" [ref=f9e156]:
+            - /placeholder: "Ex: Farinha de trigo"
+          - paragraph [ref=f9e182]: Nome é obrigatório.
+        - generic [ref=f9e157]:
+          - generic [ref=f9e158]: Categoria
+          - combobox "Categoria" [ref=f9e159]:
+            - option "Sem categoria" [selected]
+            - option "Farinhas e Açúcares"
+            - option "Laticínios e Ovos"
+        - generic [ref=f9e160]:
+          - generic [ref=f9e161]: Unidade de medida*
+          - combobox "Unidade de medida*" [ref=f9e162]:
+            - option "Selecione…" [selected]
+            - option "Unidade (un)"
+            - option "Quilograma (kg)"
+            - option "Grama (g)"
+            - option "Litro (l)"
+            - option "Mililitro (ml)"
+            - option "Teste QA I.3 (tqa)"
+          - paragraph [ref=f9e183]: Selecione a unidade de medida.
+        - generic [ref=f9e163]:
+          - generic [ref=f9e164]: Preço atual (por unidade)*
+          - spinbutton "Preço atual (por unidade)*" [ref=f9e165]
+          - paragraph [ref=f9e184]: Preço é obrigatório.
+        - generic [ref=f9e166]:
+          - generic [ref=f9e167]:
+            - generic [ref=f9e168]: Estoque atual
+            - spinbutton "Estoque atual" [ref=f9e169]: "0"
+          - generic [ref=f9e170]:
+            - generic [ref=f9e171]: Estoque mínimo
+            - spinbutton "Estoque mínimo" [ref=f9e172]: "0"
+        - generic [ref=f9e173]:
+          - generic [ref=f9e174]: Fornecedor (opcional)
+          - textbox "Fornecedor (opcional)" [ref=f9e175]
+        - generic [ref=f9e176]:
+          - generic [ref=f9e177]: Código externo (opcional)
+          - textbox "Código externo (opcional)" [ref=f9e178]
+      - generic [ref=f9e179]:
+        - button "Cancelar" [ref=f9e180]
+        - button "Criar" [active] [ref=f9e181]
+  - button "Open Next.js Dev Tools" [ref=f9e21] [cursor=pointer]
+  - alert [ref=f9e25]

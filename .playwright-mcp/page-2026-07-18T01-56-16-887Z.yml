@@ -1,0 +1,59 @@
+- generic [ref=f13e1]:
+  - generic [ref=f13e2]:
+    - banner [ref=f13e3]:
+      - generic [ref=f13e4]:
+        - link "←" [ref=f13e5] [cursor=pointer]:
+          - /url: /
+        - heading "Produtos" [level=1] [ref=f13e6]
+    - generic [ref=f13e7]:
+      - generic [ref=f13e8]:
+        - paragraph [ref=f13e9]: 1 produto
+        - button "Novo" [ref=f13e10]
+      - generic [ref=f13e13]:
+        - searchbox "Pesquisar produto por nome" [active] [ref=f13e14]: Teste QA
+        - generic [ref=f13e15]:
+          - generic [ref=f13e16]:
+            - generic [ref=f13e17]: Categoria
+            - combobox "Categoria" [ref=f13e18]:
+              - option "Todas as categorias" [selected]
+              - option "Bolos de Aniversário"
+              - option "Doces & Docinhos"
+              - option "Kits & Coffee Break"
+              - option "QA Teste 2B6 Editado (inativa)"
+          - generic [ref=f13e19]:
+            - generic [ref=f13e20]: Ordenar por
+            - combobox "Ordenar por" [ref=f13e21]:
+              - option "Nome (A-Z)" [selected]
+              - option "Nome (Z-A)"
+              - option "Preço (menor primeiro)"
+              - option "Preço (maior primeiro)"
+              - option "Mais recentes"
+              - option "Mais antigos"
+        - generic [ref=f13e22]:
+          - paragraph [ref=f13e23]: Status
+          - generic [ref=f13e24]:
+            - button "Todos" [pressed] [ref=f13e25]
+            - button "Ativos" [ref=f13e26]
+            - button "Inativos" [ref=f13e27]
+      - generic [ref=f13e394]:
+        - generic [ref=f13e400]:
+          - generic [ref=f13e401]:
+            - paragraph [ref=f13e402]: Produto Teste QA I.3
+            - generic [ref=f13e403]: Ativo
+          - paragraph [ref=f13e404]: Bolos de Aniversário
+          - generic [ref=f13e405]:
+            - generic [ref=f13e406]:
+              - paragraph [ref=f13e407]: R$ 50,00
+              - paragraph [ref=f13e408]: Preço
+            - generic [ref=f13e409]:
+              - paragraph [ref=f13e410]: R$ 18,53
+              - paragraph [ref=f13e411]: Custo
+            - generic [ref=f13e412]:
+              - paragraph [ref=f13e413]: 63%
+              - paragraph [ref=f13e414]: Margem
+        - generic [ref=f13e415]:
+          - button "Editar" [ref=f13e416]
+          - button "Desativar produto Produto Teste QA I.3" [ref=f13e419]: Desativar
+          - button "Excluir produto Produto Teste QA I.3" [ref=f13e422]: Excluir
+  - button "Open Next.js Dev Tools" [ref=f13e37] [cursor=pointer]
+  - alert [ref=f13e41]

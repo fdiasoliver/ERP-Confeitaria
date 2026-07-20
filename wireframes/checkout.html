@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout — Wireframe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/wireframe.css">
+</head>
+<body>
+  <span class="wf-label">WIREFRAME — Checkout</span>
+  <a href="index.html" class="back-link">← Voltar aos wireframes</a>
+
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="logo">Finalizar pedido</div>
+    </header>
+
+    <div style="padding:20px">
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:20px">
+        Prazo mínimo deste pedido: <strong>4 dias</strong> (Naked Cake)
+      </p>
+
+      <div class="form-group">
+        <label>Data de entrega / retirada</label>
+        <input type="date" value="2026-07-05">
+      </div>
+
+      <div class="form-group">
+        <label>Como deseja receber?</label>
+        <div class="option-cards">
+          <div class="option-card">
+            <strong>🏪 Retirada na loja</strong>
+            <small>Sem custo · Rua das Flores, 123</small>
+          </div>
+          <div class="option-card selected">
+            <strong>🚗 Entrega gratuita</strong>
+            <small>Até 3 km · custo da confeitaria · 1,8 km</small>
+          </div>
+          <div class="option-card">
+            <strong>📱 Uber / 99 Entregas</strong>
+            <small>Taxa estimada R$ 18,00 · pago pelo cliente</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Endereço de entrega</label>
+        <select>
+          <option>Rua Augusta, 500 — Consolação (padrão)</option>
+          <option>Av. Paulista, 1000 — Bela Vista</option>
+          <option>+ Adicionar novo endereço</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Quem vai receber</label>
+        <input type="text" value="Maria Silva" placeholder="Nome completo">
+      </div>
+
+      <div class="form-group">
+        <label>Telefone de quem recebe</label>
+        <input type="tel" value="(11) 98765-4321">
+      </div>
+
+      <div class="form-group">
+        <label>Observações do pedido</label>
+        <textarea placeholder="Instruções gerais, referências...">Decoração tema unicórnio, cores pastel</textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Fotos de referência</label>
+        <div style="border:2px dashed var(--sand);border-radius:12px;padding:24px;text-align:center;color:var(--muted)">
+          📷 Toque para enviar fotos<br>
+          <small>JPG, PNG até 5 MB</small>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--sand);margin:24px 0">
+
+      <h3 style="font-family:var(--font-display);font-size:1rem;margin-bottom:12px">Itens</h3>
+      <div class="cart-item" style="border:none;padding:8px 0">
+        <div class="cart-item-info">
+          <div class="cart-item-name">Bolo Red Velvet</div>
+          <textarea style="margin-top:6px;font-size:0.85rem;padding:8px" placeholder="Observação deste item">Escrever "Parabéns Ana" em chocolate</textarea>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:20px">
+        <label>Forma de pagamento</label>
+        <div class="option-cards">
+          <div class="option-card selected">
+            <strong>PIX agora</strong>
+            <small>Pagamento instantâneo · QR Code</small>
+          </div>
+          <div class="option-card">
+            <strong>PIX na entrega</strong>
+            <small>Pague quando receber</small>
+          </div>
+          <div class="option-card">
+            <strong>Dinheiro</strong>
+            <small>Troco para R$ 300,00</small>
+          </div>
+          <div class="option-card">
+            <strong>Cartão de crédito</strong>
+            <small>Na entrega · maquininha</small>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--sand);border-radius:12px;padding:16px;margin:20px 0">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span>Subtotal</span><span>R$ 264,00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;color:var(--muted);font-size:0.9rem">
+          <span>Entrega</span><span>Grátis</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:1.1rem">
+          <span>Total</span><span>R$ 264,00</span>
+        </div>
+      </div>
+
+      <button class="btn-primary">Confirmar e pagar com PIX</button>
+    </div>
+  </div>
+</body>
+</html>

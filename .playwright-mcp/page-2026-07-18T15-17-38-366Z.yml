@@ -1,0 +1,67 @@
+- generic [ref=f28e1]:
+  - generic [ref=f28e2]:
+    - banner [ref=f28e3]:
+      - generic [ref=f28e4]:
+        - link "←" [ref=f28e5] [cursor=pointer]:
+          - /url: /
+        - heading "Fornecedores" [level=1] [ref=f28e6]
+    - generic [ref=f28e7]:
+      - generic [ref=f28e8]:
+        - paragraph [ref=f28e9]: 1 fornecedor
+        - button "+ Novo" [active] [ref=f28e10]
+      - generic [ref=f28e11]:
+        - searchbox "Pesquisar fornecedor por nome" [ref=f28e12]
+        - generic [ref=f28e13]:
+          - generic [ref=f28e14]: Ordenar por
+          - combobox "Ordenar por" [ref=f28e15]:
+            - option "Nome (A-Z)" [selected]
+            - option "Nome (Z-A)"
+            - option "Mais recentes"
+            - option "Mais antigos"
+        - generic [ref=f28e16]:
+          - paragraph [ref=f28e17]: Status
+          - generic [ref=f28e18]:
+            - button "Todos" [pressed] [ref=f28e19]
+            - button "Ativos" [ref=f28e20]
+            - button "Inativos" [ref=f28e21]
+      - generic [ref=f28e66]:
+        - generic [ref=f28e68]:
+          - generic [ref=f28e69]:
+            - paragraph [ref=f28e70]: Distribuidora Fornecedor Frontend Teste
+            - generic [ref=f28e71]: Ativo
+          - paragraph [ref=f28e72]: 11.222.333/0001-81 · (11) 99999-8888
+        - paragraph [ref=f28e74]:
+          - text: "Prazo de entrega:"
+          - generic [ref=f28e75]: 7 dias
+        - generic [ref=f28e76]:
+          - button "Editar fornecedor Distribuidora Fornecedor Frontend Teste" [ref=f28e77]: Editar
+          - button "Desativar fornecedor Distribuidora Fornecedor Frontend Teste" [ref=f28e78]: Desativar
+    - generic [ref=f28e84]:
+      - generic [ref=f28e85]:
+        - heading "Novo fornecedor" [level=2] [ref=f28e86]
+        - button "Fechar" [ref=f28e87]: ✕
+      - generic [ref=f28e88]:
+        - generic [ref=f28e89]:
+          - generic [ref=f28e90]: Nome*
+          - textbox "Nome*" [ref=f28e91]:
+            - /placeholder: "Ex: Distribuidora ABC"
+        - generic [ref=f28e92]:
+          - generic [ref=f28e93]: CNPJ (opcional)
+          - textbox "CNPJ (opcional)" [ref=f28e94]:
+            - /placeholder: 00.000.000/0000-00
+        - generic [ref=f28e95]:
+          - generic [ref=f28e96]: Telefone (opcional)
+          - textbox "Telefone (opcional)" [ref=f28e97]:
+            - /placeholder: (11) 99999-8888
+        - generic [ref=f28e98]:
+          - generic [ref=f28e99]: Prazo de entrega (dias, opcional)
+          - spinbutton "Prazo de entrega (dias, opcional)" [ref=f28e100]
+        - generic [ref=f28e101]:
+          - generic [ref=f28e102]: Observações (opcional)
+          - textbox "Observações (opcional)" [ref=f28e103]:
+            - /placeholder: Condições de pagamento, mínimo de compra etc.
+      - generic [ref=f28e104]:
+        - button "Cancelar" [ref=f28e105]
+        - button "Criar" [ref=f28e106]
+  - button "Open Next.js Dev Tools" [ref=f28e31] [cursor=pointer]
+  - alert [ref=f28e39]

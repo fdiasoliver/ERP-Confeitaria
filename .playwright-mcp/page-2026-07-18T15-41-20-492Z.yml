@@ -1,0 +1,7 @@
+- generic [active] [ref=f34e1]:
+  - banner [ref=f34e3]:
+    - generic [ref=f34e4]:
+      - link "←" [ref=f34e5] [cursor=pointer]:
+        - /url: /
+      - heading "Configurações" [level=1] [ref=f34e6]
+  - button "Open Next.js Dev Tools" [ref=f34e54] [cursor=pointer]

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carrinho — Wireframe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/wireframe.css">
+</head>
+<body>
+  <span class="wf-label">WIREFRAME — Carrinho</span>
+  <div class="overlay"></div>
+
+  <div class="app-shell" style="filter:blur(2px);pointer-events:none">
+    <header class="app-header">
+      <div class="logo">Doce Menina</div>
+    </header>
+  </div>
+
+  <div class="bottom-sheet">
+    <div class="sheet-handle"></div>
+    <h2 style="font-family:var(--font-display);margin-bottom:16px">Seu carrinho</h2>
+
+    <div class="cart-item">
+      <div class="cart-item-info">
+        <div class="cart-item-name">Bolo Red Velvet</div>
+        <div class="cart-item-price">R$ 180,00 × 1</div>
+      </div>
+      <div class="qty-control" style="width:100px">
+        <button class="qty-btn">−</button>
+        <span class="qty-value">1</span>
+        <button class="qty-btn">+</button>
+      </div>
+    </div>
+
+    <div class="cart-item">
+      <div class="cart-item-info">
+        <div class="cart-item-name">Brigadeiro Gourmet</div>
+        <div class="cart-item-price">R$ 3,50 × 24</div>
+      </div>
+      <div class="qty-control" style="width:100px">
+        <button class="qty-btn">−</button>
+        <span class="qty-value">24</span>
+        <button class="qty-btn">+</button>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:16px;font-weight:600">
+      <span>Subtotal</span>
+      <span>R$ 264,00</span>
+    </div>
+
+    <a href="checkout.html" class="btn-primary" style="display:block;text-align:center">Finalizar pedido</a>
+    <a href="vitrine.html" class="btn-secondary" style="display:block;text-align:center">Continuar comprando</a>
+  </div>
+</body>
+</html>

@@ -1,0 +1,34 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "←" [ref=e5] [cursor=pointer]:
+          - /url: /
+        - heading "Produtos" [level=1] [ref=e6]
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - paragraph [ref=e9]: Carregando…
+        - button "Novo" [disabled] [ref=e10]
+      - generic [ref=e13]:
+        - searchbox "Pesquisar produto por nome" [ref=e14]
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Categoria
+            - combobox "Categoria" [ref=e18]:
+              - option "Todas as categorias" [selected]
+          - generic [ref=e19]:
+            - generic [ref=e20]: Ordenar por
+            - combobox "Ordenar por" [ref=e21]:
+              - option "Nome (A-Z)" [selected]
+              - option "Nome (Z-A)"
+              - option "Preço (menor primeiro)"
+              - option "Preço (maior primeiro)"
+              - option "Mais recentes"
+              - option "Mais antigos"
+        - generic [ref=e22]:
+          - paragraph [ref=e23]: Status
+          - generic [ref=e24]:
+            - button "Todos" [pressed] [ref=e25]
+            - button "Ativos" [ref=e26]
+            - button "Inativos" [ref=e27]
+  - button "Open Next.js Dev Tools" [ref=e37] [cursor=pointer]

@@ -1,0 +1,14 @@
+- generic [active] [ref=f38e1]:
+  - generic [ref=f38e3]:
+    - heading "Doce Atelier" [level=1] [ref=f38e4]
+    - paragraph [ref=f38e5]: Acesso exclusivo para a equipe
+    - generic [ref=f38e6]:
+      - generic [ref=f38e7]:
+        - generic [ref=f38e8]: E-mail
+        - textbox "atendente@docelelier.com.br" [ref=f38e9]: admin@doceatelier.com.br
+      - generic [ref=f38e10]:
+        - generic [ref=f38e11]: Senha
+        - textbox "••••••••" [ref=f38e12]: admin123
+      - button "Entrar" [ref=f38e13]
+  - button "Open Next.js Dev Tools" [ref=f38e19] [cursor=pointer]
+  - alert [ref=f38e23]

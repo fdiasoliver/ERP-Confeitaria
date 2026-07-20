@@ -1,0 +1,43 @@
+- generic [active] [ref=f11e1]:
+  - generic [ref=f11e2]:
+    - banner [ref=f11e3]:
+      - generic [ref=f11e4]:
+        - link "←" [ref=f11e5] [cursor=pointer]:
+          - /url: /
+        - heading "Receitas" [level=1] [ref=f11e6]
+    - generic [ref=f11e7]:
+      - generic [ref=f11e8]:
+        - paragraph [ref=f11e9]: 1 receita
+        - button "+ Nova" [ref=f11e10]
+      - generic [ref=f11e25]:
+        - searchbox "Pesquisar receita por nome" [ref=f11e26]
+        - generic [ref=f11e27]:
+          - paragraph [ref=f11e28]: Status
+          - generic [ref=f11e29]:
+            - button "Todas" [pressed] [ref=f11e30]
+            - button "Ativas" [ref=f11e31]
+            - button "Inativas" [ref=f11e32]
+      - generic [ref=f11e34]:
+        - link "Massa de Chocolate Básica Ativa Rende 1 bolo 25cm · 5 ingredientes · 40 min de preparo R$ 18,53 Custo total R$ 18,53 Custo por bolo 25cm" [ref=f11e35] [cursor=pointer]:
+          - /url: /admin/receitas/cmrp1r29r000vw0z8vlh2ucta
+          - generic [ref=f11e36]:
+            - paragraph [ref=f11e37]: Massa de Chocolate Básica
+            - generic [ref=f11e38]: Ativa
+          - paragraph [ref=f11e39]: Rende 1 bolo 25cm · 5 ingredientes · 40 min de preparo
+          - generic [ref=f11e40]:
+            - generic [ref=f11e41]:
+              - paragraph [ref=f11e42]: R$ 18,53
+              - paragraph [ref=f11e43]: Custo total
+            - generic [ref=f11e44]:
+              - paragraph [ref=f11e45]: R$ 18,53
+              - paragraph [ref=f11e46]: Custo por bolo 25cm
+        - generic [ref=f11e47]:
+          - link "Ver receita" [ref=f11e48] [cursor=pointer]:
+            - /url: /admin/receitas/cmrp1r29r000vw0z8vlh2ucta
+          - button "Desativar receita Massa de Chocolate Básica" [ref=f11e49]: Desativar
+    - generic [ref=f11e88]:
+      - generic [ref=f11e89]: ✓
+      - paragraph [ref=f11e90]: Receita criada com sucesso.
+      - button "✕" [ref=f11e91]
+  - button "Open Next.js Dev Tools" [ref=f11e20] [cursor=pointer]
+  - alert [ref=f11e24]

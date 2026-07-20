@@ -1,0 +1,51 @@
+- generic [ref=f37e1]:
+  - generic [ref=f37e2]:
+    - banner [ref=f37e3]:
+      - generic [ref=f37e4]:
+        - link "←" [ref=f37e5] [cursor=pointer]:
+          - /url: /
+        - heading "Fornecedores" [level=1] [ref=f37e6]
+    - generic [ref=f37e7]:
+      - generic [ref=f37e37]:
+        - generic [ref=f37e38]:
+          - paragraph [ref=f37e39]: "4"
+          - paragraph [ref=f37e40]: Total
+        - generic [ref=f37e41]:
+          - paragraph [ref=f37e42]: "4"
+          - paragraph [ref=f37e43]: Ativos
+        - generic [ref=f37e44]:
+          - paragraph [ref=f37e45]: "0"
+          - paragraph [ref=f37e46]: Inativos
+      - generic [ref=f37e8]:
+        - paragraph [ref=f37e9]: 1 fornecedor
+        - button "+ Novo" [ref=f37e10]
+      - generic [ref=f37e11]:
+        - generic [ref=f37e12]:
+          - searchbox "Pesquisar fornecedor por nome" [active] [ref=f37e14]: Beta
+          - generic [ref=f37e15]:
+            - generic [ref=f37e16]: Ordenar por
+            - combobox "Ordenar por" [ref=f37e17]:
+              - option "Nome (A-Z)" [selected]
+              - option "Nome (Z-A)"
+              - option "Mais recentes"
+              - option "Mais antigos"
+        - generic [ref=f37e18]:
+          - paragraph [ref=f37e19]: Status
+          - generic [ref=f37e20]:
+            - button "Todos" [pressed] [ref=f37e21]
+            - button "Ativos" [ref=f37e22]
+            - button "Inativos" [ref=f37e23]
+      - generic [ref=f37e72]:
+        - generic [ref=f37e75]:
+          - paragraph [ref=f37e76]: Fornecedor Beta
+          - generic [ref=f37e77]: Ativo
+        - generic [ref=f37e78]:
+          - paragraph [ref=f37e79]: 22.333.444/0001-92
+          - paragraph [ref=f37e80]:
+            - text: "Prazo de entrega:"
+            - generic [ref=f37e81]: 3 dias
+        - generic [ref=f37e82]:
+          - button "Editar fornecedor Fornecedor Beta" [ref=f37e83]: Editar
+          - button "Desativar fornecedor Fornecedor Beta" [ref=f37e84]: Desativar
+  - button "Open Next.js Dev Tools" [ref=f37e33] [cursor=pointer]
+  - alert [ref=f37e98]

@@ -1,0 +1,49 @@
+- generic [active] [ref=f12e1]:
+  - generic [ref=f12e2]:
+    - banner [ref=f12e3]:
+      - generic [ref=f12e4]:
+        - link "←" [ref=f12e5] [cursor=pointer]:
+          - /url: /
+        - heading "Receita" [level=1] [ref=f12e6]
+    - generic [ref=f12e7]:
+      - link "← Voltar para Receitas" [ref=f12e22] [cursor=pointer]:
+        - /url: /admin/receitas
+      - generic [ref=f12e23]:
+        - generic [ref=f12e24]:
+          - heading "Receita Teste QA I.3" [level=1] [ref=f12e25]
+          - generic [ref=f12e26]: Ativa
+        - paragraph [ref=f12e27]: Rende 1 unidade teste
+        - generic [ref=f12e28]:
+          - generic [ref=f12e29]:
+            - paragraph [ref=f12e30]: R$ 2,92
+            - paragraph [ref=f12e31]: Custo total
+          - generic [ref=f12e32]:
+            - paragraph [ref=f12e33]: R$ 2,92
+            - paragraph [ref=f12e34]: Custo por unidade teste
+        - generic [ref=f12e35]:
+          - button "Editar receita" [ref=f12e36]
+          - button "Desativar" [ref=f12e37]
+      - generic [ref=f12e38]:
+        - paragraph [ref=f12e39]: Ingredientes (2)
+        - button "+ Adicionar" [ref=f12e40]
+      - generic [ref=f12e41]:
+        - generic [ref=f12e42]:
+          - generic [ref=f12e43]:
+            - paragraph [ref=f12e44]: Açúcar Refinado
+            - paragraph [ref=f12e45]: 100 g
+          - generic [ref=f12e46]:
+            - button "Editar item Açúcar Refinado" [ref=f12e47]: Editar
+            - button "Remover item Açúcar Refinado" [ref=f12e48]: Remover
+        - generic [ref=f12e76]:
+          - generic [ref=f12e77]:
+            - paragraph [ref=f12e78]: Ovos
+            - paragraph [ref=f12e79]: 3 un
+          - generic [ref=f12e80]:
+            - button "Editar item Ovos" [disabled] [ref=f12e81]: Editar
+            - button "Remover item Ovos" [disabled] [ref=f12e82]: …
+    - generic [ref=f12e110]:
+      - generic [ref=f12e111]: ✓
+      - paragraph [ref=f12e112]: Ingrediente removido. Custo recalculado.
+      - button "✕" [ref=f12e113]
+  - button "Open Next.js Dev Tools" [ref=f12e17] [cursor=pointer]
+  - alert [ref=f12e21]

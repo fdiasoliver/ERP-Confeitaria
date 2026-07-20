@@ -1,0 +1,13 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - heading "Doce Atelier" [level=1] [ref=e4]
+    - paragraph [ref=e5]: Acesso exclusivo para a equipe
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: E-mail
+        - textbox "atendente@docelelier.com.br" [ref=e9]: admin@doceatelier.com.br
+      - generic [ref=e10]:
+        - generic [ref=e11]: Senha
+        - textbox "••••••••" [ref=e12]: admin123
+      - button "Entrar" [ref=e13]
+  - alert [ref=e14]

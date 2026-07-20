@@ -1,0 +1,46 @@
+- generic [active] [ref=f28e1]:
+  - generic [ref=f28e2]:
+    - banner [ref=f28e3]:
+      - generic [ref=f28e4]:
+        - link "←" [ref=f28e5] [cursor=pointer]:
+          - /url: /
+        - heading "Fornecedores" [level=1] [ref=f28e6]
+    - generic [ref=f28e7]:
+      - generic [ref=f28e8]:
+        - paragraph [ref=f28e9]: 1 fornecedor
+        - button "+ Novo" [ref=f28e10]
+      - generic [ref=f28e11]:
+        - searchbox "Pesquisar fornecedor por nome" [ref=f28e12]: Frontend Teste
+        - generic [ref=f28e13]:
+          - generic [ref=f28e14]: Ordenar por
+          - combobox "Ordenar por" [ref=f28e15]:
+            - option "Nome (A-Z)" [selected]
+            - option "Nome (Z-A)"
+            - option "Mais recentes"
+            - option "Mais antigos"
+        - generic [ref=f28e16]:
+          - paragraph [ref=f28e17]: Status
+          - generic [ref=f28e18]:
+            - button "Todos" [pressed] [ref=f28e19]
+            - button "Ativos" [ref=f28e20]
+            - button "Inativos" [ref=f28e21]
+      - generic [ref=f28e66]:
+        - generic [ref=f28e68]:
+          - generic [ref=f28e69]:
+            - paragraph [ref=f28e70]: Distribuidora Fornecedor Frontend Teste
+            - generic [ref=f28e71]: Ativo
+          - paragraph [ref=f28e72]: 11.222.333/0001-81 · (11) 99999-8888
+        - generic [ref=f28e73]:
+          - paragraph [ref=f28e74]:
+            - text: "Prazo de entrega:"
+            - generic [ref=f28e75]: 7 dias
+          - paragraph [ref=f28e141]: Pagamento em 30 dias
+        - generic [ref=f28e76]:
+          - button "Editar fornecedor Distribuidora Fornecedor Frontend Teste" [ref=f28e77]: Editar
+          - button "Desativar fornecedor Distribuidora Fornecedor Frontend Teste" [ref=f28e78]: Desativar
+    - generic [ref=f28e142]:
+      - generic [ref=f28e143]: ✓
+      - paragraph [ref=f28e144]: Fornecedor atualizado.
+      - button "✕" [ref=f28e145]
+  - button "Open Next.js Dev Tools" [ref=f28e31] [cursor=pointer]
+  - alert [ref=f28e39]

@@ -1,0 +1,11 @@
+- generic [active] [ref=f19e1]:
+  - generic [ref=f19e2]:
+    - banner [ref=f19e3]:
+      - generic [ref=f19e4]:
+        - link "←" [ref=f19e5] [cursor=pointer]:
+          - /url: /
+        - heading "Categorias" [level=1] [ref=f19e6]
+    - generic [ref=f19e8]:
+      - paragraph [ref=f19e9]: Carregando…
+      - button "+ Nova" [ref=f19e10]
+  - button "Open Next.js Dev Tools" [ref=f19e20] [cursor=pointer]

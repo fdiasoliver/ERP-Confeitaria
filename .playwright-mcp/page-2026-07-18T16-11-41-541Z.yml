@@ -1,0 +1,29 @@
+- generic [active] [ref=f37e1]:
+  - generic [ref=f37e2]:
+    - banner [ref=f37e3]:
+      - generic [ref=f37e4]:
+        - link "←" [ref=f37e5] [cursor=pointer]:
+          - /url: /
+        - heading "Fornecedores" [level=1] [ref=f37e6]
+    - generic [ref=f37e7]:
+      - generic [ref=f37e8]:
+        - paragraph [ref=f37e9]: Carregando…
+        - button "+ Novo" [ref=f37e10]
+      - generic [ref=f37e11]:
+        - generic [ref=f37e12]:
+          - searchbox "Pesquisar fornecedor por nome" [ref=f37e14]
+          - generic [ref=f37e15]:
+            - generic [ref=f37e16]: Ordenar por
+            - combobox "Ordenar por" [ref=f37e17]:
+              - option "Nome (A-Z)" [selected]
+              - option "Nome (Z-A)"
+              - option "Mais recentes"
+              - option "Mais antigos"
+        - generic [ref=f37e18]:
+          - paragraph [ref=f37e19]: Status
+          - generic [ref=f37e20]:
+            - button "Todos" [pressed] [ref=f37e21]
+            - button "Ativos" [ref=f37e22]
+            - button "Inativos" [ref=f37e23]
+      - generic "Carregando conteúdo" [ref=f37e24]
+  - button "Open Next.js Dev Tools" [ref=f37e33] [cursor=pointer]

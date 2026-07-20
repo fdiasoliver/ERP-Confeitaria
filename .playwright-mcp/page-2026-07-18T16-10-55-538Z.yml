@@ -1,0 +1,79 @@
+- generic [ref=f36e1]:
+  - generic [ref=f36e2]:
+    - banner [ref=f36e3]:
+      - generic [ref=f36e4]:
+        - link "←" [ref=f36e5] [cursor=pointer]:
+          - /url: /
+        - heading "Fornecedores" [level=1] [ref=f36e6]
+    - generic [ref=f36e7]:
+      - generic [ref=f36e37]:
+        - generic [ref=f36e38]:
+          - paragraph [ref=f36e39]: "0"
+          - paragraph [ref=f36e40]: Total
+        - generic [ref=f36e41]:
+          - paragraph [ref=f36e42]: "0"
+          - paragraph [ref=f36e43]: Ativos
+        - generic [ref=f36e44]:
+          - paragraph [ref=f36e45]: "0"
+          - paragraph [ref=f36e46]: Inativos
+      - generic [ref=f36e8]:
+        - paragraph [ref=f36e9]: 0 fornecedores
+        - button "+ Novo" [ref=f36e10]
+      - generic [ref=f36e11]:
+        - generic [ref=f36e12]:
+          - searchbox "Pesquisar fornecedor por nome" [ref=f36e14]
+          - generic [ref=f36e15]:
+            - generic [ref=f36e16]: Ordenar por
+            - combobox "Ordenar por" [ref=f36e17]:
+              - option "Nome (A-Z)" [selected]
+              - option "Nome (Z-A)"
+              - option "Mais recentes"
+              - option "Mais antigos"
+        - generic [ref=f36e18]:
+          - paragraph [ref=f36e19]: Status
+          - generic [ref=f36e20]:
+            - button "Todos" [pressed] [ref=f36e21]
+            - button "Ativos" [ref=f36e22]
+            - button "Inativos" [ref=f36e23]
+      - generic [ref=f36e47]:
+        - paragraph [ref=f36e48]: Nenhum fornecedor cadastrado
+        - paragraph [ref=f36e49]: Cadastre o primeiro fornecedor.
+        - button "+ Criar fornecedor" [ref=f36e50]
+    - dialog [ref=f36e89]:
+      - generic [ref=f36e90]:
+        - heading "Novo fornecedor" [level=2] [ref=f36e91]
+        - button "Fechar" [ref=f36e92]: ✕
+      - generic [ref=f36e93]:
+        - generic [ref=f36e94]:
+          - heading "Identificação" [level=2] [ref=f36e95]
+          - generic [ref=f36e96]:
+            - generic [ref=f36e97]:
+              - generic [ref=f36e98]: Nome*
+              - textbox "Nome*" [active] [ref=f36e99]:
+                - /placeholder: "Ex: Distribuidora ABC"
+            - generic [ref=f36e100]:
+              - generic [ref=f36e101]: CNPJ (opcional)
+              - textbox "CNPJ (opcional)" [ref=f36e102]:
+                - /placeholder: 00.000.000/0000-00
+        - generic [ref=f36e103]:
+          - heading "Contato" [level=2] [ref=f36e104]
+          - generic [ref=f36e106]:
+            - generic [ref=f36e107]: Telefone (opcional)
+            - textbox "Telefone (opcional)" [ref=f36e108]:
+              - /placeholder: (11) 99999-8888
+        - generic [ref=f36e109]:
+          - heading "Operação" [level=2] [ref=f36e110]
+          - generic [ref=f36e112]:
+            - generic [ref=f36e113]: Prazo de entrega (dias, opcional)
+            - spinbutton "Prazo de entrega (dias, opcional)" [ref=f36e114]
+        - generic [ref=f36e115]:
+          - heading "Observações" [level=2] [ref=f36e116]
+          - generic [ref=f36e118]:
+            - generic [ref=f36e119]: Notas (opcional)
+            - textbox "Notas (opcional)" [ref=f36e120]:
+              - /placeholder: Condições de pagamento, mínimo de compra etc.
+      - generic [ref=f36e121]:
+        - button "Cancelar" [ref=f36e122]
+        - button "Criar" [ref=f36e123]
+  - button "Open Next.js Dev Tools" [ref=f36e33] [cursor=pointer]
+  - alert [ref=f36e51]

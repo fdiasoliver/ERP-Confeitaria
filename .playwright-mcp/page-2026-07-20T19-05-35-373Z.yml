@@ -1,0 +1,7 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e3]:
+    - generic [ref=f5e4]:
+      - link "←" [ref=f5e5] [cursor=pointer]:
+        - /url: /
+      - heading "Receita" [level=1] [ref=f5e6]
+  - button "Open Next.js Dev Tools" [ref=f5e17] [cursor=pointer]

@@ -1,0 +1,93 @@
+- generic [ref=f37e1]:
+  - generic [ref=f37e2]:
+    - banner [ref=f37e3]:
+      - generic [ref=f37e4]:
+        - link "←" [ref=f37e5] [cursor=pointer]:
+          - /url: /
+        - heading "Fornecedores" [level=1] [ref=f37e6]
+    - generic [ref=f37e7]:
+      - generic [ref=f37e37]:
+        - generic [ref=f37e38]:
+          - paragraph [ref=f37e39]: "4"
+          - paragraph [ref=f37e40]: Total
+        - generic [ref=f37e41]:
+          - paragraph [ref=f37e42]: "4"
+          - paragraph [ref=f37e43]: Ativos
+        - generic [ref=f37e44]:
+          - paragraph [ref=f37e45]: "0"
+          - paragraph [ref=f37e46]: Inativos
+      - generic [ref=f37e8]:
+        - paragraph [ref=f37e9]: 4 fornecedores
+        - button "+ Novo" [ref=f37e10]
+      - generic [ref=f37e11]:
+        - generic [ref=f37e12]:
+          - searchbox "Pesquisar fornecedor por nome" [ref=f37e14]
+          - generic [ref=f37e15]:
+            - generic [ref=f37e16]: Ordenar por
+            - combobox "Ordenar por" [ref=f37e17]:
+              - option "Nome (A-Z)" [selected]
+              - option "Nome (Z-A)"
+              - option "Mais recentes"
+              - option "Mais antigos"
+        - generic [ref=f37e18]:
+          - paragraph [ref=f37e19]: Status
+          - generic [ref=f37e20]:
+            - button "Todos" [pressed] [ref=f37e21]
+            - button "Ativos" [ref=f37e22]
+            - button "Inativos" [ref=f37e23]
+      - generic [ref=f37e47]:
+        - generic [ref=f37e48]:
+          - generic [ref=f37e51]:
+            - paragraph [ref=f37e52]: Comercial Gama
+            - generic [ref=f37e53]: Ativo
+          - paragraph [ref=f37e55]: 33.444.555/0001-03
+          - generic [ref=f37e56]:
+            - button "Editar fornecedor Comercial Gama" [ref=f37e57]: Editar
+            - button "Desativar fornecedor Comercial Gama" [ref=f37e58]: Desativar
+        - generic [ref=f37e59]:
+          - generic [ref=f37e62]:
+            - paragraph [ref=f37e63]: Distribuidora Alfa
+            - generic [ref=f37e64]: Ativo
+          - generic [ref=f37e65]:
+            - paragraph [ref=f37e66]: 11.222.333/0001-81 · (11) 98888-7777
+            - paragraph [ref=f37e67]:
+              - text: "Prazo de entrega:"
+              - generic [ref=f37e68]: 5 dias
+          - generic [ref=f37e69]:
+            - button "Editar fornecedor Distribuidora Alfa" [ref=f37e70]: Editar
+            - button "Desativar fornecedor Distribuidora Alfa" [ref=f37e71]: Desativar
+        - generic [ref=f37e72]:
+          - generic [ref=f37e75]:
+            - paragraph [ref=f37e76]: Fornecedor Beta
+            - generic [ref=f37e77]: Ativo
+          - generic [ref=f37e78]:
+            - paragraph [ref=f37e79]: 22.333.444/0001-92
+            - paragraph [ref=f37e80]:
+              - text: "Prazo de entrega:"
+              - generic [ref=f37e81]: 3 dias
+          - generic [ref=f37e82]:
+            - button "Editar fornecedor Fornecedor Beta" [ref=f37e83]: Editar
+            - button "Desativar fornecedor Fornecedor Beta" [ref=f37e84]: Desativar
+        - generic [ref=f37e85]:
+          - generic [ref=f37e88]:
+            - paragraph [ref=f37e89]: Insumos Delta
+            - generic [ref=f37e90]: Ativo
+          - generic [ref=f37e91]:
+            - paragraph [ref=f37e92]: 44.555.666/0001-14
+            - paragraph [ref=f37e93]:
+              - text: "Prazo de entrega:"
+              - generic [ref=f37e94]: 10 dias
+          - generic [ref=f37e95]:
+            - button "Editar fornecedor Insumos Delta" [ref=f37e96]: Editar
+            - button "Desativar fornecedor Insumos Delta" [ref=f37e97]: Desativar
+    - dialog [ref=f37e180]:
+      - generic [ref=f37e181]:
+        - paragraph [ref=f37e182]: Desativar fornecedor?
+        - generic [ref=f37e183]:
+          - strong [ref=f37e184]: "\"Distribuidora Alfa\""
+          - text: deixará de aparecer nas opções de cadastro de ingredientes e embalagens.
+        - generic [ref=f37e185]:
+          - button "Manter ativo" [ref=f37e186]
+          - button "Desativar" [active] [ref=f37e187]
+  - button "Open Next.js Dev Tools" [ref=f37e33] [cursor=pointer]
+  - alert [ref=f37e98]

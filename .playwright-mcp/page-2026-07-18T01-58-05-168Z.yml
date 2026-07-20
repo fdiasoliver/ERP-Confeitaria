@@ -1,0 +1,116 @@
+- generic [active] [ref=f18e1]:
+  - generic [ref=f18e2]:
+    - banner [ref=f18e3]:
+      - link "Doce Menina" [ref=f18e4] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f18e5]:
+        - link "Meus pedidos" [ref=f18e6] [cursor=pointer]:
+          - /url: /pedidos
+          - text: 📋
+        - link "Perfil" [ref=f18e7] [cursor=pointer]:
+          - /url: /login
+          - text: 👤
+        - link "Carrinho com 0 itens" [ref=f18e8] [cursor=pointer]:
+          - /url: /?cart=open
+          - text: 🛒
+    - generic [ref=f18e9]:
+      - button "Todos" [ref=f18e10]
+      - button "Todos" [ref=f18e11]
+      - button "Aniversário" [ref=f18e12]
+      - button "Docinhos" [ref=f18e13]
+      - button "Café" [ref=f18e14]
+      - button "Casamento" [ref=f18e15]
+      - button "Corporativo" [ref=f18e16]
+      - button "Mesversário" [ref=f18e17]
+    - generic [ref=f18e18]:
+      - heading "Destaques" [level=2] [ref=f18e19]
+      - generic [ref=f18e20]:
+        - article [ref=f18e21]:
+          - generic [ref=f18e22]: 🎂
+          - generic [ref=f18e23]:
+            - heading "Bolo Red Velvet" [level=3] [ref=f18e24]
+            - paragraph [ref=f18e25]: R$ 180,00 · 3 dias
+            - generic [ref=f18e26]:
+              - button "−" [disabled] [ref=f18e27]
+              - generic [ref=f18e28]: "0"
+              - button "+" [ref=f18e29]
+        - article [ref=f18e30]:
+          - generic [ref=f18e31]: 🧁
+          - generic [ref=f18e32]:
+            - heading "Brigadeiro Gourmet" [level=3] [ref=f18e33]
+            - paragraph [ref=f18e34]: R$ 3,50/un · 1 dia
+            - generic [ref=f18e35]:
+              - button "−" [disabled] [ref=f18e36]
+              - generic [ref=f18e37]: "0"
+              - button "+" [ref=f18e38]
+    - generic [ref=f18e39]:
+      - heading "Bolos de Aniversário" [level=2] [ref=f18e40]
+      - generic [ref=f18e41]:
+        - article [ref=f18e42]:
+          - generic [ref=f18e43]: 🍫
+          - generic [ref=f18e44]:
+            - heading "Bolo Chocolate 25cm" [level=3] [ref=f18e45]
+            - paragraph [ref=f18e46]: R$ 145,00 · 3 dias
+            - generic [ref=f18e47]:
+              - button "−" [disabled] [ref=f18e48]
+              - generic [ref=f18e49]: "0"
+              - button "+" [ref=f18e50]
+        - article [ref=f18e51]:
+          - generic [ref=f18e52]: 🍓
+          - generic [ref=f18e53]:
+            - heading "Naked Cake Frutas" [level=3] [ref=f18e54]
+            - paragraph [ref=f18e55]: R$ 195,00 · 4 dias
+            - generic [ref=f18e56]:
+              - button "−" [disabled] [ref=f18e57]
+              - generic [ref=f18e58]: "0"
+              - button "+" [ref=f18e59]
+        - article [ref=f18e60]:
+          - generic [ref=f18e61]: 🎀
+          - generic [ref=f18e62]:
+            - heading "Mini Naked Cake" [level=3] [ref=f18e63]
+            - paragraph [ref=f18e64]: R$ 45,00 · 2 dias
+            - generic [ref=f18e65]:
+              - button "−" [disabled] [ref=f18e66]
+              - generic [ref=f18e67]: "0"
+              - button "+" [ref=f18e68]
+        - article [ref=f18e69]:
+          - generic [ref=f18e70]: 🏢
+          - generic [ref=f18e71]:
+            - heading "Bolo Corporativo Logo" [level=3] [ref=f18e72]
+            - paragraph [ref=f18e73]: R$ 220,00 · 4 dias
+            - generic [ref=f18e74]:
+              - button "−" [disabled] [ref=f18e75]
+              - generic [ref=f18e76]: "0"
+              - button "+" [ref=f18e77]
+    - generic [ref=f18e78]:
+      - heading "Doces & Docinhos" [level=2] [ref=f18e79]
+      - article [ref=f18e81]:
+        - generic [ref=f18e82]: 💒
+        - generic [ref=f18e83]:
+          - heading "Caixa Casamento (100 doces)" [level=3] [ref=f18e84]
+          - paragraph [ref=f18e85]: R$ 320,00 · 5 dias
+          - generic [ref=f18e86]:
+            - button "−" [disabled] [ref=f18e87]
+            - generic [ref=f18e88]: "0"
+            - button "+" [ref=f18e89]
+    - generic [ref=f18e90]:
+      - heading "Kits & Coffee Break" [level=2] [ref=f18e91]
+      - article [ref=f18e93]:
+        - generic [ref=f18e94]: ☕
+        - generic [ref=f18e95]:
+          - heading "Kit Coffee Break (20 pessoas)" [level=3] [ref=f18e96]
+          - paragraph [ref=f18e97]: R$ 380,00 · 2 dias
+          - generic [ref=f18e98]:
+            - button "−" [disabled] [ref=f18e99]
+            - generic [ref=f18e100]: "0"
+            - button "+" [ref=f18e101]
+  - generic [ref=f18e106] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=f18e107]
+    - generic [ref=f18e111]:
+      - button "Open issues overlay" [ref=f18e112]:
+        - generic [ref=f18e113]:
+          - generic [ref=f18e114]: "0"
+          - generic [ref=f18e115]: "1"
+        - generic [ref=f18e116]: Issue
+      - button "Collapse issues badge" [ref=f18e117]
+  - alert [ref=f18e120]

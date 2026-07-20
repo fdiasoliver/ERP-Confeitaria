@@ -1,0 +1,11 @@
+- generic [active] [ref=f32e1]:
+  - generic [ref=f32e2]:
+    - banner [ref=f32e3]:
+      - generic [ref=f32e4]:
+        - link "←" [ref=f32e5] [cursor=pointer]:
+          - /url: /
+        - heading "Receitas" [level=1] [ref=f32e6]
+    - generic [ref=f32e8]:
+      - paragraph [ref=f32e9]: Carregando…
+      - button "+ Nova" [disabled] [ref=f32e10]
+  - button "Open Next.js Dev Tools" [ref=f32e20] [cursor=pointer]

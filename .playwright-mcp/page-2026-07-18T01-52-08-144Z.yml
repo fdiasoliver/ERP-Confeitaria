@@ -1,0 +1,90 @@
+- generic [ref=f11e1]:
+  - generic [ref=f11e2]:
+    - banner [ref=f11e3]:
+      - generic [ref=f11e4]:
+        - link "←" [ref=f11e5] [cursor=pointer]:
+          - /url: /
+        - heading "Receitas" [level=1] [ref=f11e6]
+    - generic [ref=f11e7]:
+      - generic [ref=f11e8]:
+        - paragraph [ref=f11e9]: 1 receita
+        - button "+ Nova" [ref=f11e10]
+      - generic [ref=f11e25]:
+        - searchbox "Pesquisar receita por nome" [ref=f11e26]
+        - generic [ref=f11e27]:
+          - paragraph [ref=f11e28]: Status
+          - generic [ref=f11e29]:
+            - button "Todas" [pressed] [ref=f11e30]
+            - button "Ativas" [ref=f11e31]
+            - button "Inativas" [ref=f11e32]
+      - generic [ref=f11e34]:
+        - link "Massa de Chocolate Básica Ativa Rende 1 bolo 25cm · 5 ingredientes · 40 min de preparo R$ 18,53 Custo total R$ 18,53 Custo por bolo 25cm" [ref=f11e35] [cursor=pointer]:
+          - /url: /admin/receitas/cmrp1r29r000vw0z8vlh2ucta
+          - generic [ref=f11e36]:
+            - paragraph [ref=f11e37]: Massa de Chocolate Básica
+            - generic [ref=f11e38]: Ativa
+          - paragraph [ref=f11e39]: Rende 1 bolo 25cm · 5 ingredientes · 40 min de preparo
+          - generic [ref=f11e40]:
+            - generic [ref=f11e41]:
+              - paragraph [ref=f11e42]: R$ 18,53
+              - paragraph [ref=f11e43]: Custo total
+            - generic [ref=f11e44]:
+              - paragraph [ref=f11e45]: R$ 18,53
+              - paragraph [ref=f11e46]: Custo por bolo 25cm
+        - generic [ref=f11e47]:
+          - link "Ver receita" [ref=f11e48] [cursor=pointer]:
+            - /url: /admin/receitas/cmrp1r29r000vw0z8vlh2ucta
+          - button "Desativar receita Massa de Chocolate Básica" [ref=f11e49]: Desativar
+    - generic [ref=f11e51]:
+      - generic [ref=f11e52]:
+        - heading "Nova receita" [level=2] [ref=f11e53]
+        - button "Fechar" [ref=f11e54]: ✕
+      - generic [ref=f11e55]:
+        - generic [ref=f11e56]:
+          - generic [ref=f11e57]: Nome*
+          - textbox "Nome*" [ref=f11e58]:
+            - /placeholder: "Ex: Bolo de chocolate 25cm"
+            - text: Receita Teste QA I.3
+        - generic [ref=f11e59]:
+          - generic [ref=f11e60]: Descrição (opcional)
+          - textbox "Descrição (opcional)" [ref=f11e61]
+        - generic [ref=f11e62]:
+          - generic [ref=f11e63]:
+            - generic [ref=f11e64]: Rendimento*
+            - spinbutton "Rendimento*" [ref=f11e65]: "1"
+          - generic [ref=f11e66]:
+            - generic [ref=f11e67]: Unidade de rendimento*
+            - textbox "Unidade de rendimento*" [ref=f11e68]:
+              - /placeholder: "Ex: bolo 25cm"
+              - text: unidade teste
+        - generic [ref=f11e69]:
+          - generic [ref=f11e70]: Tempo de preparo (minutos)
+          - spinbutton "Tempo de preparo (minutos)" [ref=f11e71]: "0"
+        - generic [ref=f11e72]:
+          - generic [ref=f11e73]:
+            - paragraph [ref=f11e74]: Ingredientes *
+            - button "+ Adicionar linha" [ref=f11e75]
+          - generic [ref=f11e77]:
+            - paragraph [ref=f11e79]: Ingrediente 1
+            - generic [ref=f11e80]:
+              - combobox "Ingrediente da linha 1" [ref=f11e81]:
+                - option "Selecione o ingrediente…"
+                - option "Açúcar Refinado" [selected]
+                - option "Chocolate em Pó 50%"
+                - option "Farinha de Trigo"
+                - option "Manteiga sem Sal"
+                - option "Ovos"
+              - generic [ref=f11e82]:
+                - spinbutton "Quantidade da linha 1" [active] [ref=f11e83]: "100"
+                - combobox "Unidade da linha 1" [ref=f11e84]:
+                  - option "Unidade…"
+                  - option "un"
+                  - option "kg"
+                  - option "g" [selected]
+                  - option "l"
+                  - option "ml"
+      - generic [ref=f11e85]:
+        - button "Cancelar" [ref=f11e86]
+        - button "Criar receita" [ref=f11e87]
+  - button "Open Next.js Dev Tools" [ref=f11e20] [cursor=pointer]
+  - alert [ref=f11e24]

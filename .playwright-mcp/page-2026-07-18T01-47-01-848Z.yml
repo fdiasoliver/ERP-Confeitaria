@@ -1,0 +1,79 @@
+- generic [active] [ref=f6e1]:
+  - button "Open Next.js Dev Tools" [ref=f6e19] [cursor=pointer]
+  - alert [ref=f6e23]
+  - generic [ref=f6e24]:
+    - banner [ref=f6e25]:
+      - generic [ref=f6e26]:
+        - link "←" [ref=f6e27] [cursor=pointer]:
+          - /url: /
+        - heading "Administração" [level=1] [ref=f6e28]
+    - generic [ref=f6e29]:
+      - link "👩‍🍳 Produção Dashboard do dia e semana" [ref=f6e30] [cursor=pointer]:
+        - /url: /admin/producao
+        - generic [ref=f6e31]: 👩‍🍳
+        - generic [ref=f6e32]:
+          - paragraph [ref=f6e33]: Produção
+          - paragraph [ref=f6e34]: Dashboard do dia e semana
+      - link "🏷️ Categorias Organização do catálogo de produtos" [ref=f6e35] [cursor=pointer]:
+        - /url: /admin/categorias
+        - generic [ref=f6e36]: 🏷️
+        - generic [ref=f6e37]:
+          - paragraph [ref=f6e38]: Categorias
+          - paragraph [ref=f6e39]: Organização do catálogo de produtos
+      - link "🎉 Ocasiões Tags de campanha para a vitrine" [ref=f6e40] [cursor=pointer]:
+        - /url: /admin/ocasioes
+        - generic [ref=f6e41]: 🎉
+        - generic [ref=f6e42]:
+          - paragraph [ref=f6e43]: Ocasiões
+          - paragraph [ref=f6e44]: Tags de campanha para a vitrine
+      - link "👥 Usuários Equipe e permissões em breve" [ref=f6e45] [cursor=pointer]:
+        - /url: /admin/em-construcao?modulo=Usuários
+        - generic [ref=f6e46]: 👥
+        - generic [ref=f6e47]:
+          - paragraph [ref=f6e48]: Usuários
+          - paragraph [ref=f6e49]: Equipe e permissões
+        - generic [ref=f6e50]: em breve
+      - link "📱 Clientes Cadastro por celular em breve" [ref=f6e51] [cursor=pointer]:
+        - /url: /admin/em-construcao?modulo=Clientes
+        - generic [ref=f6e52]: 📱
+        - generic [ref=f6e53]:
+          - paragraph [ref=f6e54]: Clientes
+          - paragraph [ref=f6e55]: Cadastro por celular
+        - generic [ref=f6e56]: em breve
+      - link "🥚 Ingredientes Estoque e histórico de preços" [ref=f6e57] [cursor=pointer]:
+        - /url: /admin/ingredientes
+        - generic [ref=f6e58]: 🥚
+        - generic [ref=f6e59]:
+          - paragraph [ref=f6e60]: Ingredientes
+          - paragraph [ref=f6e61]: Estoque e histórico de preços
+      - link "📋 Receitas Composição e custo" [ref=f6e62] [cursor=pointer]:
+        - /url: /admin/receitas
+        - generic [ref=f6e63]: 📋
+        - generic [ref=f6e64]:
+          - paragraph [ref=f6e65]: Receitas
+          - paragraph [ref=f6e66]: Composição e custo
+      - link "🎂 Produtos Catálogo e precificação" [ref=f6e67] [cursor=pointer]:
+        - /url: /admin/produtos
+        - generic [ref=f6e68]: 🎂
+        - generic [ref=f6e69]:
+          - paragraph [ref=f6e70]: Produtos
+          - paragraph [ref=f6e71]: Catálogo e precificação
+      - link "⚖️ Unidades Medidas usadas em ingredientes e receitas" [ref=f6e72] [cursor=pointer]:
+        - /url: /admin/unidades
+        - generic [ref=f6e73]: ⚖️
+        - generic [ref=f6e74]:
+          - paragraph [ref=f6e75]: Unidades
+          - paragraph [ref=f6e76]: Medidas usadas em ingredientes e receitas
+      - link "🎨 Tema Cores e identidade visual em breve" [ref=f6e77] [cursor=pointer]:
+        - /url: /admin/em-construcao?modulo=Tema
+        - generic [ref=f6e78]: 🎨
+        - generic [ref=f6e79]:
+          - paragraph [ref=f6e80]: Tema
+          - paragraph [ref=f6e81]: Cores e identidade visual
+        - generic [ref=f6e82]: em breve
+      - link "⚙️ Configurações Dados da empresa, endereço, PIX e precificação" [ref=f6e83] [cursor=pointer]:
+        - /url: /admin/config
+        - generic [ref=f6e84]: ⚙️
+        - generic [ref=f6e85]:
+          - paragraph [ref=f6e86]: Configurações
+          - paragraph [ref=f6e87]: Dados da empresa, endereço, PIX e precificação

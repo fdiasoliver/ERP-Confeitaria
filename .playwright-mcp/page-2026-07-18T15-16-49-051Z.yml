@@ -1,0 +1,59 @@
+- generic [ref=f28e1]:
+  - generic [ref=f28e2]:
+    - banner [ref=f28e3]:
+      - generic [ref=f28e4]:
+        - link "←" [ref=f28e5] [cursor=pointer]:
+          - /url: /
+        - heading "Fornecedores" [level=1] [ref=f28e6]
+    - generic [ref=f28e7]:
+      - generic [ref=f28e8]:
+        - paragraph [ref=f28e9]: 0 fornecedores
+        - button "+ Novo" [active] [ref=f28e10]
+      - generic [ref=f28e11]:
+        - searchbox "Pesquisar fornecedor por nome" [ref=f28e12]
+        - generic [ref=f28e13]:
+          - generic [ref=f28e14]: Ordenar por
+          - combobox "Ordenar por" [ref=f28e15]:
+            - option "Nome (A-Z)" [selected]
+            - option "Nome (Z-A)"
+            - option "Mais recentes"
+            - option "Mais antigos"
+        - generic [ref=f28e16]:
+          - paragraph [ref=f28e17]: Status
+          - generic [ref=f28e18]:
+            - button "Todos" [pressed] [ref=f28e19]
+            - button "Ativos" [ref=f28e20]
+            - button "Inativos" [ref=f28e21]
+      - generic [ref=f28e35]:
+        - paragraph [ref=f28e36]: Nenhum fornecedor cadastrado
+        - paragraph [ref=f28e37]: Cadastre o primeiro fornecedor.
+        - button "+ Criar fornecedor" [ref=f28e38]
+    - generic [ref=f28e41]:
+      - generic [ref=f28e42]:
+        - heading "Novo fornecedor" [level=2] [ref=f28e43]
+        - button "Fechar" [ref=f28e44]: ✕
+      - generic [ref=f28e45]:
+        - generic [ref=f28e46]:
+          - generic [ref=f28e47]: Nome*
+          - textbox "Nome*" [ref=f28e48]:
+            - /placeholder: "Ex: Distribuidora ABC"
+        - generic [ref=f28e49]:
+          - generic [ref=f28e50]: CNPJ (opcional)
+          - textbox "CNPJ (opcional)" [ref=f28e51]:
+            - /placeholder: 00.000.000/0000-00
+        - generic [ref=f28e52]:
+          - generic [ref=f28e53]: Telefone (opcional)
+          - textbox "Telefone (opcional)" [ref=f28e54]:
+            - /placeholder: (11) 99999-8888
+        - generic [ref=f28e55]:
+          - generic [ref=f28e56]: Prazo de entrega (dias, opcional)
+          - spinbutton "Prazo de entrega (dias, opcional)" [ref=f28e57]
+        - generic [ref=f28e58]:
+          - generic [ref=f28e59]: Observações (opcional)
+          - textbox "Observações (opcional)" [ref=f28e60]:
+            - /placeholder: Condições de pagamento, mínimo de compra etc.
+      - generic [ref=f28e61]:
+        - button "Cancelar" [ref=f28e62]
+        - button "Criar" [ref=f28e63]
+  - button "Open Next.js Dev Tools" [ref=f28e31] [cursor=pointer]
+  - alert [ref=f28e39]

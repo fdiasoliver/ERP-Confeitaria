@@ -1,0 +1,15 @@
+- generic [active] [ref=f8e1]:
+  - generic [ref=f8e2]:
+    - banner [ref=f8e3]:
+      - generic [ref=f8e4]:
+        - link "←" [ref=f8e5] [cursor=pointer]:
+          - /url: /
+        - heading "Conversões de Unidade" [level=1] [ref=f8e6]
+    - generic [ref=f8e7]:
+      - link "← Voltar para Unidades" [ref=f8e8] [cursor=pointer]:
+        - /url: /admin/unidades
+      - generic [ref=f8e9]:
+        - paragraph [ref=f8e10]: Carregando…
+        - button "+ Nova" [disabled] [ref=f8e11]
+  - button "Open Next.js Dev Tools" [ref=f8e21] [cursor=pointer]
+  - alert [ref=f8e25]

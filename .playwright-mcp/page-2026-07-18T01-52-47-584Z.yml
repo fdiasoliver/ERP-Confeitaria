@@ -1,0 +1,67 @@
+- generic [ref=f12e1]:
+  - generic [ref=f12e2]:
+    - banner [ref=f12e3]:
+      - generic [ref=f12e4]:
+        - link "←" [ref=f12e5] [cursor=pointer]:
+          - /url: /
+        - heading "Receita" [level=1] [ref=f12e6]
+    - generic [ref=f12e7]:
+      - link "← Voltar para Receitas" [ref=f12e22] [cursor=pointer]:
+        - /url: /admin/receitas
+      - generic [ref=f12e23]:
+        - generic [ref=f12e24]:
+          - heading "Receita Teste QA I.3" [level=1] [ref=f12e25]
+          - generic [ref=f12e26]: Ativa
+        - paragraph [ref=f12e27]: Rende 1 unidade teste
+        - generic [ref=f12e28]:
+          - generic [ref=f12e29]:
+            - paragraph [ref=f12e30]: R$ 0,52
+            - paragraph [ref=f12e31]: Custo total
+          - generic [ref=f12e32]:
+            - paragraph [ref=f12e33]: R$ 0,52
+            - paragraph [ref=f12e34]: Custo por unidade teste
+        - generic [ref=f12e35]:
+          - button "Editar receita" [ref=f12e36]
+          - button "Desativar" [ref=f12e37]
+      - generic [ref=f12e38]:
+        - paragraph [ref=f12e39]: Ingredientes (1)
+        - button "+ Adicionar" [active] [ref=f12e40]
+      - generic [ref=f12e42]:
+        - generic [ref=f12e43]:
+          - paragraph [ref=f12e44]: Açúcar Refinado
+          - paragraph [ref=f12e45]: 100 g
+        - generic [ref=f12e46]:
+          - button "Editar item Açúcar Refinado" [ref=f12e47]: Editar
+          - button "Remover item Açúcar Refinado" [disabled] [ref=f12e48]: Remover
+    - generic [ref=f12e50]:
+      - generic [ref=f12e51]:
+        - heading "Adicionar ingrediente" [level=2] [ref=f12e52]
+        - button "Fechar" [ref=f12e53]: ✕
+      - generic [ref=f12e54]:
+        - generic [ref=f12e55]:
+          - generic [ref=f12e56]: Ingrediente*
+          - combobox "Ingrediente*" [ref=f12e57]:
+            - option "Selecione…"
+            - option "Açúcar Refinado" [selected]
+            - option "Chocolate em Pó 50%"
+            - option "Farinha de Trigo"
+            - option "Manteiga sem Sal"
+            - option "Ovos"
+        - generic [ref=f12e58]:
+          - generic [ref=f12e59]:
+            - generic [ref=f12e60]: Quantidade*
+            - spinbutton "Quantidade*" [ref=f12e61]
+          - generic [ref=f12e62]:
+            - generic [ref=f12e63]: Unidade*
+            - combobox "Unidade*" [ref=f12e64]:
+              - option "Selecione…" [selected]
+              - option "Unidade (un)"
+              - option "Quilograma (kg)"
+              - option "Grama (g)"
+              - option "Litro (l)"
+              - option "Mililitro (ml)"
+      - generic [ref=f12e65]:
+        - button "Cancelar" [ref=f12e66]
+        - button "Adicionar" [ref=f12e67]
+  - button "Open Next.js Dev Tools" [ref=f12e17] [cursor=pointer]
+  - alert [ref=f12e21]

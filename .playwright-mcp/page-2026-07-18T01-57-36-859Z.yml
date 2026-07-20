@@ -1,0 +1,15 @@
+- generic [active] [ref=f17e1]:
+  - generic [ref=f17e2]:
+    - banner [ref=f17e3]:
+      - generic [ref=f17e4]:
+        - link "←" [ref=f17e5] [cursor=pointer]:
+          - /url: /
+        - heading "Ingredientes" [level=1] [ref=f17e6]
+    - generic [ref=f17e7]:
+      - link "Categorias de ingrediente →" [ref=f17e8] [cursor=pointer]:
+        - /url: /admin/ingredientes/categorias
+      - generic [ref=f17e9]:
+        - paragraph [ref=f17e10]: Carregando…
+        - button "+ Novo" [disabled] [ref=f17e11]
+  - button "Open Next.js Dev Tools" [ref=f17e21] [cursor=pointer]
+  - alert [ref=f17e25]

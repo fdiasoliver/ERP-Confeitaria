@@ -1,0 +1,39 @@
+- generic [active] [ref=f3e1]:
+  - generic [ref=f3e2]:
+    - banner [ref=f3e3]:
+      - generic [ref=f3e4]:
+        - link "←" [ref=f3e5] [cursor=pointer]:
+          - /url: /
+        - heading "Receitas" [level=1] [ref=f3e6]
+    - generic [ref=f3e7]:
+      - generic [ref=f3e8]:
+        - paragraph [ref=f3e9]: 1 receita
+        - button "+ Nova" [ref=f3e10]
+      - generic [ref=f3e25]:
+        - searchbox "Pesquisar receita por nome" [ref=f3e26]
+        - generic [ref=f3e27]:
+          - paragraph [ref=f3e28]: Status
+          - generic [ref=f3e29]:
+            - button "Todas" [pressed] [ref=f3e30]
+            - button "Ativas" [ref=f3e31]
+            - button "Inativas" [ref=f3e32]
+      - generic [ref=f3e34]:
+        - link "Massa de Chocolate Básica Ativa Rende 1 bolo 25cm · 5 ingredientes · 40 min de preparo R$ 18,53 Custo total R$ 18,53 Custo por bolo 25cm" [ref=f3e35] [cursor=pointer]:
+          - /url: /admin/receitas/cmrp1r29r000vw0z8vlh2ucta
+          - generic [ref=f3e36]:
+            - paragraph [ref=f3e37]: Massa de Chocolate Básica
+            - generic [ref=f3e38]: Ativa
+          - paragraph [ref=f3e39]: Rende 1 bolo 25cm · 5 ingredientes · 40 min de preparo
+          - generic [ref=f3e40]:
+            - generic [ref=f3e41]:
+              - paragraph [ref=f3e42]: R$ 18,53
+              - paragraph [ref=f3e43]: Custo total
+            - generic [ref=f3e44]:
+              - paragraph [ref=f3e45]: R$ 18,53
+              - paragraph [ref=f3e46]: Custo por bolo 25cm
+        - generic [ref=f3e47]:
+          - link "Ver receita" [ref=f3e48] [cursor=pointer]:
+            - /url: /admin/receitas/cmrp1r29r000vw0z8vlh2ucta
+          - button "Desativar receita Massa de Chocolate Básica" [ref=f3e49]: Desativar
+  - button "Open Next.js Dev Tools" [ref=f3e20] [cursor=pointer]
+  - alert [ref=f3e24]
