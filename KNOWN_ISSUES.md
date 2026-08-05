@@ -118,11 +118,12 @@ Atualizado na Sprint A2 — Consolidação da Arquitetura (29/06/2026).
 **Pendência:** Formalizar a regra em REGRAS_NEGOCIO.md para evitar regressão futura.
 **Prioridade:** Baixa
 
-### KI-16 — Product.costPrice sempre 0
-**Status:** ADIADO — Fase 3 (Receitas)
-**Descrição:** Todos os produtos têm `costPrice=0`. A precificação automática não existe.
-**Resolução:** Implementar quando `Recipe` e `RecipeIngredient` forem populados na Fase 3.
-**Prioridade:** Baixa (pré-requisito para Fase 4)
+### ✅ KI-16 — Product.costPrice sempre 0
+**Status:** RESOLVIDO — Módulos 2.I (Receitas) e 2.J (Produtos Fase 2, RecipeLinker), 17/07/2026
+**Descrição original:** Todos os produtos tinham `costPrice=0`. A precificação automática não existia.
+**Resolução:** `calculateCostPrice()` (`src/lib/productService.ts`) soma o custo de cada `Recipe` vinculada via `ProductRecipe` (`recipe.unitCost * link.quantity`), recalculado automaticamente a cada vínculo. `Product.costPrice` (`prisma/schema.prisma`) armazena o valor calculado, nunca editado manualmente (Regra 11, `REGRAS_NEGOCIO.md`). Validado com dados reais e casos recém-criados na Sprint I.3 — ver `MODULE_2J_CLOSURE.md`.
+**Achado ao revisar em 05/08/2026:** esta entrada permaneceu marcada "ADIADO" mesmo depois de 2.I/2.J concluídos (17/07/2026) — corrigida agora por estar desatualizada, não por resolução nova.
+**Pendência remanescente, registrada em outro lugar:** `Product.costPrice` ainda não soma o custo de `ProductPackaging` (embalagem) — ver Módulo 2.H, Regra 11, e `PLAN.md`.
 
 ### KI-19 — Autorização dentro do Service em vez do Route Handler (`storeConfigService.ts`)
 **Status:** ABERTO — dívida técnica, achado no planejamento da Sprint `PRIV.2` (03/08/2026)
