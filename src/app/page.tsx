@@ -8,7 +8,7 @@ import {
   CartFab,
   Toast,
 } from "@/components/layout/CartDrawer";
-import { CategoryChips, ProductCard } from "@/components/vitrine/ProductCard";
+import { CategoryChips, ProductCard, ProductHero } from "@/components/vitrine/ProductCard";
 import { useCart } from "@/context/CartContext";
 import { OCCASIONS as OCCASIONS_FALLBACK, PRODUCTS as MOCK_PRODUCTS } from "@/lib/mock-data";
 import { getProducts } from "@/services/productService";
@@ -71,6 +71,8 @@ function VitrineContent() {
 
   // KI-14: categorias derivadas dos produtos reais, sem array hardcoded
   const featured = filtered.filter((p) => p.featured);
+  const hero = featured[0];
+  const featuredRest = featured.slice(1);
   const byCategory = useMemo(() => {
     const seen = new Set<string>();
     const order: string[] = [];
@@ -97,11 +99,17 @@ function VitrineContent() {
         onSelect={setOccasion}
       />
 
-      {featured.length > 0 && (
+      {hero && (
+        <section className="px-5 pb-6">
+          <ProductHero product={hero} quantity={quantities[hero.id] ?? 0} />
+        </section>
+      )}
+
+      {featuredRest.length > 0 && (
         <section className="px-5 pb-6">
           <h2 className="font-display mb-3 text-lg font-semibold">Destaques</h2>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            {featured.map((product) => (
+            {featuredRest.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}

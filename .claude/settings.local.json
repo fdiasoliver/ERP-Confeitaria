@@ -63,7 +63,14 @@
       "Bash(powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue\")",
       "Bash(echo \"started pid $!\")",
       "PowerShell(Stop-Process *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git config *)",
+      "Bash(rmdir \"C:\\\\dev\\\\confeitaria-app\\\\src\\\\app\\\\api\\\\orders\\\\[id]\\\\status\")",
+      "Bash(rmdir \"C:\\\\dev\\\\confeitaria-app\\\\src\\\\app\\\\api\\\\orders\\\\[id]\")",
+      "Bash(powershell -Command \"Stop-Process -Id 121016 -Force\")",
+      "Bash(echo \"started, PID: $!\")",
+      "mcp__playwright__browser_run_code_unsafe",
+      "Bash(git check-ignore *)"
     ]
   },
   "enabledMcpjsonServers": [

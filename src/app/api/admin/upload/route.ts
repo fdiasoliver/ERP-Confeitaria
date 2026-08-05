@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { requireAdmin } from "@/lib/auth/requireAdmin";
 import type { AssetType } from "@/lib/storage/StorageService";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/svg+xml", "image/webp", "image/x-icon"];
@@ -10,13 +9,8 @@ const MAX_SIZE_FAVICON = 512 * 1024;       // 512 KB
 const BUCKET = "store-assets";
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user?.userType !== "admin") {
-    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-  }
-  if (session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

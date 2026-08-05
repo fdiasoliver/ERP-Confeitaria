@@ -1,12 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --cream: #faf7f2;
-  --chocolate: #3d2b1f;
-  --rose: #e8a598;
-  --sage: #7a9e7e;
-  --sand: #f0ebe3;
-  --muted: #8a7b72;
+  --cream: #FAF6EF;
+  --chocolate: #191715;
+  --rose: #C42E3C;
+  --sage: #4F7530;
+  --sand: #E3DCCB;
+  --muted: #726A5F;
+  --surface-2: #F5EFE1;
 }
 
 @theme inline {
@@ -16,6 +17,7 @@
   --color-sage: var(--sage);
   --color-sand: var(--sand);
   --color-muted: var(--muted);
+  --color-surface-2: var(--surface-2);
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-dm-sans);
   --shadow-card: 0 4px 24px rgba(61, 43, 31, 0.08);

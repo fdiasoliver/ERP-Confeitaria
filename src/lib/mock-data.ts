@@ -3,7 +3,6 @@ export { formatCurrency } from "./formatters/currency";
 export { getMinDeliveryDate } from "./utils";
 
 export const OCCASIONS = [
-  { id: "all", name: "Todos" },
   { id: "aniversario", name: "Aniversário" },
   { id: "docinhos", name: "Docinhos" },
   { id: "cafe", name: "Café" },

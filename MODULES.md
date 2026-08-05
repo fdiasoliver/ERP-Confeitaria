@@ -180,7 +180,7 @@ Os seguintes módulos foram avaliados e explicitamente excluídos do escopo:
 | TD-08 | `any` em serviços | src/services/*.ts | Baixa | ✅ Sprint A2 | — |
 | TD-09 | costPrice sempre 0 | prisma/seed.ts, src/app/api/* | Média | 🔲 Fase 3 | Módulo de Precificação |
 | TD-10 | paymentStatus ausente no tipo Order | src/lib/types.ts | Baixa | ⚠️ Sprint A2 (tipo adicionado com valores errados — ver KI-17) | Módulo Financeiro |
-| TD-11 | /admin/producao 100% mock | src/app/admin/producao/page.tsx | Média | 🔲 Sprint 1 | Operação real da produção |
+| TD-11 | /admin/producao 100% mock | src/app/admin/producao/page.tsx | Média | ✅ Módulo 2.K (02/08/2026) | — |
 | TD-12 | Sem validação de formulário no checkout | src/app/checkout/page.tsx | Média | ✅ Sprint A2 | — |
 | TD-13 | getMinDeliveryDate ignora fins de semana | src/lib/utils.ts | Baixa | ⚠️ Sprint C1 (implementado; regra não formalizada) | — |
 | TD-14 | WhatsApp/PIX ausentes | — | Alta | 🔲 Fase 8 | Operação real do negócio |

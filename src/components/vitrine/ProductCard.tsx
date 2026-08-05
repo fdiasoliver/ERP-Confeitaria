@@ -2,6 +2,7 @@
 
 import type { Product } from "@/lib/types";
 import { formatCurrency } from "@/lib/mock-data";
+import { getProductGradientClass } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 
 interface ProductCardProps {
@@ -14,7 +15,9 @@ export function ProductCard({ product, quantity }: ProductCardProps) {
 
   return (
     <article className="overflow-hidden rounded-2xl bg-white shadow-card">
-      <div className="flex aspect-square items-center justify-center bg-gradient-to-br from-sand to-rose/40 text-5xl">
+      <div
+        className={`flex aspect-square items-center justify-center bg-gradient-to-br text-5xl ${getProductGradientClass(product.id)}`}
+      >
         {product.imageEmoji}
       </div>
       <div className="p-3">
@@ -48,6 +51,64 @@ export function ProductCard({ product, quantity }: ProductCardProps) {
           >
             +
           </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+interface ProductHeroProps {
+  product: Product;
+  quantity: number;
+}
+
+export function ProductHero({ product, quantity }: ProductHeroProps) {
+  const { addItem, updateQuantity } = useCart();
+
+  return (
+    <article className="flex items-center gap-4 rounded-2xl bg-surface-2 p-4 shadow-card">
+      <div
+        className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-4xl ${getProductGradientClass(product.id)}`}
+      >
+        {product.imageEmoji}
+      </div>
+      <div className="min-w-0 flex-1">
+        <h3 className="font-display text-lg font-semibold leading-tight">{product.name}</h3>
+        {product.description && (
+          <p className="text-muted mt-0.5 text-xs">{product.description}</p>
+        )}
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-sm font-semibold text-rose">
+            {formatCurrency(product.basePrice)}
+            {product.basePrice < 10 ? "/un" : ""}
+          </span>
+          {quantity === 0 ? (
+            <button
+              type="button"
+              onClick={() => addItem(product)}
+              className="rounded-full bg-chocolate px-4 py-1.5 text-xs font-semibold text-white"
+            >
+              Adicionar
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg bg-white p-1">
+              <button
+                type="button"
+                onClick={() => updateQuantity(product.id, quantity - 1)}
+                className="flex h-7 w-7 items-center justify-center rounded-md bg-sand font-bold"
+              >
+                −
+              </button>
+              <span className="min-w-[20px] text-center text-sm font-semibold">{quantity}</span>
+              <button
+                type="button"
+                onClick={() => updateQuantity(product.id, quantity + 1)}
+                className="flex h-7 w-7 items-center justify-center rounded-md bg-sand font-bold"
+              >
+                +
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </article>

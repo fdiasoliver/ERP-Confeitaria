@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { HeaderMinimal } from "@/components/layout/Header";
+import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
 import type { ToastState } from "@/components/admin/config/ValidationSummary";
 import type { OccasionTag, OccasionTagInput, ValidationError } from "@/lib/types";
@@ -478,7 +479,7 @@ export default function OcasioesAdminPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-app bg-cream pb-8">
+    <PageContainer>
       <HeaderMinimal title="Ocasiões" />
 
       <div className="space-y-4 p-5">
@@ -549,6 +550,6 @@ export default function OcasioesAdminPage() {
       )}
 
       <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
-    </div>
+    </PageContainer>
   );
 }

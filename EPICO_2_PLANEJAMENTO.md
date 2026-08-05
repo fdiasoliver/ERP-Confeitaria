@@ -1120,11 +1120,11 @@ export type PaymentStatus = "PENDENTE" | "PAGO" | "PARCIAL" | "ESTORNADO";
 **Problema:** Qualquer string era aceita; "kg" poderia ser cadastrado como tipo `"peso"` sem erro
 **Resolução (Sprint 2.A.2):** `enum UnitType { MASS VOLUME UNIT }` criado e campo `type` migrado de `String` para `UnitType`.
 
-### IC-06 — STATUS_CLASS no front-end incompleto (Baixa)
+### ✅ IC-06 — STATUS_CLASS no front-end incompleto (Baixa)
 **Localização:** `src/app/pedidos/page.tsx`
-**Problema:** REGRAS_NEGOCIO.md documenta 7 status de pedido, mas os badges de cor cobrem apenas 4 (EM_PRODUCAO, PRONTO, ENTREGUE, CONFIRMADO). `RASCUNHO`, `SAIU_ENTREGA` e `CANCELADO` não têm classe visual.
+**Problema:** REGRAS_NEGOCIO.md documenta 7 status de pedido, mas os badges de cor cobriam apenas 4 (EM_PRODUCAO, PRONTO, ENTREGUE, CONFIRMADO). `RASCUNHO`, `SAIU_ENTREGA` e `CANCELADO` não tinham classe visual.
 **Impacto:** Experiência visual do cliente
-**Ação:** Sprint 2.K.3 — completar `STATUS_CLASS` com os 7 valores ao refatorar o Dashboard (BT-12)
+**Resolução (achado da Sprint 2.K.4, 02/08/2026):** confirmado por leitura direta do código que `STATUS_CLASS` em `src/app/pedidos/page.tsx` já cobre os 7 valores — resolvido em algum momento anterior a este módulo, fora do escopo/controle das Sprints 2.K, não pela ação prevista abaixo (BT-12). Fechado por constatação, não por implementação desta sprint. Distinto do badge de 7 status entregue de fato pela Sprint 2.K.3 (`OrderStatusBadge` em `src/app/admin/producao/page.tsx`) — telas diferentes (cliente vs. admin), ambas agora cobrindo os 7 status.
 
 ### ✅ IC-07 — UnitConversion sem constraint unique (Baixa)
 **Localização:** `prisma/schema.prisma` model `UnitConversion`
@@ -1680,11 +1680,11 @@ Pendente. Ambas as entidades não têm campo `active`. Excluir uma categoria com
 | BT-05 | Migrar `themeConfigRepository.ts` de `$executeRaw` para client tipado (DT-01) | Alta | 2.A.3 | ✅ Resolvido (Sprint 2.A.3) |
 | BT-06 | Adicionar `Product.slug String? @unique` | Média | 2.A.2 | ✅ Resolvido (Sprint 2.A.2) |
 | BT-07 | Adicionar `OccasionTag.sortOrder Int @default(0)` | Baixa | 2.C.1 | ✅ Resolvido (Sprint 2.A.2) |
-| BT-08 | Dashboard Produção: substituir dados hardcoded por API real (KI-04 / TD-11) | Alta | 2.K | 🔲 Aberto |
+| BT-08 | Dashboard Produção: substituir dados hardcoded por API real (KI-04 / TD-11) | Alta | 2.K | ✅ Resolvido (Sprints 2.K.1–2.K.4, 02/08/2026) |
 | BT-09 | Preencher `ROLE_REQUIRED` em `proxy.ts` para rotas de produtos e configuração (TD-06) | Alta | ÉPICO 4.D | 🔲 Aberto |
 | BT-10 | Resolver `imageEmoji` vs `imageUrl` em `types.ts` e `productService.ts` (IC-03) | Média | 2.F.5 | 🔲 Aberto |
-| BT-11 | Deduplicação de `Address` por cliente (KI-10 / TD-07) | Média | 2.L.2 | 🔲 Aberto |
-| BT-12 | Completar `STATUS_CLASS` com os 7 valores de `OrderStatus` (IC-06) | Baixa | 2.K.3 | 🔲 Aberto |
+| BT-11 | Deduplicação de `Address` por cliente (KI-10 / TD-07) | Média | 2.L.2 | ✅ Resolvido (02/08/2026) — deduplicação **só de exibição** em `/admin/clientes/[id]` (`listAddressesGrouped`), decisão do `ai-solution-architect`: mesclar de verdade exigiria hard delete de entidade referenciada por pedidos, proibido sem ADR. Causa raiz (`POST /api/orders` sempre cria `Address` novo) permanece aberta, registrada como pendência separada em `KI-10`/`PLAN.md` |
+| BT-12 | Completar `STATUS_CLASS` com os 7 valores de `OrderStatus` (IC-06) | Baixa | 2.K.3 | ✅ Fechado por constatação (02/08/2026) — já resolvido em `src/app/pedidos/page.tsx` antes deste módulo, não pela ação prevista aqui; ver IC-06 |
 | BT-13 | Decidir arquitetura de Embalagens | Crítica | 2.H | ✅ Resolvido (30/06/2026 — Opção B) |
 | BT-14 | Criar entidade `Supplier` no schema antes de popular ingredientes em produção | Alta | 2.E (UI) | ✅ Schema resolvido (Sprint 2.A.2) · UI em 2.E |
 | BT-15 | Criar `enum UnitType` para substituir `UnitOfMeasure.type: String` | Baixa | 2.A.2 | ✅ Resolvido (Sprint 2.A.2) |

@@ -119,6 +119,30 @@ Produzido na Sprint A1 — Revisão Arquitetural (29/06/2026).
 
 ---
 
+### Domínio: Embalagens
+
+#### `Packaging`
+**Propósito:** Controlar embalagens (caixas, saquinhos, fitas, etiquetas) como entidade própria, com cadastro, estoque, fornecedor e custo independentes dos ingredientes.
+**Atributos-chave:** name, categoryId (opcional), unitCost, stockQuantity (Int), minStock (Int), supplierId (opcional), active.
+**Status:** Schema ✅ | API ❌ | UI ❌
+**Regras:** Vincula-se a `Product` via `ProductPackaging` — **não** a `Recipe`/`RecipeIngredient` (**[ADR-014]**, `CLAUDE.md` — supera a decisão original de 30/06/2026, que previa vínculo com `Recipe` e nunca foi implementada; o Módulo 2.I foi encerrado sem essa relação). Embalagem inativa não pode ser adicionada a novos vínculos. Quantidade sempre inteira, sem unidade de medida — decisão documentada em `MODULE_2H_PLANNING.md` Seção 2.6. Blueprint completo: `MODULE_2H_PLANNING.md`.
+
+#### `PackagingCategory`
+**Propósito:** Agrupa embalagens por tipo (ex: Caixas, Saquinhos, Fitas). Mirror de `IngredientCategory`.
+**Status:** Schema ✅ | API ❌ | UI ❌
+**Regras:** Delete físico bloqueado se houver embalagens vinculadas — mesmo padrão de `IngredientCategory`.
+
+#### `PackagingPriceHistory`
+**Propósito:** Registro imutável de alteração de custo de embalagem — versão simplificada de `IngredientPriceHistory` (sem `source`).
+**Status:** Schema ✅ | API ❌ | UI ❌
+**Regras:** Nunca deletar.
+
+#### `ProductPackaging` (tabela de junção)
+**Propósito:** Vincula embalagens a produtos com quantidade (Int) — mesmo padrão de `ProductRecipe`. Compõe `Product.costPrice` junto com o custo das receitas.
+**Status:** Schema ✅ | Sem uso no código ❌ (Service ainda não implementado — Sprint 2.H.3)
+
+---
+
 ### Domínio: Pedidos
 
 #### `Order`
@@ -170,18 +194,6 @@ Produzido na Sprint A1 — Revisão Arquitetural (29/06/2026).
 
 ### Entidades Planejadas (ausentes no schema atual)
 
-#### `Packaging` — Embalagem (Planejada — Módulo 2.H, blueprint completo na Sprint 2.H.0)
-**Propósito:** Controlar embalagens (caixas, saquinhos, fitas, etiquetas) como entidade própria com cadastro, estoque, fornecedor e custo independentes dos ingredientes.
-**Decisão arquitetural (30/06/2026, refinada em [ADR-014] 20/07/2026):** Entidade separada de `Ingredient` (Opção B, mantida). O vínculo de relacionamento é com `Product` via `ProductPackaging` — **não** com `Recipe`/`RecipeIngredient` (a formulação original de 30/06/2026 previa vínculo com `Recipe`, mas nunca foi implementada; o Módulo 2.I foi encerrado sem ela, confirmando `Product` como o vínculo correto). Ver `CLAUDE.md` ADR-014 e `MODULE_2H_PLANNING.md` para o blueprint completo (domínio, regras de negócio, roadmap de sprints 2.H.1–2.H.7).
-**Atributos planejados:** name, categoryId (FK opcional para `PackagingCategory`), unitCost, stockQuantity (Int), minStock (Int), supplierId (FK opcional), active.
-**Relacionamentos planejados:**
-- `Packaging` N:N `Product` via `ProductPackaging` (com campo `quantity`, Int)
-- `Packaging` N:1 `Supplier` (opcional)
-- `Packaging` N:1 `PackagingCategory` (opcional)
-- `Packaging` 1:N `PackagingPriceHistory`
-- **Sem relação com `Recipe`/`RecipeIngredient`** (ADR-014)
-**Status:** Schema ❌ | API ❌ | UI ❌ — blueprint completo em `MODULE_2H_PLANNING.md`, implementação nas Sprints 2.H.1–2.H.7
-
 #### `Fornecedor` (Planejada — Fase 5)
 **Propósito:** Cadastro completo de fornecedores de ingredientes e embalagens.
 **Estado atual:** Apenas campo texto `supplier` em Ingredient.
@@ -218,7 +230,12 @@ Order ──┬─────────────────────�
 Product ──┬────────────────────────────> OrderItem (1:n)
           ├── ProductOccasion ──────────> OccasionTag (N:N)
           ├── ProductRecipe ────────────> Recipe (N:N com quantidade)
+          ├── ProductPackaging ─────────> Packaging (N:N com quantidade — ADR-014)
           └───────────────────────────> ProductCategory (N:1)
+
+Packaging ──────────────────────────────> PackagingCategory (N:1 opcional)
+Packaging ──────────────────────────────> Supplier (N:1 opcional)
+Packaging ──────────────────────────────> PackagingPriceHistory (1:n)
 
 Recipe ──────── RecipeIngredient ──────> Ingredient (N:N com quantidade+unidade)
 RecipeIngredient ──────────────────────> UnitOfMeasure (N:1)
@@ -306,7 +323,7 @@ Admin muda status de CONFIRMADO para EM_PRODUCAO
 | OrderAttachment | Schema OK, sem UI | Faltando | Upload de fotos (Fase 8) | Baixo |
 | OrderStatusHistory | Funcional (gerado na API) | Correto | Exibir na UI de detalhes do pedido | Baixo |
 | WhatsAppLog | Schema OK, sem uso | Faltando | Implementar na Fase 8 | Alto |
-| Embalagem | Ausente | Faltando | Planejar antes da Fase 3 | Médio |
+| Packaging | Schema implementado (Sprint 2.H.1), sem Repository/Service/API/UI | Faltando | Repository+Validator (2.H.2), Service (2.H.3), API (2.H.4), Frontend (2.H.6) | Médio |
 | Fornecedor | Campo texto em Ingredient | Refatorar | Entidade própria na Fase 5 | Médio |
 | Compra/Estoque | Ausente | Faltando | Fase 5 | Alto |
 | Financeiro | Ausente | Faltando | Fase 7 | Alto |

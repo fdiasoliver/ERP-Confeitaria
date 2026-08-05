@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { HeaderMinimal } from "@/components/layout/Header";
+import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
 import type { ToastState } from "@/components/admin/config/ValidationSummary";
 import type { ProductCategoryInput, ProductCategoryWithCount } from "@/lib/types";
@@ -466,7 +467,7 @@ export default function CategoriasAdminPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-app bg-cream pb-8">
+    <PageContainer>
       <HeaderMinimal title="Categorias" />
 
       <div className="space-y-4 p-5">
@@ -523,6 +524,6 @@ export default function CategoriasAdminPage() {
       )}
 
       <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
-    </div>
+    </PageContainer>
   );
 }

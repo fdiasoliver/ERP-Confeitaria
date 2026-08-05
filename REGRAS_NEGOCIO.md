@@ -752,7 +752,7 @@ O `costPrice` dos produtos deve refletir o custo real no momento da produção �
 |-----------|---------|-----------------|
 | Pedidos por período | Contagem de `Order` por `deliveryDate` ou `createdAt` | Parcial (dados mock) |
 | Itens produzidos por período | Soma de `OrderItem.quantity` | Parcial |
-| Pedidos urgentes | Pedidos com `deliveryDate = hoje` e status ≠ `ENTREGUE` | Parcial |
+| Pedidos urgentes | Pedidos com `deliveryDate = hoje` e status ≠ `ENTREGUE`, `RASCUNHO` ou `CANCELADO` (redação ajustada na Sprint 2.K.1 — pedido ainda não confirmado ou já cancelado não é "urgente"; decisão do Product Owner) | ✅ Implementado (Módulo 2.K) |
 | Prazo médio de produção | Média de dias entre `CONFIRMADO` e `PRONTO` | A definir |
 | Taxa de cancelamento | Cancelados ÷ total de pedidos | A definir |
 
@@ -826,17 +826,24 @@ As regras abaixo **nunca devem ser violadas** em nenhuma implementação:
 13. **Nunca expor senha ou hash de senha via API.**
 14. **`OtpCode` expirado ou já utilizado nunca pode ser aceito.**
 15. **Rotas `/admin/*` nunca devem ser acessíveis sem autenticação ativa.**
+19. **Acesso às rotas `/api/admin/orders/**` (Kanban, mudança de status, consolidação) e à página `/admin/producao` é restrito a `ADMIN`, `ATENDIMENTO` e `PRODUCAO`** — união dos dois papéis por não existir hoje página separada entre "pedidos" (ATENDIMENTO) e "produção" (PRODUCAO), ambos servidos pela mesma `/admin/producao` (Seção 3.11). **Acesso às rotas `/api/admin/cmv/**` é restrito a `ADMIN` e `FINANCEIRO`.** `/admin/producao` também aceita `FINANCEIRO` (única página com dados de CMV hoje). As rotas de Catálogo (categorias, ocasiões, produtos) permanecem `ADMIN`-only — sem papel definido nesta seção, ver Seção 16. Ver ADR-021 em `CLAUDE.md`.
+20. **Acesso às rotas `/api/admin/{units,ingredient-categories,ingredients,recipes,suppliers,packaging-categories,packagings}/**` e às páginas `/admin/unidades`, `/admin/ingredientes`, `/admin/receitas`, `/admin/fornecedores`, `/admin/embalagens` é restrito a `ADMIN` e `PRODUCAO`** — receitas, ingredientes, embalagens, unidades e fornecedores são insumos diretos do trabalho de quem produz. **Exceção:** `/api/admin/products/[id]/packagings/**` (vínculo Produto↔Embalagem) permanece `ADMIN`-only, mesmo sendo conceitualmente Cadeia Produtiva — a única UI que a consome é `/admin/produtos/[id]`, página de Catálogo (`ADMIN`-only, regra 19), sem caminho de uso real para `PRODUCAO` hoje. Ver ADR-022 em `CLAUDE.md`.
 
 ## 15.6 Dados do cliente
 
 16. **Telefone do cliente é imutável após criação** (é a chave de identificação). Alteração exige processo especial com ADMIN.
 17. **Anotações internas do cliente (`notes`) nunca são exibidas ao cliente.**
+18. **Acesso a `/admin/clientes` e às rotas `/api/admin/customers/**` é restrito a `ADMIN` e `ATENDIMENTO`** (consistente com a Seção 3.11 — `ATENDIMENTO` tem acesso a pedidos e clientes). `PRODUCAO`/`FINANCEIRO` não têm acesso, incluindo às anotações internas (`notes`) — `ATENDIMENTO` tem acesso total a `notes`, sem redação condicional por campo. Ver ADR-020 em `CLAUDE.md`.
 
 ---
 
 # 16. Regras pendentes (A definir)
 
 As seguintes regras ainda precisam ser decididas e documentadas antes da implementação dos módulos correspondentes:
+
+## Usuários e acesso
+- Papel (`UserRole`) exigido nas rotas `/api/admin/**` de Catálogo (categorias, ocasiões, produtos) — hoje `ADMIN`-only por padrão herdado, sem regra de negócio que decida se outro papel deveria ter acesso. Levantado no planejamento da Sprint `PRIV.2` (03/08/2026), decisão explícita do Product Owner na Sprint `PRIV.3` (04/08/2026): manter `ADMIN`-only por ora, sem mudança. Cadeia Produtiva já decidida (`ADMIN`+`PRODUCAO`) — ver Seção 15.5, regra 20.
+- `/api/admin/products/[id]/packagings/**` (vínculo Produto↔Embalagem) mantido `ADMIN`-only na Sprint `PRIV.3` por falta de UI que `PRODUCAO` possa usar (a única página, `/admin/produtos/[id]`, é `ADMIN`-only). Revisitar se `/admin/produtos/[id]` for desmembrado no futuro (ex.: aba de embalagens isolada da edição de Produto).
 
 ## Produtos e catálogo
 - Produto pode ser vendido por peso (a granel)?

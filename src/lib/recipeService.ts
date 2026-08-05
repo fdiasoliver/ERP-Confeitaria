@@ -138,8 +138,12 @@ function mapItem(item: RecipeIngredientWithRelations): RecipeItemDTO {
  * REGRAS_NEGOCIO.md 6.5: quando a unidade do item difere da unidade do ingrediente,
  * é preciso um fator de conversão registrado — em qualquer direção (a inversa é aceita
  * como 1/fator, já que o módulo UnitConversion não gera automaticamente o par inverso).
+ *
+ * Exportada (Sprint 2.K.1) para reaproveitamento em `orderService.getConsolidation` —
+ * mesma necessidade de conversão de unidade, agora fora do domínio de Receitas. Nenhuma
+ * mudança de comportamento; apenas visibilidade do módulo.
  */
-async function resolveConversionFactor(fromUnitId: string, toUnitId: string): Promise<number | null> {
+export async function resolveConversionFactor(fromUnitId: string, toUnitId: string): Promise<number | null> {
   const direct = await findConversion(fromUnitId, toUnitId);
   if (direct) return direct.factor.toNumber();
 

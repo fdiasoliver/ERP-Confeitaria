@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/auth/requireAdmin";
+import { requireProductionChain } from "@/lib/auth/requireProductionChain";
 import { ok, created, badRequest, invalidBody, conflict, internalError } from "@/lib/http/responses";
 import type { IngredientCategoryInput } from "@/lib/validators/ingredientCategoryValidator";
 import {
@@ -10,7 +10,7 @@ import {
 } from "@/lib/ingredientCategoryService";
 
 export async function GET() {
-  const denied = await requireAdmin();
+  const denied = await requireProductionChain();
   if (denied) return denied;
 
   try {
@@ -22,7 +22,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requireProductionChain();
   if (denied) return denied;
 
   let body: unknown;

@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
+import { PageContainer } from "@/components/admin/shared/PageContainer";
 
 const MODULES = [
   { href: "/admin/producao", title: "Produção", desc: "Dashboard do dia e semana", icon: "👩‍🍳", ready: true },
   { href: "/admin/categorias", title: "Categorias", desc: "Organização do catálogo de produtos", icon: "🏷️", ready: true },
   { href: "/admin/ocasioes", title: "Ocasiões", desc: "Tags de campanha para a vitrine", icon: "🎉", ready: true },
   { href: "/admin/em-construcao?modulo=Usuários", title: "Usuários", desc: "Equipe e permissões", icon: "👥" },
-  { href: "/admin/em-construcao?modulo=Clientes", title: "Clientes", desc: "Cadastro por celular", icon: "📱" },
+  { href: "/admin/clientes", title: "Clientes", desc: "Histórico, LTV e notas internas", icon: "📱", ready: true },
   { href: "/admin/ingredientes", title: "Ingredientes", desc: "Estoque e histórico de preços", icon: "🥚", ready: true },
   { href: "/admin/fornecedores", title: "Fornecedores", desc: "Cadastro de fornecedores de insumos", icon: "🏭", ready: true },
+  { href: "/admin/embalagens", title: "Embalagens", desc: "Caixas, saquinhos e custos de embalagem", icon: "📦", ready: true },
   { href: "/admin/receitas", title: "Receitas", desc: "Composição e custo", icon: "📋", ready: true },
   { href: "/admin/produtos", title: "Produtos", desc: "Catálogo e precificação", icon: "🎂", ready: true },
   { href: "/admin/unidades", title: "Unidades", desc: "Medidas usadas em ingredientes e receitas", icon: "⚖️", ready: true },
@@ -20,7 +22,7 @@ const MODULES = [
 
 export default function AdminPage() {
   return (
-    <div className="mx-auto min-h-screen max-w-app bg-cream pb-8">
+    <PageContainer>
       <HeaderMinimal title="Administração" />
 
       <div className="grid gap-3 p-5">
@@ -43,6 +45,6 @@ export default function AdminPage() {
           </Link>
         ))}
       </div>
-    </div>
+    </PageContainer>
   );
 }

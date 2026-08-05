@@ -15,7 +15,7 @@ const STATUS_CLASS: Record<string, string> = {
   RASCUNHO: "bg-sand text-muted",
   CONFIRMADO: "bg-rose/20 text-chocolate",
   EM_PRODUCAO: "bg-amber-100 text-amber-800",
-  PRONTO: "bg-sage/20 text-green-800",
+  PRONTO: "bg-sage/20 text-sage",
   SAIU_ENTREGA: "bg-blue-100 text-blue-800",
   ENTREGUE: "bg-sand text-muted",
   CANCELADO: "bg-red-100 text-red-700",

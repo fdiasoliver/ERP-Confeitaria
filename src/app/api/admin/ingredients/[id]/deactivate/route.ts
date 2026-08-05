@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/auth/requireAdmin";
+import { requireProductionChain } from "@/lib/auth/requireProductionChain";
 import { ok, notFound, internalError } from "@/lib/http/responses";
 import { deactivateIngredient, IngredientNotFoundError } from "@/lib/ingredientService";
 
@@ -7,7 +7,7 @@ export async function PATCH(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const denied = await requireAdmin();
+  const denied = await requireProductionChain();
   if (denied) return denied;
 
   const { id } = await params;

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, use } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
+import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
 import type { ToastState } from "@/components/admin/config/ValidationSummary";
 import type { ValidationError } from "@/lib/types";
@@ -692,26 +693,26 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
 
   if (loading) {
     return (
-      <div className="mx-auto min-h-screen max-w-app bg-cream pb-8">
+      <PageContainer>
         <HeaderMinimal title="Receita" />
         <div className="p-5"><LoadingState /></div>
-      </div>
+      </PageContainer>
     );
   }
 
   if (error || !recipe) {
     return (
-      <div className="mx-auto min-h-screen max-w-app bg-cream pb-8">
+      <PageContainer>
         <HeaderMinimal title="Receita" />
         <div className="p-5"><ErrorState message={error ?? "Receita não encontrada."} onRetry={loadAll} /></div>
-      </div>
+      </PageContainer>
     );
   }
 
   const canRemoveItem = recipe.items.length > 1;
 
   return (
-    <div className="mx-auto min-h-screen max-w-app bg-cream pb-8">
+    <PageContainer>
       <HeaderMinimal title="Receita" />
 
       <div className="space-y-4 p-5">
@@ -836,6 +837,6 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
       )}
 
       <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
-    </div>
+    </PageContainer>
   );
 }

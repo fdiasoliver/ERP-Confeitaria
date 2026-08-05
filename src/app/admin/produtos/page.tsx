@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
 import type { ToastState } from "@/components/admin/config/ValidationSummary";
@@ -125,7 +126,20 @@ function IconPackage(props: React.SVGProps<SVGSVGElement>) {
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
+// useSearchParams() (usado para reabrir o modal via ?edit=id) exige um limite de
+// Suspense — mesma convenção já usada em src/app/page.tsx (?cart=open).
 export default function ProdutosAdminPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted">Carregando…</div>}>
+      <ProdutosAdminPageContent />
+    </Suspense>
+  );
+}
+
+function ProdutosAdminPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<ProductCategoryWithCount[]>([]);
@@ -178,6 +192,25 @@ export default function ProdutosAdminPage() {
       }
     })();
   }, []);
+
+  // Reabre o modal de edição a partir de /admin/produtos/[id] ("Editar produto")
+  // — mesma convenção de /?cart=open já documentada em CLAUDE.md. Busca o produto
+  // direto pela API (não depende da página paginada atual já conter o item) e
+  // limpa o parâmetro da URL depois de abrir, para não reabrir em um refresh.
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+    (async () => {
+      try {
+        const product = await productApi.getProduct(editId);
+        openEdit(product);
+      } catch {
+        showToast("error", "Produto não encontrado.");
+      } finally {
+        router.replace("/admin/produtos");
+      }
+    })();
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounce da pesquisa (~300ms) — evita um fetch por caractere digitado (busca é server-side).
   useEffect(() => {
@@ -519,6 +552,7 @@ export default function ProdutosAdminPage() {
               {products.map((product) => (
                 <EntityCard
                   key={product.id}
+                  href={`/admin/produtos/${product.id}`}
                   title={product.name}
                   badges={
                     <>

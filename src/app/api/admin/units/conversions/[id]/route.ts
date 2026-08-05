@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/auth/requireAdmin";
+import { requireProductionChain } from "@/lib/auth/requireProductionChain";
 import { ok, badRequest, invalidBody, notFound, conflict, internalError } from "@/lib/http/responses";
 import type { UnitConversionInput } from "@/lib/validators/unitConversionValidator";
 import {
@@ -15,7 +15,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const denied = await requireAdmin();
+  const denied = await requireProductionChain();
   if (denied) return denied;
 
   const { id } = await params;
@@ -52,7 +52,7 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const denied = await requireAdmin();
+  const denied = await requireProductionChain();
   if (denied) return denied;
 
   const { id } = await params;

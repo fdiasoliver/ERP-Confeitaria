@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/auth/requireAdmin";
+import { requireProductionChain } from "@/lib/auth/requireProductionChain";
 import { ok, created, badRequest, invalidBody, conflict, internalError } from "@/lib/http/responses";
 import type { SupplierInput } from "@/lib/validators/supplierValidator";
 import type { ListSuppliersParams } from "@/lib/repositories/supplierRepository";
@@ -41,7 +41,7 @@ function parseListParams(searchParams: URLSearchParams): ListSuppliersParams {
 }
 
 export async function GET(request: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requireProductionChain();
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requireProductionChain();
   if (denied) return denied;
 
   let body: unknown;

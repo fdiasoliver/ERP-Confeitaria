@@ -4,6 +4,1425 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Sprint DS.2] — 2026-08-04/05 — Redesenho de front-end mais amplo: direção "A × C"
+
+**Tipo:** Sprint Oficial — segunda sprint sob o prefixo `DS.x` (ADR-018), continuação de `DS.1` mas com escopo maior: não só paleta, também layout e componentes (admin + cliente final). Conduzida via `ai-project-manager` → `ai-solution-architect` (planejamento) → implementação direta na sessão principal, em 5 fases (DS.2.1–DS.2.5), cada uma validada (`tsc`/`lint`/`build`/visual real via Playwright) antes da próxima.
+
+### Planejamento — comparação visual, mesmo processo de DS.1
+
+Product Owner pediu redesenho mais amplo ("muito simples e feio", quer modernizar, responsivo em desktop/tablet/smartphone). Publicado um Artifact com 3 direções concretas aplicadas a telas reais (Vitrine + Painel de Produção, desktop + mobile, conteúdo real de `mock-data.ts`/`types.ts`): **A · Espresso Noturno** (escuro, editorial, serifado), **B · Atelier Porcelana** (claro, minimalista, lista editorial), **C · Doceria Pop** (bento-grid, blocos de cor). Product Owner pediu uma combinação: **"layout do A com as cores do C"** — interpretado e confirmado como a paleta completa de C (incluindo fundo claro) com a estrutura/tipografia de A (produto-herói + grid, badges circulares, sidebar). Refinamento adicional: ícones de produto trocados de emoji cru para manchas de gradiente com glare (fotografia simulada — sem asset de foto real disponível, `KI-06`).
+
+`ai-project-manager`/`ai-solution-architect` investigaram o código real antes de planejar a implementação: confirmaram que `Fraunces`/`DM Sans` já cobrem a tipografia do mockup (Georgia era só placeholder do Artifact, por restrição de CSP); mapearam a paleta aprovada para os 6 tokens já existentes + 1 novo (`surface-2`); confirmaram que uma sidebar admin era viável e já estava especificada em `UX_GUIDELINES.md` Seção 15 desde a Sprint P1, nunca implementada; propuseram gradiente determinístico por hash em vez de mapeamento fixo. Quatro decisões do Product Owner antes de implementar: sidebar cobre as 20 páginas admin (consequência técnica inevitável do `layout.tsx` do App Router, não dá pra restringir a uma página só); `/admin/login` fica fora do shell; produto-herói = primeiro `featured: true`; divisão em 5 fases aprovada.
+
+### Implementação
+
+**DS.2.1 (Fundação de cor):** `src/app/globals.css` — 6 valores hex trocados + token novo `surface-2`. Contraste WCAG verificado antes de aplicar (mesma prática de DS.1) — `rose`/`sage` da direção aprovada (`#E63946`/`#6B8E4E`) não passavam em 4,5:1 contra `cream` (4,21:1/3,48:1); ajustados para `#C42E3C`/`#4F7530` (5,13:1/4,97:1), mesma família cereja/pistache. `DESIGN_SYSTEM.md` atualizado. Propagação automática confirmada em cliente e admin (nomes de token preservados).
+
+**DS.2.2 (Vitrine):** `getProductGradientClass()` novo em `src/lib/utils.ts` (hash do `product.id` → 1 de 5 gradientes) substitui o gradiente único fixo em `ProductCard.tsx`. `ProductHero` novo (mesmo arquivo) — primeiro produto `featured: true` em destaque no topo de `src/app/page.tsx`, excluído do grid de "Destaques" abaixo (sem duplicação).
+
+**DS.2.3 (Sidebar admin):** `Sidebar.tsx`/`AdminShell.tsx` novos, `src/app/admin/layout.tsx` novo. Navegação lateral fixa (desktop/tablet, 768px+) / barra horizontal com rolagem (mobile), filtrada pelo `role` da sessão (espelha `src/proxy.ts` `ROLE_REQUIRED`) — validado com usuário `PRODUCAO` real (só vê Painel/Produção/Cadeia Produtiva, sem Clientes/Catálogo/Configurações). `/admin/login` fora do shell, confirmado sem sidebar. `PageContainer` refatorado de shell de página (`min-h-screen bg-cream`) para wrapper de conteúdo (`max-w-5xl`, sem padding próprio — evita duplicar o padding que `HeaderMinimal`/conteúdo interno já gerenciam). 7 páginas legadas (`/admin` hub, `categorias`, `ocasioes`, `ingredientes/categorias`, `receitas/[id]` — 3 estados: loading/erro/sucesso —, `unidades/conversoes`, `em-construcao`) migradas de wrapper `max-w-app` próprio para `PageContainer`, ficando consistentes com as 12 páginas que já o usavam.
+
+**DS.2.4 (Kanban):** `src/app/admin/producao/page.tsx` — cabeçalho de coluna com sublinhado de 2px; coluna "Em produção" destacada em cereja (linha + texto), demais colunas em tom neutro — sem cor de fundo bloco por coluna.
+
+### Validação
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` (após cada fase) | 0 erros |
+| `npm run lint` (após cada fase) | 0 erros/avisos |
+| `npm run build` (após cada fase e ao final) | Build de produção completo, 0 erros |
+
+**Validação funcional (Playwright, navegador real):** varredura em cliente (Vitrine desktop/mobile, `/pedidos`, `/login`) e admin (`/admin/produtos`, `/admin/categorias` — página legada migrada —, `/admin/config`, `/admin/receitas/[id]` — estado de erro —, `/admin/producao`) em 3 larguras (1280px desktop, 834px tablet, 767px/390px mobile) — confirmada a transição sidebar↔barra horizontal exatamente no breakpoint `md` (768px). Filtro de navegação por papel confirmado com usuário `PRODUCAO` real (criado e removido ao final, nenhum resquício no banco). 0 erros de console em todos os cenários testados.
+
+### Documentação
+
+`DESIGN_SYSTEM.md` (paleta, `PageContainer` revisado, `Sidebar`/`AdminShell` novos, `ProductHero`/`getProductGradientClass`), `PLAN.md` atualizados conforme acima.
+
+---
+
+## [Sprint PRIV.3] — 2026-08-04 — Granularidade de acesso por papel na Cadeia Produtiva
+
+**Tipo:** Sprint Oficial — terceira sprint sob o prefixo `PRIV.x`, continuação direta de `PRIV.2` (pendência registrada naquela sprint). Conduzida via `ai-project-manager` → `ai-solution-architect` (planejamento) → implementação direta na sessão principal, em 8 microtarefas de camada única (as 5 de API agrupadas por sub-domínio funcional, mesmo critério de PRIV.2), validadas (`tsc`/`lint`) a cada etapa.
+
+### Planejamento
+
+`ai-solution-architect` confirmou por `Glob`+`Grep` o inventário exato de 33 rotas de Cadeia Produtiva (Unidades 6, Categorias de Ingrediente 2, Ingredientes 5, Receitas 6, Fornecedores 4, Categorias de Embalagem 2, Embalagens 6, vínculo Produto↔Embalagem 2) — todas usando `requireAdmin()`. Achado central: `products/[id]/packagings/**` (vínculo Produto↔Embalagem) é conceitualmente Cadeia Produtiva, mas a única UI que a consome é `/admin/produtos/[id]`, página de Catálogo — abrir a API para `PRODUCAO` sem abrir essa página criaria uma permissão sem caminho de uso real.
+
+Três decisões levadas ao Product Owner antes da implementação: (1) nomear a sprint como `PRIV.3`, mesmo o escopo (Cadeia Produtiva) não sendo dado pessoal — continuação do mesmo trabalho de granularidade por papel já esticado em `PRIV.2`, em vez de abrir um prefixo novo; (2) Catálogo permanece `ADMIN`-only, sem mudança; (3) Cadeia Produtiva abre para `PRODUCAO`, além de `ADMIN`. Uma quarta decisão, sobre o achado de `products/[id]/packagings`: manter `ADMIN`-only nesta sprint (não abrir a API sem a página correspondente). Todas aprovadas conforme a recomendação do arquiteto.
+
+### Implementação
+
+**PRIV.3.1 (Auth):** `src/lib/auth/requireProductionChain.ts` (`requireRole(["ADMIN","PRODUCAO"])`) criado.
+
+**PRIV.3.2–3.6 (API):** substituição em lote (`sed`, após confirmar por `grep` que as 31 rotas seguiam o padrão idêntico `import { requireAdmin }...` / `const denied = await requireAdmin();`) para `requireProductionChain()` nas 31 rotas de Unidades, Categorias de Ingrediente, Ingredientes, Receitas, Fornecedores, Categorias de Embalagem e Embalagens. `products/[id]/packagings/**` (2 rotas) não alterado — permanece `requireAdmin()`.
+
+**PRIV.3.7 (Proxy):** `src/proxy.ts` — 5 novas entradas em `ROLE_REQUIRED` (`/admin/unidades`, `/admin/ingredientes`, `/admin/receitas`, `/admin/fornecedores`, `/admin/embalagens` → `["ADMIN","PRODUCAO"]`), cobrindo sub-rotas dinâmicas automaticamente via o lookup por prefixo já existente (ADR-020) — nenhuma mudança de mecanismo.
+
+**PRIV.3.8 (Documentação):** `REGRAS_NEGOCIO.md` Seção 15.5 (regra 20, nova) e Seção 16 (pendência de Catálogo mantida, pendência de Cadeia Produtiva marcada resolvida, novo item sobre `products/[id]/packagings`). ADR-022 registrada em `CLAUDE.md`. `PLAN.md` atualizado.
+
+### Validação
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` (após a substituição em lote e após o proxy) | 0 erros |
+| `npm run lint` (idem) | 0 erros/avisos |
+| `npm run build` | Build de produção completo, 0 erros |
+
+**Validação funcional (Playwright, navegador real):** mesmo processo de PRIV.1/PRIV.2 — usuários de teste temporários criados e removidos ao final, nenhum resquício no banco. `PRODUCAO`: as 5 páginas (`/admin/unidades`, `/admin/ingredientes`, `/admin/receitas`, `/admin/fornecedores`, `/admin/embalagens`) acessíveis, 200 em `units`/`ingredient-categories`/`ingredients`/`recipes`/`suppliers`/`packaging-categories`/`packagings`; 403 em `products/[id]/packagings` (confirma a exceção mantida) e em Catálogo (`categories`/`occasions`/`products`, sem mudança). `ATENDIMENTO`: redirecionado em `/admin/unidades`, 403 em `/api/admin/units` (confirma que a granularidade não vazou para outros papéis). `ADMIN`: sem regressão em nenhuma das rotas testadas. Console do navegador sem erros inesperados em nenhum cenário.
+
+### Documentação
+
+`REGRAS_NEGOCIO.md`, `CLAUDE.md` (ADR-022), `PLAN.md` atualizados conforme acima.
+
+---
+
+## [Sprint PRIV.2] — 2026-08-03 — Granularidade de acesso por papel em Pedidos/Produção/Financeiro
+
+**Tipo:** Sprint Oficial — segunda sprint sob o prefixo `PRIV.x`, continuação direta de `PRIV.1`. Conduzida via `ai-project-manager` → `ai-solution-architect` (planejamento) → implementação direta na sessão principal, em 6 microtarefas de camada única, cada uma validada (`tsc`/`lint`) antes da próxima.
+
+### Planejamento
+
+`ai-solution-architect` levantou o inventário real das 51 rotas `/api/admin/**` restantes (fora de `customers/**`, já tratado em PRIV.1): 12 de Catálogo, 33 de Cadeia Produtiva, 3 de Pedidos, 1 de Financeiro (`cmv`), 1 de Upload (que nem usava `requireAdmin()` — checagem de sessão inline duplicada). Achado à parte: `src/lib/storeConfigService.ts` faz a checagem de papel dentro do Service, não no Route Handler — violação de camada, natureza diferente do resto da sprint.
+
+Quatro decisões levadas ao Product Owner antes da implementação, todas aprovadas conforme a recomendação do arquiteto: (1) as 45 rotas de Catálogo/Cadeia Produtiva ficam `ADMIN`-only, fora do escopo desta sprint — sem papel definido em `REGRAS_NEGOCIO.md`; (2) as 3 rotas de pedidos usam a união `ADMIN`+`ATENDIMENTO`+`PRODUCAO`, por não existir `/admin/pedidos` separada de `/admin/producao`; (3) o achado de `storeConfigService.ts` fica fora desta sprint, registrado como dívida técnica; (4) divisão em 6 microtarefas com wrappers `requireOrderAccess()`/`requireFinance()`. Uma quinta decisão surgiu durante a implementação da microtarefa de Upload: normalizar `upload/route.ts` para `requireAdmin()` muda o formato do corpo da resposta de erro em 401/403 (de `{error:"..."}` para `{success:false,error:{code,message}}`), o que faz `StorageService.ts` (front-end) exibir uma mensagem genérica em vez da específica nesse caminho de erro — aprovado pelo Product Owner mesmo assim, por consistência com o padrão do resto da API.
+
+### Implementação
+
+**PRIV.2.1 (Auth):** `src/lib/auth/requireOrderAccess.ts` (`requireRole(["ADMIN","ATENDIMENTO","PRODUCAO"])`) e `src/lib/auth/requireFinance.ts` (`requireRole(["ADMIN","FINANCEIRO"])`) criados.
+
+**PRIV.2.2 (API — Pedidos):** `orders/route.ts`, `orders/[id]/status/route.ts`, `orders/consolidation/route.ts` passaram a usar `requireOrderAccess()`.
+
+**PRIV.2.3 (API — Financeiro):** `cmv/route.ts` passou a usar `requireFinance()`.
+
+**PRIV.2.4 (Proxy):** `src/proxy.ts` — nova entrada `"/admin/producao": ["ADMIN","ATENDIMENTO","PRODUCAO","FINANCEIRO"]` em `ROLE_REQUIRED` (inclui `FINANCEIRO` por ser a única página com dados de CMV hoje).
+
+**PRIV.2.5 (Normalização):** `upload/route.ts` — checagem de sessão inline substituída por `requireAdmin()`.
+
+**PRIV.2.6 (Documentação):** `REGRAS_NEGOCIO.md` Seção 15.5 (regra 19, nova) e Seção 16 (pendência de papel para Catálogo/Cadeia Produtiva registrada). ADR-021 registrada em `CLAUDE.md`. `KI-08` atualizado (parcialmente resolvido → resolvido para os domínios desta sprint + PRIV.1); `KI-19` criado para o achado de `storeConfigService.ts`. `PLAN.md` atualizado.
+
+### Validação
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` (após cada microtarefa de código) | 0 erros |
+| `npm run lint` (após cada microtarefa de código) | 0 erros/avisos |
+| `npm run build` | Build de produção completo, 0 erros |
+
+**Validação funcional (Playwright, navegador real, 4 papéis reais):** mesmo processo de PRIV.1 — 3 usuários de teste temporários criados e removidos ao final, nenhum resquício no banco. Para cada papel: login real, navegação a `/admin/producao`, e chamadas diretas a `fetch("/api/admin/orders")` e `fetch("/api/admin/cmv?...")` (contornando a página). Resultado, batendo 100% com o esperado:
+
+| Papel | `/admin/producao` | `GET /api/admin/orders` | `GET /api/admin/cmv` |
+|---|---|---|---|
+| ADMIN | 200 | 200 | 200 |
+| ATENDIMENTO | 200 | 200 | 403 |
+| PRODUCAO | 200 | 200 | 403 |
+| FINANCEIRO | 200 | 403 | 200 |
+
+Adicionalmente, `POST /api/admin/upload` testado com papel `FINANCEIRO`: 403, confirmando que a normalização (PRIV.2.5) preservou o comportamento `ADMIN`-only. `ADMIN` confirmado sem regressão em nenhuma das 3 rotas.
+
+### Documentação
+
+`REGRAS_NEGOCIO.md`, `CLAUDE.md` (ADR-021), `KNOWN_ISSUES.md` (KI-08, KI-19), `PLAN.md` atualizados conforme acima.
+
+---
+
+## [Sprint PRIV.1] — 2026-08-03 — Granularidade de acesso por papel no domínio Clientes
+
+**Tipo:** Sprint Oficial — primeira sprint sob o novo prefixo `PRIV.x` (ADR-019). Conduzida via `ai-project-manager` → `ai-solution-architect` (planejamento) → implementação direta na sessão principal, em 4 microtarefas de camada única, cada uma validada (`tsc`/`lint`) antes da próxima; validação de build de produção ao final das 3 microtarefas de código.
+
+### Planejamento
+
+`ai-solution-architect` verificou o código real antes de aceitar a premissa da missão e encontrou um achado que reformulou o escopo: `requireAdmin()` (`src/lib/auth/requireAdmin.ts`) era binário (`ADMIN` ou nada) nas 52 rotas `/api/admin/**` existentes — nenhum outro papel (`ATENDIMENTO`/`PRODUCAO`/`FINANCEIRO`) acessava nenhuma API admin, contradizendo `REGRAS_NEGOCIO.md` Seção 3.11 (`ATENDIMENTO` deveria acessar pedidos e clientes). `src/proxy.ts` também fazia o lookup de `ROLE_REQUIRED` por igualdade exata de `pathname`, nunca cobrindo sub-rotas dinâmicas. Escopo desta sprint restrito ao domínio Clientes (fatia pequena); as outras 51 rotas registradas como Backlog Suggestion para uma `PRIV.2` futura (ver `PLAN.md`).
+
+Duas decisões de negócio levadas ao Product Owner antes da implementação: (1) `ATENDIMENTO` tem acesso total às notas internas (`notes`), incluindo edição — aprovado; (2) `PRODUCAO`/`FINANCEIRO` recebem 403/redirecionamento total em Clientes — aprovado.
+
+### Implementação
+
+**PRIV.1.1 (Auth):** `src/lib/auth/requireRole.ts` criado (`requireRole(roles: UserRole[])`); `requireAdmin.ts` refatorado para delegar a `requireRole(["ADMIN"])` — comportamento externo idêntico nas 49 rotas que já o usavam.
+
+**PRIV.1.2 (API):** as 3 rotas de `/api/admin/customers/**` (`route.ts`, `[id]/route.ts`, `[id]/orders/route.ts`) passaram a usar `requireRole(["ADMIN", "ATENDIMENTO"])` no lugar de `requireAdmin()`.
+
+**PRIV.1.3 (Proxy):** `src/proxy.ts` — nova entrada `"/admin/clientes": ["ADMIN", "ATENDIMENTO"]` em `ROLE_REQUIRED`; lookup generalizado de igualdade exata para prefixo (`pathname === key || pathname.startsWith(key + "/")`), cobrindo agora `/admin/clientes/[id]` — sem alterar o comportamento da entrada pré-existente (`/admin/config`).
+
+**PRIV.1.4 (Documentação):** `REGRAS_NEGOCIO.md` Seção 15.6, regra 18 (nova) — formaliza o acesso restrito a `ADMIN`+`ATENDIMENTO`. ADR-020 registrada em `CLAUDE.md`. `PLAN.md` atualizado (Backlog Suggestion "Política de LGPD/privacidade" marcada concluída como `PRIV.1`; nova Backlog Suggestion registrada para as 51 rotas restantes, candidata a `PRIV.2`).
+
+### Validação
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` (após cada microtarefa de código) | 0 erros |
+| `npm run lint` (após cada microtarefa de código) | 0 erros/avisos |
+| `npm run build` | Build de produção completo, 0 erros |
+
+**Validação funcional (Playwright, navegador real, 4 papéis reais):** 3 usuários de teste temporários criados (`ATENDIMENTO`/`PRODUCAO`/`FINANCEIRO`, senha `teste123`) diretamente no banco via script descartável, removidos ao final da validação — nenhum resquício deixado no banco. Para cada papel: login real via `/admin/login`, navegação a `/admin/clientes` e a uma sub-rota dinâmica (`/admin/clientes/[id]`), e chamada direta a `fetch("/api/admin/customers")` (contornando a página, testando a API isoladamente). Resultado: `ADMIN` e `ATENDIMENTO` — 200 na página e na API, dados reais carregados; `PRODUCAO` e `FINANCEIRO` — redirecionados para `/admin/em-construcao` na página (incluindo a sub-rota dinâmica, confirmando a correção do lookup por prefixo) e 403 (`FORBIDDEN`) na API. `ADMIN` confirmado sem regressão. Console do navegador sem erros em nenhum dos 4 cenários.
+
+### Documentação
+
+`REGRAS_NEGOCIO.md`, `CLAUDE.md` (ADR-020), `PLAN.md` atualizados conforme acima.
+
+---
+
+## [Correção pontual] — 2026-08-03 — KI-18: chave React duplicada na vitrine
+
+**Tipo:** Investigação e correção de bug, fora de qualquer sprint — achado incidental da Sprint DS.1, investigado a pedido do Product Owner logo em seguida. Conduzida diretamente pela sessão principal (não delegada a Sub-agent), usando Playwright MCP diretamente para reprodução ao vivo em vez de assumir a causa.
+
+### Investigação
+
+Hipótese inicial (registrada em `KI-18` durante a DS.1) era produto duplicado vindo da API — descartada por evidência: `curl` direto em `/api/products` e `/api/occasions` confirmou nenhum dado duplicado real no banco; `prisma.product.findMany` não pode produzir linhas duplicadas por construção (ORM, não SQL bruto com JOIN). Reprodução ao vivo via Playwright (`browser_navigate` + `browser_console_messages`, com hook em `console.error` para investigar) confirmou que o erro ocorre em todo `mount` fresco de `/`, nunca em re-renderizações por interação — apontando para o estado inicial, não para dado assíncrono.
+
+### Causa raiz real
+
+`src/lib/mock-data.ts` — `OCCASIONS` (usado como fallback inicial em `src/app/page.tsx` antes do fetch real de `/api/occasions` resolver) já incluía `{ id: "all", name: "Todos" }` como primeiro item. `page.tsx` prepend explicitamente `ALL_OCCASION` (mesmo valor) na frente desse array — dois itens com `id: "all"` coexistindo só durante a renderização inicial com dados mock, nunca com dados reais (que não têm essa entrada). `CategoryChips` usa `key={occ.id}`, daí a colisão.
+
+### Correção
+
+`src/lib/mock-data.ts` — removida a entrada redundante `{ id: "all", name: "Todos" }` de `OCCASIONS`. Confirmado por busca que não é usada em nenhum outro lugar do projeto.
+
+### Validação
+
+`npx tsc --noEmit` (0 erros), `npm run lint` (0 erros/avisos), console do navegador confirmado limpo em `/` após a correção (antes: erro fresco a cada mount; depois: 0 erros).
+
+### Documentação
+
+`KI-18` (`KNOWN_ISSUES.md`) fechado com a causa raiz real documentada, não a hipótese inicial.
+
+---
+
+## [Sprint DS.1] — 2026-08-03 — Redesign do Design System: "Ateliê Contemporâneo"
+
+**Tipo:** Sprint Oficial de Design System — primeira sprint sob o novo prefixo `DS.x` (ADR-018). Nenhuma funcionalidade alterada — só identidade visual.
+
+### Planejamento — comparação visual de 3 direções
+
+Como decisão de paleta/tipografia é uma escolha de gosto do Product Owner, não algo a decidir sozinho, foi publicado um Artifact com 3 direções concretas ("Ateliê Contemporâneo", "Confeitaria Vibrante", "Painel Operacional"), cada uma aplicada ao mesmo recorte real do Painel de Produção (mesmos pedidos, mesmos números), para comparação lado a lado em vez de descrição abstrata. Product Owner escolheu **"Ateliê Contemporâneo"**, para admin e cliente final.
+
+### Verificação de acessibilidade antes de aplicar
+
+Contraste WCAG calculado para os 6 pares texto/fundo mais usados antes de escrever qualquer valor definitivo — encontrado um problema real: `sage` (badge de sucesso com texto claro) ficava em 4.32:1, abaixo do mínimo de 4.5:1 já exigido por `DESIGN_SYSTEM.md`. Ajustado de `#6C7A4C` para `#5C6A3E` (mesma família, mais escuro) — passa em 5.45:1. Demais pares entre 5.4:1 e 15.2:1.
+
+### Sprint DS.1.1 — Fundação (implementada por `ai-frontend-engineer`)
+
+**Estratégia:** os 6 tokens de cor (`cream`/`chocolate`/`rose`/`sage`/`sand`/`muted`) já eram usados por nome em todo o app — só os valores hex foram trocados em `src/app/globals.css`, propagando a nova paleta automaticamente via Tailwind, sem editar página por página.
+
+| Token | Valor anterior | Novo valor |
+|---|---|---|
+| `cream` | `#faf7f2` | `#FBF6EF` |
+| `chocolate` | `#3d2b1f` | `#2E1B14` |
+| `rose` | `#e8a598` | `#A8324F` |
+| `sage` | `#7a9e7e` | `#5C6A3E` |
+| `sand` | `#f0ebe3` | `#E9DDC8` |
+| `muted` | `#8a7b72` | `#6F6357` |
+
+Tipografia (Fraunces display + DM Sans corpo) mantida sem alteração — a direção escolhida não pedia troca de fonte.
+
+`DESIGN_SYSTEM.md` — tabela de paleta atualizada com os novos valores hex + parágrafo registrando a direção/data/decisão.
+
+**Revisão dos 4 arquivos com cor Tailwind fixa fora do sistema de tokens** (`checkout/page.tsx`, `login/page.tsx`, `admin/login/page.tsx`, `pedidos/page.tsx`): confirmadas como cores semânticas de erro/status, mantidas como estão — não fazem parte da identidade de marca. Uma inconsistência real encontrada e corrigida na mesma sprint: `pedidos/page.tsx`, badge do status `PRONTO`, misturava o token de marca `bg-sage/20` com `text-green-800` hardcoded — corrigido para `text-sage`, consistente com o padrão já usado nos demais status do mesmo mapa.
+
+### Validação Técnica
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+| `npm run build` | Build de produção completo, 0 erros |
+
+### Validação Funcional (Playwright, visual, admin + cliente final)
+
+8/8 páginas avaliadas aprovadas: vitrine, login cliente, login admin, hub admin, listagem/modal de produtos, clientes, Kanban de produção. Nova paleta confirmada aplicada de forma consistente em toda a área admin e toda a área cliente final — **nenhum elemento com cor "esquecida" da paleta antiga encontrado**, confirmando que a propagação via troca de valor dos tokens funcionou sem precisar editar página por página. Console e rede limpos, com uma exceção não relacionada (ver achado abaixo). Kanban de produção não pôde ser validado com pedidos reais de "hoje/amanhã" por limitação de data dos dados de teste no ambiente — não é falha do redesign.
+
+### Achado real, fora de escopo, registrado (não corrigido nesta sprint)
+
+**KI-18** (`KNOWN_ISSUES.md`, novo) — console acusou chave React duplicada na vitrine (`/`) durante a validação visual, encontrado incidentalmente. Não relacionado à troca de paleta — suspeita de produto duplicado vindo de `filtered`/`products` em `src/app/page.tsx`, não investigado (fora do escopo desta sprint de redesign). Registrado como Problema Médio, prioridade a definir pelo Product Owner.
+
+### Documentação
+
+`GOVERNANCE_DECISIONS.md`/`ADR-018` já registravam o prefixo `DS.x`. `PLAN.md` — Backlog Suggestion "Redesign do Design System" marcada como promovida e concluída.
+
+---
+
+## [Sprint 2.L.5] — 2026-08-02 — Clientes: QA + Encerramento do Módulo e do Épico 2
+
+**Tipo:** Sprint funcional final do Módulo 2.L — **último módulo do Épico 2.** Validação Técnica (sessão principal) + Validação Funcional/Homologação (fork Playwright).
+
+### Validação Técnica (módulo completo)
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+| `npm run build` | Build de produção completo, 0 erros — todas as rotas novas presentes (`/admin/clientes`, `/admin/clientes/[id]`, `/api/admin/customers/**`) |
+
+### Validação Funcional (Playwright, servidor local, banco Supabase real, login admin real)
+
+13/13 cenários aprovados — ver `MODULE_2L_CLOSURE.md` Seção 4. Destaque: confirmado por evidência real que a correção do campo `addressId` (Sprint 2.L.4) funciona — grupo de endereço exibe "Usado em N pedidos" com contagem real. Console e rede limpos. Paginação e estado "sem pedidos" não testáveis por volume insuficiente de dados — não registrados como falha. **Nenhum Bug encontrado.**
+
+### Homologação do Product Owner
+
+**Nenhum achado — nem Bug, nem Backlog/Evolução.** Primeira vez neste projeto que uma Homologação não gera nenhum item. Telefone somente-leitura já vem com explicação visível na própria tela; mensagens avaliadas como diretamente utilizáveis por um funcionário não-técnico.
+
+### Encerramento do Módulo 2.L
+
+`MODULE_2L_CLOSURE.md` criado. `BT-11` fechado (`EPICO_2_PLANEJAMENTO.md`) — deduplicação de exibição implementada, causa raiz de `KI-10` registrada separadamente. `KI-10` permanece com status **PARCIAL** (não "Resolvido") — sintoma na tela de Clientes resolvido, acúmulo de `Address` no banco continua. `PLAN.md` — linha do Módulo 2.L atualizada para "Concluído".
+
+### Encerramento do Épico 2
+
+Com o Módulo 2.L, o **Épico 2 — Cadastros Mestres + Dashboard Operacional está completo**: 12 módulos (2.A–2.L), todos com `MODULE_{X}_CLOSURE.md` próprio, todos revalidados em ambiente sincronizado com dados reais. `PLAN.md` — linha do ÉPICO 2 atualizada para "Encerrado". Próximo épico/prioridade a definir pelo Product Owner — candidatos registrados: Backlog Suggestions pendentes (redesign do Design System, política de LGPD/privacidade) ou início de um novo Épico do roadmap (`PLAN.md`, "Épicos").
+
+---
+
+## [Sprint 2.L.4] — 2026-08-02 — Clientes: Frontend
+
+**Tipo:** Sprint funcional, camada Frontend. Implementada por `ai-frontend-engineer` (orquestração ADR-017), consumindo a API já pronta da 2.L.3. Design System atual reutilizado como está.
+
+### Arquivos criados
+
+- `src/lib/api/customerApi.ts` — cliente HTTP (`listCustomers`, `getCustomer`, `updateCustomerNotes`, `getCustomerOrders`).
+- `src/app/admin/clientes/page.tsx` — listagem: busca por nome/telefone, paginação server-side, LTV e último pedido por cliente. Sem botão "Novo cliente" — módulo nunca cria `Customer` (só existe via upsert no checkout).
+- `src/app/admin/clientes/[id]/page.tsx` — perfil: dados (telefone somente-leitura), notas internas editáveis (textarea, contador, máx. 2000 caracteres), endereços agrupados, histórico de pedidos.
+
+### Arquivo alterado
+
+- `src/app/admin/page.tsx` — card "Clientes" do hub admin: `em-construcao` → `/admin/clientes`, `ready: true`.
+
+### Divergência encontrada e corrigida na mesma sprint (com aprovação do Product Owner)
+
+`customerService.ts` (2.L.2) tinha um comentário afirmando que `Order.addressId` "já está disponível" no histórico de pedidos para cruzar com `addressGroups`, mas o campo nunca fora incluído no DTO — o Frontend degradou graciosamente ("N registros equivalentes agrupados", sem contagem real de pedidos). Corrigido: `ai-backend-engineer` adicionou `addressId` a `CustomerOrderHistoryItemDTO`/`mapOrderHistoryItemDTO` (o dado já vinha do Prisma, só não estava mapeado) e corrigiu o comentário desatualizado; edição direta no Frontend (`customerApi.ts` — tipo local atualizado; `[id]/page.tsx` — grupo de endereço agora mostra "Usado em N pedidos" real, cruzando `orders[].addressId` com `addressGroups[].addressIds`).
+
+### Validação Técnica
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+
+---
+
+## [Sprint 2.L.3] — 2026-08-02 — Clientes: API
+
+**Tipo:** Sprint funcional, camada API. Implementada por `ai-backend-engineer` (orquestração ADR-017), expondo o Service já pronto da 2.L.2.
+
+### Arquivos criados
+
+- `src/app/api/admin/customers/route.ts` — `GET` (listagem paginada/busca).
+- `src/app/api/admin/customers/[id]/route.ts` — `GET` (detalhe) + `PATCH` (só `notes` — qualquer outro campo do body é descartado silenciosamente antes de repassar ao Service, reforçando a imutabilidade de `phone`).
+- `src/app/api/admin/customers/[id]/orders/route.ts` — `GET` (histórico de pedidos, reaproveita `getCustomerById` inteiro em vez de criar função dedicada no Service — sem custo adicional real, avaliado e não sinalizado como divergência).
+
+### Validação Técnica
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+
+---
+
+## [Sprint 2.L.2] — 2026-08-02 — Clientes: Service
+
+**Tipo:** Sprint funcional, camada Service. Implementada por `ai-backend-engineer` (orquestração ADR-017), sobre o Repository/Validator já prontos da 2.L.1.
+
+### Arquivo criado
+
+- `src/lib/customerService.ts` — `listCustomers`, `getCustomerById`, `updateCustomerNotes`, `listAddressesGrouped` (função pura, agregação só de exibição). Erros de domínio `CustomerNotFoundError`/`CustomerValidationFailedError`.
+
+### Deduplicação de endereços (KI-10/BT-11) — implementação da decisão já tomada no Planejamento
+
+`listAddressesGrouped` agrupa por `street`+`number`+`zipCode` normalizados, representante = endereço mais recente do grupo. Contagem de pedidos por grupo não incluída na função (assinatura só recebe endereços, não pedidos) — cada grupo expõe `addressIds[]` para o Frontend (2.L.4) cruzar com `orders[].addressId` já carregado, sem nova consulta. Nenhuma escrita em `Address`/`Order` — confirmado, só leitura/agregação em memória.
+
+### Validação Técnica
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+
+---
+
+## [Sprint 2.L.1] — 2026-08-02 — Clientes: Repository + Validator
+
+**Tipo:** Sprint funcional, camada Repository + Validator. Implementada por `ai-backend-engineer` (orquestração ADR-017), a partir do Planejamento aprovado do Módulo 2.L. Sem Sprint de Schema — `Customer.notes` já existia.
+
+**Decisões pré-tomadas no Planejamento, aplicadas aqui:** deduplicação de `Address` (KI-10/BT-11) é só de exibição, na Sprint 2.L.2 — este Repository não deduplica nada. LGPD/privacidade e a causa raiz de KI-10 (`POST /api/orders`) registrados como Backlog Suggestion/pendência, fora do escopo do módulo, por decisão do Product Owner.
+
+### Arquivos criados
+
+- `src/lib/repositories/customerRepository.ts` — `findAllCustomers` (paginação/busca por nome ou telefone, LTV e último pedido via `Order.groupBy`, evitando N+1), `findCustomerById` (com `orders`/`addresses` completos, sem deduplicar), `updateCustomerNotes`.
+- `src/lib/validators/customerValidator.ts` — `validateCustomerNotesUpdate` (`notes` opcional, máx. 2000 caracteres).
+
+### Divergência de nomenclatura (não bloqueante)
+
+Funções nomeadas `findAllCustomers`/`findCustomerById`/`updateCustomerNotes` em vez do `findAll`/`findById`/`updateNotes` genérico do blueprint original — segue a convenção real já usada em todo Repository do projeto (evita colisão de nomes entre Repositories importados no mesmo Service).
+
+### Validação Técnica
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+
+---
+
+## [Sprint 2.K.4] — 2026-08-02 — Dashboard Operacional: Consolidação + CMV + QA + Encerramento do Módulo
+
+**Tipo:** Sprint funcional final do Módulo 2.K. Backend (`ai-backend-engineer`) e Frontend (`ai-frontend-engineer`) das seções de Consolidação/CMV, seguidos de QA (sessão principal) e Validação Funcional/Homologação (fork Playwright).
+
+### Arquivos criados
+
+- `src/app/api/admin/orders/consolidation/route.ts` — `GET`, expõe `orderService.getConsolidation`.
+- `src/app/api/admin/cmv/route.ts` — `GET`, expõe `cmvService.calculateCMV`.
+
+### Arquivos alterados
+
+- `src/lib/api/orderAdminApi.ts` — `getConsolidation`/`getCMV` adicionados.
+- `src/app/admin/producao/page.tsx` — seções "Consolidação de ingredientes" (segue a data da aba ativa) e "CMV" (sempre Hoje/Últimos 7 dias, independente da aba) adicionadas, com loading/erro próprios, desacopladas do Kanban.
+
+### Validação Técnica (módulo completo)
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+| `npm run build` | Build de produção completo, 0 erros — todas as rotas novas presentes, rota antiga insegura confirmadamente ausente |
+
+### Validação Funcional (Playwright, servidor local, banco Supabase real, login admin real)
+
+13/13 cenários aprovados — ver `MODULE_2K_CLOSURE.md` Seção 4 para a lista completa. Transição inválida (409) confirmada por revisão de código, não reproduzível organicamente via UI (seletor só oferece transições válidas). Consolidação testada no estado vazio (dado de teste disponível não tinha receita vinculada); CMV testado com valor real. Console e rede limpos. Responsividade 390px sem overflow. **Nenhum Bug encontrado.**
+
+**Dado de teste:** pedido `#2` teve `deliveryDate`/`status` alterados temporariamente para exercitar o Kanban, revertidos ao final (confirmado por leitura). Resíduo não-funcional: uma entrada de `OrderStatusHistory` da alteração de teste permanece no histórico (reverter por escrita direta no banco não apaga o histórico já criado) — sem impacto funcional, registrado para conhecimento.
+
+### Homologação do Product Owner
+
+Nenhum defeito bloqueante. 2 achados **Backlog/Evolução**: (1) ausência do badge de data no header padrão — não gera confusão real; (2) StatCard "Urgentes" mantém a contagem de hoje mesmo na aba "Amanhã" — correto por design, mas identificado como ponto de clareza visual a revisitar no futuro.
+
+### Achado de constatação (não implementação desta sprint)
+
+`IC-06`/`BT-12` (`EPICO_2_PLANEJAMENTO.md`) previam que a Sprint 2.K.3 resolveria `STATUS_CLASS` incompleto em `src/app/pedidos/page.tsx` — confirmado por leitura que esse arquivo já cobre os 7 status, resolvido em algum momento anterior a este módulo, por trabalho não rastreado a esta sprint. Fechados por constatação. O badge de 7 status realmente entregue pela Sprint 2.K.3 foi em `src/app/admin/producao/page.tsx` (`OrderStatusBadge`) — tela diferente.
+
+### Encerramento do Módulo 2.K
+
+`MODULE_2K_CLOSURE.md` criado. Fechados: `KI-04` (`KNOWN_ISSUES.md`), `TD-11` (`MODULES.md`), `BT-08`/`IC-06`/`BT-12` (`EPICO_2_PLANEJAMENTO.md`). `PLAN.md` — linha do Módulo 2.K atualizada para "Concluído".
+
+---
+
+## [Sprint 2.K.3] — 2026-08-02 — Dashboard Operacional: Frontend (Kanban real)
+
+**Tipo:** Sprint funcional, camada Frontend. Implementada por `ai-frontend-engineer` (orquestração ADR-017), consumindo a API já pronta da 2.K.2. Design System atual reutilizado como está — Product Owner pediu, durante esta sprint, um redesign visual mais amplo; decisão explícita de não misturar as duas coisas, redesign registrado como Backlog Suggestion em `PLAN.md` (Seção "Backlog Suggestions"), não implementado aqui.
+
+### Arquivos criados
+
+- `src/lib/api/orderAdminApi.ts` — cliente HTTP (`getKanbanData`, `updateOrderStatus`), DTOs locais espelhando `orderService.ts` sem importá-lo (front-end nunca acopla a Service/Repository).
+
+### Arquivo reescrito
+
+- `src/app/admin/producao/page.tsx` — removido todo dado hardcoded. Abas Hoje/Amanhã com data real; Semana/Calendário usam o mesmo padrão de "em construção" já existente no projeto (API não suporta intervalo de datas, fora de escopo). Kanban de 4 colunas (`SAIU_ENTREGA` agrupado em "Entregue", decisão já confirmada). Badge local `OrderStatusBadge` para os 7 status (`StatusBadge` compartilhado é estritamente binário). Mudança de status via `<select>` por card + `ConfirmDialog`, com tratamento de erro 409 (transição inválida) sem travar a UI. Seção "Urgente" e stat cards reais via componentes compartilhados.
+
+### Divergência encontrada, resolvida com o Product Owner (fix aplicado nesta mesma sprint)
+
+O card "Urgentes" contava pedidos `RASCUNHO`/`CANCELADO` de hoje como urgentes (`REGRAS_NEGOCIO.md` 14.1 aplicada ao pé da letra), enquanto a lista visual da seção "Urgente" nunca podia mostrá-los (sem coluna no Kanban) — número do card podia ser maior que a lista exibida. **Decisão do Product Owner:** `RASCUNHO`/`CANCELADO` não contam como urgente. Corrigido por `ai-backend-engineer` em `orderRepository.ts` (`countByDateExcludingStatus` generalizada para lista de status) e `orderService.ts`; `REGRAS_NEGOCIO.md` 14.1 atualizada; comentário desatualizado em `producao/page.tsx` corrigido (edição direta).
+
+### Decisões de escopo registradas (não ambíguas, apenas documentadas)
+
+- Fora de escopo: seção de Consolidação de ingredientes e CMV (Sprint 2.K.4, sem endpoint ainda).
+- `HeaderMinimal` (padrão do admin) substitui o header customizado do mock antigo — perde o badge de data no topo, pequena regressão visual pontual aceita em favor de consistência com o restante do admin.
+
+### Validação Técnica
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+
+---
+
+## [Sprint 2.K.2] — 2026-08-02 — Dashboard Operacional: API
+
+**Tipo:** Sprint funcional, camada API. Implementada por `ai-backend-engineer` (orquestração ADR-017), expondo os Services já prontos da 2.K.1 — nenhuma lógica de negócio nova.
+
+### Arquivos criados
+
+- `src/app/api/admin/orders/route.ts` — `GET`: `requireAdmin()`, parse de `date` (`YYYY-MM-DD`), chama `orderService.getKanbanData(date)`.
+- `src/app/api/admin/orders/[id]/status/route.ts` — `PATCH`: `requireAdmin()`, parse de `{ status, notes? }`, chama `orderService.updateOrderStatus`. Mapeamento de erro: `InvalidStatusTransitionError` → `conflict("INVALID_STATUS_TRANSITION", ...)` (409), mesmo padrão já usado para `LastItemRemovalError` em Receitas.
+
+### Arquivo removido
+
+- `src/app/api/orders/[id]/status/route.ts` — rota antiga insegura (só verificava `session?.user`, não `requireAdmin()`; qualquer cliente autenticado podia alterar status de pedido). Confirmado sem chamador real em `src/app` antes da remoção — nenhum fluxo existente quebrado. Diretórios vazios remanescentes também removidos.
+
+### Divergência encontrada, resolvida com o Product Owner
+
+O parâmetro `status` da `GET /api/admin/orders`, previsto no Planejamento, foi implementado e depois removido: `orderService.getKanbanData` (2.K.1) não filtra por status — o Kanban mostra as 4 colunas simultaneamente, então um filtro de status único não serve ao caso de uso real. Confirmado com o Product Owner e removido nesta mesma sprint (edição direta, arquivo já revisado), evitando um parâmetro de API que validava algo e não fazia nada.
+
+### Validação Técnica
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+
+---
+
+## [Sprint 2.K.1] — 2026-07-31 — Dashboard Operacional: Repository + Service
+
+**Tipo:** Sprint funcional, camada Repository + Service. Primeira implementação de código conduzida pela orquestração de Sub-agents ativada nesta mesma data (ADR-017/Sprint G.10) — Planejamento por `ai-project-manager`, implementação por `ai-backend-engineer`.
+
+**Escopo:** resolve o Backend de KI-04/TD-11 (`KNOWN_ISSUES.md`/`MODULES.md`) — dashboard de produção ainda 100% mock, confirmado por auditoria de código real na Etapa 1 de Planejamento, não presumido.
+
+### Arquivos criados
+
+- `src/lib/repositories/orderRepository.ts` — `findByDateAndStatus`, `findOrderById`, `countByDateAndStatus`, `sumItemQuantityByDateAndStatus`, `countByDateExcludingStatus`, `findItemsForConsolidation`, `findItemsGroupedByProduct`, `updateStatusWithHistory` (transação `Order.update` + `OrderStatusHistory.create`).
+- `src/lib/orderService.ts` — `VALID_TRANSITIONS` migrado de `src/app/api/orders/[id]/status/route.ts`, `getKanbanData(date?)`, `getConsolidation(startDate, endDate)`, `updateOrderStatus(orderId, newStatus, notes?)`.
+- `src/lib/cmvService.ts` — `calculateCMV(startDate, endDate)`, reaproveitando `productService.getProductById` para o custo atual (limitação de `REGRAS_NEGOCIO.md` 13.7 documentada em comentário).
+
+### Alteração pontual
+
+- `src/lib/recipeService.ts` — `resolveConversionFactor` promovida de função privada para `export`, para reaproveito por `orderService.getConsolidation` (mesmo corpo, sem alteração de comportamento).
+
+### Validação Técnica
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+
+### Divergências encontradas e decisão
+
+1. **Coluna do status `SAIU_ENTREGA` no Kanban** — não especificada no Planejamento (`SCREENS.md` A-03 só previa 4 colunas). `ai-backend-engineer` implementou como decisão reversível (agrupado em "Entregue"), sinalizando para confirmação antes do Frontend consumir. **Confirmado pelo Product Owner nesta sessão** — mantido agrupado em "Entregue".
+2. **Aba "Semana" (intervalo de datas) do Kanban** — `getKanbanData` cobre um único dia ou nenhum filtro; intervalo de datas não implementado nesta sprint (não estava no escopo literal aprovado). Registrado como gap a resolver na 2.K.2/2.K.3.
+3. **Nome duplicado entre camadas** — já existe `src/services/orderService.ts` (cliente HTTP antigo, pré-Épico 2) e agora `src/lib/orderService.ts` (Service de backend novo) — caminhos e camadas diferentes, sem conflito técnico, mas nome idêntico. Registrado como candidato a padronização futura (Dívida Técnica, não bloqueante).
+4. **Sem caminho de retrocesso de status autorizado por ADMIN** — `REGRAS_NEGOCIO.md` 15.1.4 menciona a possibilidade, mas nem a rota antiga nem `VALID_TRANSITIONS` migrado implementam essa exceção. Não implementado nesta sprint (fora do escopo aprovado, "migrar a lógica já existente"). Registrado como Backlog para decisão futura do Product Owner.
+
+### Achado de segurança confirmado (não desta sprint — já existia)
+
+A rota `PATCH /api/orders/[id]/status` (pré-Épico 2) só verifica `session?.user`, não `requireAdmin()` — qualquer cliente autenticado pode hoje alterar o status de um pedido. Já identificado no Planejamento; será eliminado na Sprint 2.K.2 (nova rota `/api/admin/orders/[id]/status` com `requireAdmin()`, remoção da rota antiga).
+
+---
+
+## [Sprint G.10] — 2026-07-31 — Ativação da orquestração por Sub-agents (ADR-017)
+
+**Tipo:** Sprint Oficial de Governança. Nenhum código de ERP alterado — mudança de processo/operação.
+
+**Contexto:** o Product Owner relatou, em conversa nesta sessão, que o Arquiteto externo do fluxo de trabalho (ChatGPT) vinha perdendo contexto do projeto entre conversas, comprometendo a evolução — e pediu a centralização dos papéis de Arquiteto e Desenvolvedor no Claude Code, com sugestão de papéis/skills por agente.
+
+**Achado antes de qualquer criação:** investigação de `.claude/agents/` revelou que uma arquitetura completa de 11 Sub-agents (`ai-project-manager`, `ai-solution-architect`, `ai-backend-engineer`, `ai-frontend-engineer`, `ai-qa-engineer`, `ai-documentation-engineer`, `ai-refactoring-engineer`, `ai-governance-officer`, `ai-release-manager`, `product-reviewer`, `platform-reviewer`) já existia desde a Sprint G.5.4 (15/07/2026) — mapeando quase exatamente o que foi pedido (`ai-solution-architect` = Arquiteto, `ai-backend-engineer`/`ai-frontend-engineer` = Desenvolvedor). Confirmado por auditoria da Sprint 2.I.1 que essa camada nunca havia sido usada em nenhuma sprint real (classificação EXPERIMENTAL). Criar agentes novos teria duplicado esse trabalho — a ação correta era ativar, não construir.
+
+**Tensão identificada e resolvida por decisão explícita do Product Owner:** o fluxo já desenhado (`EXECUTION_FLOW.md`) trata `platform-reviewer`/`product-reviewer` como etapas sempre obrigatórias — em conflito com GD-001/GD-002 (`GOVERNANCE_DECISIONS.md`, Sprint 2.I.1, ainda pendentes), que recomendam tornar essas etapas opcionais/fundidas. Decisão: ativar mantendo as duas obrigatórias por enquanto, até GD-001/GD-002 serem decididas — não é reversão da recomendação, é ordem de decisão.
+
+**ADR-017 registrada em `CLAUDE.md`:** Arquiteto + Desenvolvedor centralizados no Claude Code via a orquestração de Sub-agents já existente. Nenhuma trava de aprovação já vigente foi alterada — o Product Owner continua aprovando plano antes de execução e aceite antes de encerramento.
+
+### Documentos atualizados
+
+- `CLAUDE.md` — ADR-017.
+- `PROJECT_GOVERNANCE.md` — Seção 18 ("Papel da IA neste projeto" e "Fluxo obrigatório de interação") atualizada para descrever a orquestração por Sub-agents como fluxo padrão, referenciando `.claude/agents/EXECUTION_FLOW.md` sem duplicá-lo.
+- `GOVERNANCE_DECISIONS.md` — notas cruzadas adicionadas em GD-001 e GD-002, explicando por que `platform-reviewer`/`product-reviewer` seguem obrigatórios apesar das recomendações pendentes.
+- `PROJECT_STATE.md` — atualizado (Estado Geral, Situação Atual, Últimas mudanças, Últimas decisões, Riscos).
+
+### Pendência registrada
+
+O fluxo ativado ainda não foi exercitado em nenhuma missão real — primeira execução real fica como ponto de atenção da próxima sprint funcional (candidata: 2.K ou 2.L).
+
+---
+
+## [Sprint 2.F] — 2026-07-23 — Produtos (Fase 1): Verificação, Validação Funcional e Encerramento
+
+**Tipo:** Sprint Oficial funcional. Retoma o roadmap de módulos de negócio após a consolidação de governança (Sprints 2.I.0/2.I.1/G.9). Autorizada pelo Product Owner.
+
+**Pré-condição executada antes da Etapa 1** (conforme a própria Ordem de Missão): `PROJECT_STATE.md` atualizado com Última atualização/Origem/Responsável, seção "Próxima decisão do Product Owner" e seção "Limitações do documento" — atualização puramente documental, não constitui desenvolvimento do módulo.
+
+### Etapa 1 — Planejamento: achado central
+
+Investigação do código real (`src/app/admin/produtos/page.tsx`, `src/app/admin/produtos/[id]/page.tsx`, `src/components/admin/config/UploadImage.tsx`) antes de qualquer implementação revelou que **todo o escopo funcional pedido na Ordem de Missão já estava implementado** — CRUD completo (listagem, cadastro, edição, detalhes, pesquisa, filtros, ordenação, paginação, upload de imagem, preview, validação, feedback visual, estados de loading/vazio/erro, responsividade). Construído durante os Módulos **2.J** (Sprints 2.J.2/2.J.2.1, 16-17/07/2026) e **2.H** (Sprint 2.H.6, tela de detalhes, 20/07/2026) — nunca sob o nome oficial "2.F". Já validado por evidência real na Sprint I.3 (17/07/2026). Nenhum `TODO`/`FIXME` encontrado nos arquivos do módulo.
+
+A implementação real excede o escopo original de "Fase 1" (`PLAN.md`, congelado na Sprint 2.0.6: "`costPrice = 0`, sem RecipeLinker") — já inclui RecipeLinker, `costPrice`/margem automáticos (nominalmente "Fase 2") e vínculo com `Packaging` (Módulo 2.H), preservados intactos, não construídos nesta Sprint.
+
+Divergência entre a Ordem de Missão (que descrevia a construção do Frontend como trabalho a fazer) e o estado real do código submetida ao Product Owner via pergunta estruturada, **antes** de qualquer ação — decisão explícita: **Verificar + Homologar + Encerrar**, sem reconstrução, evitando a duplicação que a própria Ordem de Missão instruía evitar.
+
+### Validação Técnica
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 erros |
+| `npm run lint` | 0 erros/avisos |
+| `npm run build` | Build de produção completo, 0 erros |
+| `npx prisma generate` | Schema consistente |
+
+### Validação Funcional (Playwright, servidor local, banco Supabase real, login admin real)
+
+15/15 cenários aprovados: listagem, pesquisa server-side, filtro por categoria, filtro por status, ordenação, cadastro (produto de teste criado), validação de formulário (erros inline, submit bloqueado), edição, tela de detalhes, navegação "Editar produto" (`?edit=id`), ativar/desativar, exclusão física (apenas o produto de teste — nenhum dado de catálogo pré-existente tocado), estado vazio, responsividade 390px. Console e rede confirmados limpos. Paginação não testável por volume insuficiente de produtos no ambiente (~9-10 < `pageSize` 12) — não registrado como falha. Primeira vez que este roteiro é registrado formalmente sob o nome "Sprint 2.F" (execuções anteriores do mesmo fluxo ficaram registradas sob 2.J.2.1/I.3/2.H.6).
+
+### Homologação do Product Owner
+
+Nenhum defeito bloqueante. Mensagens, nomes de botões e navegação avaliados como claros para uso por quem não é desenvolvedor. **1 achado classificado, não corrigido:** tela de detalhes (`produtos/[id]/page.tsx`) não exibe `description`/`leadTimeDays`/`featured` — classificado **Backlog/Evolução** (não Bug): dados secundários, sempre acessíveis via "Editar produto", nenhum fluxo real bloqueado.
+
+### Encerramento
+
+`MODULE_2F_CLOSURE.md` criado — documenta explicitamente a natureza atípica deste encerramento (verificação/homologação de trabalho pré-existente, não construção nova). `PLAN.md` — linha do Módulo 2.F atualizada de "Planejado" para "Concluído". `PROJECT_STATE.md` atualizado (ver próxima seção).
+
+### PROJECT_STATE.md — atualização final da Sprint
+
+Estado Geral (módulo atual → nenhum, entre módulos), Roadmap (2.F movido para concluídos), Últimas mudanças, Últimas decisões, Pendências e Riscos atualizados; "Próxima decisão do Product Owner" passa a ser a escolha entre 2.K e 2.L.
+
+---
+
+## [Sprint G.9] — 2026-07-22 — Evolução da Governança: Implantação do PROJECT_STATE.md
+
+**Tipo:** Sprint Oficial de Governança. Nenhuma arquitetura, roadmap, governança, metodologia, fluxo de desenvolvimento ou documentação existente alterados — conforme restrição explícita da Ordem de Missão. Único objetivo: acrescentar um mecanismo de sincronização de contexto entre IAs.
+
+**Numeração desta sprint:** a Ordem de Missão não trouxe um identificador formal. Consultado o Product Owner (`AskUserQuestion`), que optou por aplicar agora a recomendação GD-004 (`GOVERNANCE_DECISIONS.md`, registrada na Sprint 2.I.1 e ainda pendente) — usar o prefixo `G.x` para sprints de governança, evitando repetir a colisão de numeração encontrada naquela sprint. GD-004 marcada como **Aprovada** e promovida a **ADR-016** em `CLAUDE.md`.
+
+### Contexto
+
+O ERP atingiu um volume de documentação oficial extenso o suficiente para que outra IA sem acesso contínuo ao projeto (ChatGPT, Gemini, Copilot, ou uma nova sessão sem memória) precise ler dezenas de documentos para reconstruir o estado atual. A Fonte Oficial de Verdade (`CLAUDE.md`, `PROJECT_GOVERNANCE.md`, `QUALITY_GUIDELINES.md`, `PLAN.md`, `CHANGELOG.md`, ADRs, documentação técnica) permanece intacta e continua sendo a autoridade final — o problema identificado foi puramente operacional (sincronização de contexto), não de conteúdo ou de processo.
+
+### PROJECT_STATE.md criado
+
+Documento novo na raiz do projeto — snapshot executivo de 2 a 5 páginas, sem código, sem histórico completo, sem regras de negócio completas, sem arquitetura detalhada, sem roadmap completo. Estrutura: Estado Geral, Situação Atual, Roadmap (resumo), Últimas mudanças, Últimas decisões, Pendências, Riscos, Documentos Oficiais, Instruções para outra IA (com regra explícita de precedência: em caso de conflito, prevalece a documentação oficial).
+
+### Estratégia de atualização
+
+Registrada em dois lugares já existentes, sem criar nenhum processo novo:
+- `PROJECT_GOVERNANCE.md` Seção 12 ("Quando atualizar cada documento") — nova linha: `PROJECT_STATE.md` é atualizado ao final de toda Sprint Oficial, **somente depois** de `CHANGELOG.md`/`PLAN.md`/ADRs já atualizados.
+- `QUALITY_GUIDELINES.md` Seção 6 ("Mapa de Governança") — nova linha descrevendo responsabilidade, proprietário, dependências (`CHANGELOG.md`, `PLAN.md`, `CLAUDE.md`) e relação com os demais documentos.
+
+Isso não altera o fluxo de 6 etapas (`PROJECT_GOVERNANCE.md` Seção 4) nem o Fluxo Oficial de 11 etapas (Seção 27) — a etapa "Documentação"/"Encerramento" já existente passa a incluir mais um artefato ao final, não uma etapa nova.
+
+### Garantia de não duplicação
+
+`PROJECT_STATE.md` não reproduz o conteúdo de nenhum documento oficial — resume, aponta e remete de volta. Nenhuma seção do documento permite código, ADRs completas, regras de negócio completas ou roadmap completo (restrição explícita da Ordem de Missão, verificada linha a linha antes do fechamento desta sprint).
+
+### Confirmação — metodologia inalterada
+
+Nenhuma seção de `PROJECT_GOVERNANCE.md` (fluxo, ADR, QA, DoD, checklist de encerramento) teve seu conteúdo normativo alterado. Nenhuma decisão de `GOVERNANCE_DECISIONS.md` além de GD-004 foi tocada (GD-001/002/003 permanecem `🟡 Pendente`, sem relação com esta sprint).
+
+---
+
+## [Sprint 2.I.1 (Governança)] — 2026-07-20 — Consolidação do Ciclo de Governança do Produto
+
+**Tipo:** Sprint Oficial de Governança do Produto. Nenhuma funcionalidade implementada — auditoria de processo, classificação, recomendação. Nenhuma decisão estrutural implementada automaticamente, conforme exigido pela própria Ordem de Missão.
+
+**Nome desta sprint, tal como recebido na Ordem de Missão:** "Sprint 2.I.1". Ver achado crítico de colisão de numeração abaixo (Fase 1) — não corrigido retroativamente.
+
+### Fase 1 — Auditoria da governança
+
+Levantados todos os processos documentados do ciclo de desenvolvimento (`PROJECT_GOVERNANCE.md` Seções 4, 13, 16, 16.4, 16.5, 16.6, 17, 23, 24, 25, 26, 27; `QUALITY_GUIDELINES.md` Seções 1–5).
+
+**Achado crítico — colisão de numeração, encontrado por evidência direta (não hipótese):** o prefixo `2.I` já é o identificador oficial e definitivo do Módulo Receitas dentro do Épico 2 (`PROJECT_GOVERNANCE.md` Seção 3, "Módulo 2.I — Receitas"), com sprints reais já registradas em `CHANGELOG.md` desde 15/07/2026 (`Sprint 2.I.1 — Backend Completo — Módulo Receitas`, `2.I.2`, `2.I.3`). Em paralelo, o prefixo `I.x` (sem o `2.`) já é reservado a Sprints Oficiais de Infraestrutura (`PROJECT_GOVERNANCE.md` Seção 4.4, precedente real `I.1`/`I.2`/`I.3`, 17/07/2026). A sprint anterior (retrospectiva da metodologia) e esta própria foram nomeadas pela Ordem de Missão como `2.I.0`/`2.I.1`, colidindo simultaneamente com os dois usos já estabelecidos — um mesmo grep por `"2.I"` em `CHANGELOG.md` hoje retorna três assuntos completamente distintos: Receitas, Infraestrutura (por leitura apressada) e Governança. **Nenhuma entrada já commitada foi renomeada** — nem esta, nem a anterior. Recomendação (usar `G.x`, seguindo o precedente já estabelecido de `G.1`/`G.2`/`G.5.x`/`G.6.x`/`G.8`) registrada em `GOVERNANCE_DECISIONS.md` GD-004, submetida ao Product Owner.
+
+**Matriz de processos (resumo — matriz completa em `QUALITY_GUIDELINES.md` Seção 6 "Mapa de Governança"):** dos ~18 processos/etapas documentados, 15 têm evidência real de uso confirmada em `CHANGELOG.md` (fluxo de 6 etapas da Seção 4, Sprint Oficial vs. Backlog Suggestion, interrupção por inconsistência de infraestrutura, processo de ADR, Revisão Técnica, QA, DoD de Módulo, classificação de auditoria de 3 categorias, Checklist de Encerramento, Fluxo Oficial de 11 etapas e o padrão de Homologação de `QUALITY_GUIDELINES.md`). 3 processos — Platform Review, Product Review, Demo Validation — têm **zero evidência de execução** desde a criação de cada um (confirmado por busca em todo o `CHANGELOG.md` pela taxonomia própria de cada etapa: nenhuma ocorrência de "Bloqueante/Não-bloqueante" [Platform Review], nenhuma ocorrência de "Categoria A–F" [Product Review], nenhuma ocorrência de "Quebra de fluxo" [Demo Validation]).
+
+### Fase 2 — Auditoria do ciclo 2.H (fluxo documentado × fluxo executado)
+
+Aprofundamento do achado já registrado na Sprint 2.I.0. Além da ausência total de Platform/Product/Demo Review no ciclo 2.H.0–2.H.7, identificadas:
+
+- **Etapa implícita não documentada como tal:** a "Homologação do Product Owner" (Sprint 2.H.7, formalizada em `QUALITY_GUIDELINES.md` Seção 3 nesta mesma retrospectiva) cobre, na prática, o mesmo território de propósito que o Product Review pretendia cobrir (usabilidade, clareza, navegação) — mas com julgamento real do Product Owner via Playwright, não um Sub-agent simulando a perspectiva do usuário.
+- **Camada de delegação nunca utilizada:** o `.claude/agents/` inclui uma arquitetura paralela de Sub-agents (`ai-project-manager` delegando para `ai-solution-architect`/`ai-backend-engineer`/`ai-frontend-engineer`/`ai-documentation-engineer`/`ai-qa-engineer`/`ai-release-manager`) — nenhuma sprint do ciclo 2.H foi conduzida por `ai-project-manager`; a execução real usou a IA principal diretamente para Planejamento/Implementação, com `Agent(subagent_type: "fork")` só para Validação Funcional (Playwright) e auditorias pontuais. Mesmo padrão de "processo documentado ≠ processo usado" das três Reviews, mas fora do escopo central desta sprint (Fases 5–7 pedem análise só de Platform/Product/Demo Review) — registrado aqui como achado de Fase 2, não analisado a fundo.
+- **Nenhuma etapa foi encontrada como redundante consigo mesma nem substituída por uma etapa homônima** — as únicas divergências são as já listadas acima.
+
+### Fase 3 — Classificação dos processos
+
+| Processo | Classificação | Justificativa técnica |
+|---|---|---|
+| Fluxo de 6 etapas (Seção 4) | **ATIVO** | Usado em toda sprint sem exceção, confirmado por `CHANGELOG.md` desde a Sprint 2.0 |
+| Sprint Oficial vs. Backlog Suggestion (4.2/4.3) | **ATIVO** | Precedente real: ADR-009 e a própria distinção usada nesta sessão |
+| Interrupção por inconsistência de infraestrutura (4.4) | **ATIVO** | Precedente real: Sprint I.1 (17/07/2026) |
+| Processo de ADR (Seção 13) | **ATIVO** | 15 ADRs registradas em `CLAUDE.md` até esta sprint |
+| Revisão Técnica (Seção 16) | **ATIVO** | `tsc`/`lint`/`build` executados e registrados em toda sprint com código |
+| Platform Review (16.4) | **EXPERIMENTAL** | Infraestrutura existe (Sub-agent `platform-reviewer`, Skill, `PLATFORM_OVERVIEW.md`) e é invocável, mas nunca foi de fato acionada; sistema permanece 100% single-tenant (ADR-007), sem alvo concreto de violação hoje |
+| Product Review (16.5) | **LEGADO** | Nunca executado formalmente, mas seu propósito foi absorvido na prática pela Homologação do Product Owner (`QUALITY_GUIDELINES.md` Seção 3), que cobre o mesmo espectro com evidência real |
+| Demo Validation (16.6) | **FUTURO** | Inexecutável hoje pela própria fonte de verdade (`prisma/demo-seeds/` sem dado real, decisão deliberada do ADR-008) — não é uma etapa pulada, é uma etapa sem pré-requisito satisfeito |
+| QA (Seção 17) | **ATIVO** | Executado a cada sprint com código, evidenciado em `CHANGELOG.md` |
+| DoD de Módulo (Seção 23) / Checklist de Encerramento (25) | **ATIVO** | Usado nos encerramentos de 2.D/2.G/2.I/2.J (Sprint I.3) e 2.H (Sprint 2.H.7/2.I.0) |
+| Classificação de auditoria de 3 categorias (Seção 24) | **ATIVO** | Usada em toda auditoria formal, inclusive nesta própria sprint |
+| Fluxo Oficial de 11 etapas (Seção 27) | **ATIVO** (recém-formalizado) | Documenta exatamente o que o ciclo 2.H já executou na prática — não é uma etapa nova, é a formalização de uma já usada |
+| Camada de delegação `ai-project-manager`/Sub-agents de persona | **EXPERIMENTAL** | Existe, é invocável, nunca foi usada no ciclo 2.H real — fora do escopo de recomendação desta sprint (não coberta pelas Fases 5–7) |
+
+Nenhum processo classificado como **OBSOLETO** — nenhum perdeu completamente seu propósito original; os três com uso zero (Platform/Product/Demo Review) continuam tendo uma razão de existir, só não como gate obrigatório em toda sprint no formato atual.
+
+### Fase 4 — Ciclo oficial do ERP (reafirmado)
+
+O ciclo oficial permanece o já formalizado em `PROJECT_GOVERNANCE.md` Seção 27 (Planejamento Arquitetural → Blueprint → Schema → Repository+Validator → Service → API → UX Foundation → Frontend → Validação Funcional → Homologação do Product Owner → Encerramento do Módulo), operando acima do fluxo de 6 etapas da Seção 4. Nenhuma alteração estrutural nesta sprint — apenas confirmado, com a inconsistência das 3 Reviews agora tratada explicitamente (Fases 5–8) em vez de deixada implícita.
+
+### Fases 5–7 — Análise individual: Platform Review, Product Review, Demo Validation
+
+Análise completa registrada em `GOVERNANCE_DECISIONS.md` (GD-001, GD-002, GD-003), incluindo impactos positivos e negativos de cada recomendação. Resumo:
+
+- **Platform Review:** ainda faz sentido como capacidade, mas não como gate obrigatório de toda sprint — hoje não há alvo concreto (single-tenant). Recomendação: **tornar opcional**.
+- **Product Review:** já está coberto, na prática, pela Homologação do Product Owner — manter as duas como gates formalmente distintos e obrigatórios viola a Recomendação Arquitetural de "evitar duplicidade entre etapas de governança". Recomendação: **fundir**.
+- **Demo Validation:** não é obrigatória em toda sprint por propósito original (era para demos/releases) nem executável hoje (sem dado real de demo). Recomendação: **tornar opcional / mover para releases**.
+
+`PROJECT_GOVERNANCE.md` Seções 16.4, 16.5, 16.6 receberam uma nota inline apontando para `GOVERNANCE_DECISIONS.md` — o texto normativo de cada seção **não foi alterado**, permanece válido até decisão do Product Owner.
+
+### Fase 8 — Recomendação oficial
+
+Três recomendações fundamentadas registradas em `GOVERNANCE_DECISIONS.md` como `🟡 Pendente`, aguardando aprovação, rejeição ou adiamento explícito do Product Owner. **Nenhuma decisão foi implementada automaticamente**, conforme exigido pela Ordem de Missão. Se aprovadas, cada uma será promovida a ADR formal em `CLAUDE.md`.
+
+### Fase 9 — Mapa de Governança
+
+Nova Seção 6 em `QUALITY_GUIDELINES.md` — mapa de ~18 documentos de governança/arquitetura com responsabilidade, proprietário, quando atualizar, dependências e documentos relacionados de cada um. Nenhum documento de processo/arquitetura foi removido — o mapa apenas organiza o que já existe.
+
+### Documentos criados
+
+- `GOVERNANCE_DECISIONS.md` — rastreador de decisões metodológicas pendentes (GD-001 a GD-004), distinto de `CLAUDE.md` (só registra decisões já tomadas) e de `CHANGELOG.md` (narrativa de execução).
+
+### Documentos atualizados
+
+- `QUALITY_GUIDELINES.md` — Seção 6 "Mapa de Governança" acrescentada.
+- `PROJECT_GOVERNANCE.md` — notas inline nas Seções 16.4/16.5/16.6 apontando para `GOVERNANCE_DECISIONS.md`, sem alterar o texto normativo de nenhuma das três.
+- `PLAN.md` — linha da Sprint 2.I.1 (Governança) adicionada, com o achado de colisão de numeração registrado explicitamente.
+
+### Confirmação explícita (Critério de Sucesso da Ordem de Missão)
+
+- ✅ Governança auditada (Fases 1–2)
+- ✅ Processos classificados, nenhum sem justificativa técnica (Fase 3)
+- ✅ Recomendações fundamentadas apresentadas, com impactos positivos e negativos (Fases 5–8)
+- ✅ Nenhum processo removido sem justificativa — os três com uso zero permanecem documentados como estão, com nota, não removidos
+- ✅ Product Owner possui informação suficiente para decidir o ciclo oficial de governança (`GOVERNANCE_DECISIONS.md` GD-001 a GD-004)
+- ⛔ Aguardando decisão do Product Owner sobre GD-001/GD-002/GD-003/GD-004 antes de qualquer promoção a ADR
+
+---
+
+## [Sprint 2.I.0] — 2026-07-20 — Consolidação da Metodologia de Desenvolvimento do ERP
+
+**Tipo:** Sprint Oficial de Governança Arquitetural. Nenhuma funcionalidade do sistema implementada — consolidação de documentação, processos e padrões de qualidade a partir da retrospectiva do Módulo 2.H (Embalagens, Sprints 2.H.0–2.H.7, primeiro módulo a percorrer o ciclo completo).
+
+### Retrospectiva do Módulo 2.H (Fase 1)
+
+**O que funcionou muito bem:**
+- Auditoria obrigatória antes de codificar em toda sprint — encontrou repetidamente achados reais, não hipotéticos: o conflito Packaging↔Recipe vs Product (2.H.0, resolvido como ADR-014), a divergência de padrão `ProductRecipe` (lista) vs `RecipeIngredient` (item) (2.H.2/2.H.3), a incompatibilidade do `RecipeLinker` embutido com a API item a item (2.H.5/2.H.6)
+- Camadas estritamente separadas por sprint, com escopo negativo explícito ("NÃO contempla X") — permitiu validação incremental em vez de descobrir erros só no fim
+- Validação funcional real em 3 momentos distintos e complementares (API crua na 2.H.4, UI completa na 2.H.6, ótica de negócio na 2.H.7) — cada uma achou algo diferente (bug de pluralização real na 2.H.6; linguagem técnica vazando pra UI na 2.H.7)
+- `AskUserQuestion` no momento certo (decisão Packaging↔Product vs Recipe) — resolvida antes de qualquer schema ser escrito, não depois
+- Toda divergência de precedente registrada com "alternativa considerada e descartada" em vez de copiada às cegas ou decidida silenciosamente
+
+**O que gerou retrabalho:**
+- A mensagem sobre a Regra 11 vazou linguagem técnica interna ("pendência conhecida do módulo") para uma tela de negócio, corrigida só na 2.H.7 — decisões de escopo técnico precisam de tradução deliberada para comunicação de usuário, não é automático
+- Um bug de pluralização real só foi pego na Validação Funcional (2.H.6), não em nenhuma camada anterior — reforça que `tsc`/`lint`/`build` limpos não substituem validação funcional real
+- Um fork de homologação retornou um resultado inválido na primeira tentativa (interpretou mal a própria tarefa) — precisou ser relançado com instruções mais diretivas; risco operacional de orquestração, não do módulo em si
+
+**Quais decisões reduziram riscos:**
+- Nunca alterar Service/Repository/Validator/API depois de homologados — deu estabilidade real: Frontend (2.H.6) e Homologação (2.H.7) nunca precisaram "voltar" para consertar uma camada anterior
+- Confirmar por evidência real (introspecção de banco, testes HTTP reais, Playwright real) em vez de assumir sucesso — em nenhum momento uma sprint declarou pronto só com base em "o código parece certo"
+
+**Documentos fundamentais:** `MODULE_2H_PLANNING.md` (consultado em todas as 7 sprints seguintes), `MODULE_2H_UX_FOUNDATION.md` (usado ponto a ponto na 2.H.6), `CLAUDE.md`/ADR-014 (referência de autoridade final), `CHANGELOG.md` (registro vivo de auditoria, lido de volta constantemente).
+
+**Documentos que perderam utilidade:** nenhum criado e descartado durante o ciclo — mas `EPICO_2_PLANEJAMENTO.md` (planejamento original do Módulo 5/Embalagens, anterior à ADR-014) ficou tecnicamente obsoleto no relacionamento Packaging↔Recipe, sem correção retroativa (fora do escopo da própria ADR-014) — sintoma de que planejamento muito antecipado tende a divergir da implementação final sem um mecanismo de "supersedido por" visível.
+
+### Metodologia oficial consolidada (Fase 2)
+
+Nova **Seção 27** em `PROJECT_GOVERNANCE.md` — "Fluxo Oficial de Desenvolvimento de Módulo", 11 etapas (Planejamento Arquitetural → Blueprint → Schema → Repository+Validator → Service → API → UX Foundation → Frontend → Validação Funcional → Homologação do Product Owner → Encerramento do Módulo), cada uma com objetivo/entrada/saída/critério de sucesso e Skill/Seção relacionada. Opera **acima** do fluxo de 6 etapas já existente na Seção 4 (que não é substituído — cada etapa acima é, internamente, uma ou mais Sprints Oficiais que seguem a Seção 4). Formaliza a distinção entre Validação Técnica, Validação Funcional e Homologação do Product Owner (Recomendação Arquitetural #4) — nenhuma substitui outra.
+
+### QUALITY_GUIDELINES.md (Fase 3)
+
+Documento novo criado — companion operacional da Seção 27, explicitamente desenhado para **referenciar, não duplicar** `PROJECT_GOVERNANCE.md` e as Skills de camada já existentes (`schema-pattern`/`repository-pattern`/`api-pattern`/`frontend-pattern`). Contém: classificação oficial de achados (Bug/Backlog/Evolução/Dívida Técnica/Decisão Arquitetural — Fase 3 da Ordem de Missão), mapeada explicitamente para a classificação de auditoria de 3 categorias já existente (`PROJECT_GOVERNANCE.md` Seção 24, Inconsistência/Observação Técnica/Melhoria Futura) sem substituí-la; padrões de qualidade obrigatórios (build/lint/tsc/prisma/Playwright, evidências, critério mínimo de aprovação); padrão de Homologação (Homologação Técnica → Validação Funcional → Homologação do Product Owner → Encerramento, responsabilidades de cada etapa).
+
+### Checklists oficiais (Fase 4)
+
+10 checklists criados em `QUALITY_GUIDELINES.md`: Blueprint, Schema, Repository + Validator, Service, API, UX Foundation, Frontend, Validação Funcional, Homologação, Encerramento do Módulo. Onde já existe Skill dedicada da camada, o checklist é propositalmente curto (a Skill é o "como", o checklist é o "está pronto?").
+
+### Padrões de documentação — auditoria de governança (Fase 5)
+
+Auditados os ~30 documentos de governança/arquitetura da raiz do projeto.
+
+**Achado crítico — documento faltando, corrigido nesta sprint:** todo módulo anterior (2.D, 2.E, 2.G, 2.I, 2.J) produziu um `MODULE_X_CLOSURE.md` dedicado no encerramento; o Módulo 2.H foi o único que não — seu encerramento (Sprint 2.H.7) ficou registrado só dentro de `CHANGELOG.md`. **`MODULE_2H_CLOSURE.md` criado retroativamente nesta sprint**, sem alterar nenhuma decisão já tomada nas Sprints 2.H.0–2.H.7. A etapa "Encerramento do Módulo" (Seção 27) passa a exigir esse documento explicitamente, fechando a lacuna para módulos futuros.
+
+**Achado crítico — documento sobreposto, registrado, não resolvido unilateralmente:** `ERP_DEVELOPMENT_WORKFLOW.md` (e as ADR-006/007/008 que o originaram) documentam `Backend → API → Frontend → Platform Review → Product Review → Demo Validation → QA → Encerramento` como o fluxo oficial — **nenhuma das etapas Platform Review/Product Review/Demo Validation foi executada em nenhuma das Sprints 2.H.1–2.H.7**, todas seguiram exatamente o escopo declarado em cada Ordem de Missão recebida, que não as incluía. Isto é uma divergência real entre processo documentado e prática recente. Seguindo o mesmo padrão de transparência já usado na ADR-009 (que não escolheu um esquema de estados "vencedor" entre os já existentes), **esta sprint não resolve essa divergência unilateralmente** — apenas a registra, deixando a decisão de reconciliação (revogar, tornar opcional, ou exigir retroativamente) para o Product Owner.
+
+**Outros achados (não bloqueantes):**
+- `EPICO_1.md`/`EPICO_2_PLANEJAMENTO.md`: registros históricos de encerramento/planejamento de época — não são documentos de processo vivo, não precisam de atualização contínua. `EPICO_2_PLANEJAMENTO.md` mantém a Seção "Módulo 5 — Embalagens" com o relacionamento Packaging↔Recipe já superado pela ADR-014 (achado já conhecido desde a Sprint 2.H.0, fora do escopo de correção desta ADR)
+- `INFRA_VALIDATION.md`: snapshot pontual da Sprint 0.5, superseded na prática pelas Sprints I.1–I.3 (infraestrutura mais recente), mas é registro histórico, não documento vivo
+- `VISION.md` vs `ERP_PRODUCT_VISION.md`: não há sobreposição de conteúdo (visão estratégica de longo prazo vs. visão de produto SaaS/plataforma), mas os nomes são próximos o suficiente para gerar confusão — registrado como sugestão de nota clarificadora, não implementada
+- `MODULE_2E_UX_REVIEW.md`: confirma que "UX Foundation/Review" já era um passo recorrente desde a Sprint 2.E.6 — a Seção 27 é uma generalização retroativa de um padrão que já vinha se repetindo, não uma invenção do zero
+- `DEMO_ENVIRONMENT.md`/`DEMO_DATASET.md`/`DEMO_GUIDE.md`: trio bem desenhado, sem sobreposição entre si nem com o novo fluxo de módulo
+- `MENU_STRUCTURE.md`/`SCREENS.md`: já registrados como desatualizados desde a Sprint P1 (Sprint 2.H.7), reafirmado aqui — fora do escopo desta sprint de metodologia
+
+**Resposta à pergunta central da Fase 5:** não existia, em nenhum documento, um fluxo de módulo já formalizado no nível Blueprint→Schema→...→Encerramento antes desta sprint — `ERP_DEVELOPMENT_WORKFLOW.md` cobre um nível abaixo (uma Ordem de Missão isolada). Não há duplicação a evitar na criação da Seção 27, mas os 2 achados críticos acima (documento faltando, documento sobreposto) exigiram ação/registro explícitos.
+
+### Padrões de qualidade (Fase 6) e Padrão de Homologação (Fase 7)
+
+Ambos documentados em `QUALITY_GUIDELINES.md` Seções 2 e 3 (ver acima) — build/lint/tsc/prisma/Playwright obrigatórios por sprint com código, evidências obrigatórias registradas em `CHANGELOG.md`, critério mínimo de aprovação (0 erros em todas as verificações aplicáveis). Homologação Técnica → Validação Funcional → Homologação do Product Owner → Encerramento, com responsabilidade e o que cada etapa confirma/não confirma explicitados.
+
+### Revisão crítica (Fase 8)
+
+- **A metodologia ficou simples?** Relativamente — 11 etapas é um número real, não inflado (cada uma pegou pelo menos um achado real específico dela durante o ciclo 2.H). "Simples" aqui significa "cada etapa tem uma responsabilidade sem ambiguidade", não "rápido" — 11 sprints por módulo é um custo real de coordenação, reconhecido, não escondido.
+- **Existe excesso de burocracia?** Achado real, já registrado acima (Fase 5): Platform/Product/Demo Review documentados mas nunca executados no ciclo 2.H — pode ser burocracia que a prática já abandonou informalmente, ou lacuna de processo. Não decidido aqui.
+- **Existe Sprint desnecessária?** Nenhuma das 11 etapas identificada como dispensável — todas pegaram achado real específico.
+- **Existe documentação redundante?** Nenhuma nova introduzida — `QUALITY_GUIDELINES.md` foi desenhado desde o início para referenciar, não duplicar, Skills e `PROJECT_GOVERNANCE.md` (ver Seção 1 do próprio documento). A única "redundância" encontrada era o oposto — uma lacuna (`MODULE_2H_CLOSURE.md`), já corrigida.
+- **Existe etapa que possa ser automatizada?** Sim — script único (`prisma generate`→`tsc`→`lint`→`build` em sequência, falha rápido no primeiro erro) registrado como recomendação, não implementado.
+- **Existe oportunidade de simplificação?** Considerada e descartada: combinar Schema e Repository+Validator numa sprint só para módulos pequenos — contradiz a disciplina "uma camada por vez" que funcionou bem em todo o ciclo 2.H; não implementada.
+
+### Documentos criados
+
+- `QUALITY_GUIDELINES.md`
+- `MODULE_2H_CLOSURE.md` (retroativo, fecha lacuna de encerramento do Módulo 2.H)
+
+### Documentos atualizados
+
+- `PROJECT_GOVERNANCE.md` — Seção 27 (Fluxo Oficial de Desenvolvimento de Módulo) adicionada; nota de rodapé de versão atualizada
+- `CLAUDE.md` — ADR-015 registrada na tabela "Decisões arquiteturais tomadas"
+- `PLAN.md` — linha do módulo 2.H atualizada (referência ao `MODULE_2H_CLOSURE.md`); nova linha de Sprint 2.I.0
+
+### Recomendações metodológicas (não implementadas nesta sprint)
+
+- Skill dedicada de Service (e de Validator isoladamente) — lacuna real confirmada: existem `schema-pattern`/`repository-pattern`/`api-pattern`/`frontend-pattern`, mas nenhuma cobre a camada Service com o mesmo nível de detalhe
+- Script único de validação técnica em sequência (automação, Fase 8/Recomendação #5 — registrada, não implementada)
+- Nota clarificando a diferença entre `VISION.md` e `ERP_PRODUCT_VISION.md` (nomes próximos, sem sobreposição de conteúdo)
+- Decisão do Product Owner sobre Platform Review/Product Review/Demo Validation (executar retroativamente, tornar opcional, ou revogar formalmente)
+
+### Confirmações de escopo
+
+| Item | Status |
+|------|--------|
+| Funcionalidade do sistema implementada | ❌ Não |
+| Metodologia oficial documentada | ✅ Sim — `PROJECT_GOVERNANCE.md` Seção 27 |
+| `QUALITY_GUIDELINES.md` criado | ✅ Sim |
+| Checklists reutilizáveis criados | ✅ Sim — 10 |
+| Processo oficial atualizado | ✅ Sim |
+| ERP preparado para os próximos módulos | ✅ Sim |
+
+### Próximo passo
+
+ERP pronto para iniciar o próximo módulo do roadmap (`PLAN.md`) seguindo integralmente a metodologia consolidada nesta sprint, mediante nova Ordem de Missão. Decisão pendente do Product Owner sobre a reconciliação Platform/Product/Demo Review (achado da Fase 5).
+
+---
+
+## [Sprint 2.H.7] — 2026-07-20 — Homologação do Product Owner — Cadastro de Embalagens
+
+**Tipo:** Sprint Oficial de Homologação. Nenhuma funcionalidade nova — apenas 1 correção pontual de texto decorrente da própria homologação (Fase 2), sem alteração de escopo funcional.
+
+### Revisão documental (Fase 1)
+
+Confrontados `MODULE_2H_PLANNING.md`, `MODULE_2H_UX_FOUNDATION.md`, `REGRAS_NEGOCIO.md` e o relatório da Sprint 2.H.6 contra a implementação final — todas as decisões arquiteturais (ADR-014), as 13 regras de negócio do blueprint e as 5 telas da UX Foundation estão refletidas exatamente como especificado.
+
+**Achado (documentação desatualizada, fora do escopo desta sprint):** `MENU_STRUCTURE.md` e `SCREENS.md` (ambos produzidos na Sprint P1, 29/06/2026) nunca foram atualizados para nenhum módulo implementado desde então — não é uma lacuna específica de Embalagens, é um débito documental pré-existente e amplo (afeta também Fornecedores/Ingredientes/Produtos/Receitas, todos já encerrados, ainda listados como "🔲 Planejado" com rotas desatualizadas nesses dois documentos). Corrigir isso exigiria tocar dezenas de módulos já encerrados — fora do escopo de "correções pontuais" desta sprint (Recomendação #2: não ampliar escopo). Registrado como recomendação de uma sprint de documentação dedicada, não corrigido aqui.
+
+### Homologação funcional — ótica do usuário (Fase 2)
+
+Executada via Playwright, servidor de desenvolvimento local, navegação real — **não repetição dos 27 testes técnicos já aprovados na Sprint 2.H.6**, e sim avaliação qualitativa de facilidade de uso, clareza de mensagens, coerência de nomes e comportamento esperado, como usuária de negócio (não técnica).
+
+| # | Fluxo avaliado | Resultado |
+|---|---|---|
+| 1 | Item "Embalagens" no hub `/admin` | ✅ Aprovado — ícone e posição fazem sentido ao lado de Fornecedores/Receitas |
+| 2 | Lista de Embalagens (StatCards, nomes de botão) | ✅ Aprovado com ressalva (ver abaixo) |
+| 3 | Formulário de criação + mensagens de erro | ✅ Aprovado — linguagem simples ("Nome é obrigatório.") |
+| 4 | Detalhe da embalagem | ✅ Aprovado — narrativa coerente, nada redundante |
+| 5 | Edição de custo + Histórico de Preços | ✅ Aprovado — atualização compreensível, com data |
+| 6 | Seção "Embalagens" no detalhe do Produto | 🟡 Aprovado com ressalva — corrigida nesta sprint (ver abaixo) |
+| 7 | Vincular embalagem a produto | ✅ Aprovado — select já mostra o preço de cada opção |
+| 8 | "Usado em N produtos" | ✅ Aprovado — singular/plural corretos, link certo |
+| 9 | Confirmação de desativação | ✅ Aprovado — consequência explicada com clareza |
+| 10 | Consistência visual com o resto do sistema | ✅ Aprovado — mesma linguagem visual/interação; 0 erros de console |
+
+**Nenhum defeito bloqueante encontrado.**
+
+### Ajuste realizado (decorrente da própria homologação, Fase 2)
+
+Mensagem em `/admin/produtos/[id]/page.tsx` usava linguagem técnica interna ("ver pendência conhecida do módulo"), pouco natural para o dono do negócio. Reescrita para `"Custo ainda não inclui o valor das embalagens — isso será somado em uma atualização futura."`. Recompilado (`tsc`/`lint`/`build` limpos após o ajuste).
+
+### Validação do negócio (Fase 3)
+
+Confirmadas as 13 regras do blueprint (`MODULE_2H_PLANNING.md` Seção 3) contra a implementação:
+
+| Regra | Status |
+|---|---|
+| 1–10, 12, 13 | ✅ Entregues integralmente (definição de embalagem, fornecedor único FK, composição via múltiplos vínculos, custo direto sem conversão, histórico de preço, estoque inteiro com alerta, embalagem inativa bloqueada em novo vínculo, N:N com produtos, quantidade sempre inteira, exclusão de categoria bloqueada por uso/`Packaging` nunca hard-delete, zero-ou-mais embalagens por produto, nenhuma relação com `Recipe`) |
+| **11** | 🔲 **Pendência confirmada e mantida deliberadamente fora do escopo** — `Product.costPrice` ainda não soma o custo de `ProductPackaging`; reconfirmado nesta sprint (StatCard "Custo *" com nota explicativa reescrita, ver ajuste acima) |
+
+### Revisão de qualidade (Fase 4)
+
+Consistência visual, aderência ao Design System, acessibilidade básica e responsividade já confirmadas tecnicamente na Sprint 2.H.6 (27/27) — reconfirmadas nesta sprint sob ótica qualitativa pela homologação funcional (item 10 acima): "mesma linguagem visual/interação de Fornecedores/Receitas". Desempenho percebido: navegação fluida em todos os 10 passos do roteiro, sem travamentos observados.
+
+### Checklist final (Fase 5)
+
+- **Existe funcionalidade faltante?** Não, em relação ao escopo declarado do blueprint (Regra 11 é pendência conhecida e deliberada, não uma funcionalidade faltante por omissão).
+- **Existe comportamento inesperado?** Não.
+- **Existe melhoria imprescindível antes da liberação?** Não — a única melhoria identificada (linguagem da nota sobre custo) já foi corrigida nesta própria sprint.
+- **Existe documentação desatualizada?** Sim — `MENU_STRUCTURE.md`/`SCREENS.md`, mas é um débito pré-existente e amplo (não específico de Embalagens), registrado como recomendação, não bloqueante para o encerramento deste módulo.
+- **Existe débito técnico que impeça o encerramento?** Não — a Regra 11 é uma decisão de escopo já registrada e aprovada (não um débito acidental), e o débito de `MENU_STRUCTURE.md`/`SCREENS.md` é anterior a este módulo e não específico dele.
+
+### Checklist de qualidade reutilizável (Recomendação #5)
+
+Padrão consistente observado nesta e nas homologações anteriores (Sprint I.3, para 2.D/2.G/2.I/2.J) — registrado para reutilização em futuras homologações de módulo:
+
+1. **Revisão documental:** blueprint × regras de negócio × implementação final, achado explícito de qualquer divergência
+2. **Homologação funcional:** navegação real (não simulada) sob ótica do usuário — clareza, nomes, mensagens — distinta e complementar à validação técnica já feita na sprint de Frontend
+3. **Validação do negócio:** checklist regra-a-regra do blueprint, com status explícito por regra (não um "sim/não" agregado)
+4. **Revisão de qualidade:** consistência visual, Design System, acessibilidade, responsividade, desempenho percebido
+5. **Checklist final de 5 perguntas:** funcionalidade faltante / comportamento inesperado / melhoria imprescindível / documentação desatualizada / débito técnico bloqueante — só os dois últimos podem gerar pendência registrada sem bloquear o encerramento; os três primeiros, se positivos, bloqueiam
+
+### Documentação
+
+- `PLAN.md` — linha do módulo 2.H atualizada com o resultado da homologação e o encerramento oficial
+- Nenhuma ADR nova — nenhuma decisão arquitetural nova nesta sprint
+
+### Pendências conhecidas (registradas, não bloqueantes)
+
+- **Regra 11** — `Product.costPrice` não inclui custo de embalagem — decisão de escopo já registrada (Sprints 2.H.3/2.H.4/2.H.6), não um defeito
+- **`MENU_STRUCTURE.md`/`SCREENS.md`** desatualizados desde a Sprint P1 — débito pré-existente, amplo, não específico deste módulo — candidato a uma sprint de documentação dedicada
+- **Melhorias de UX não-bloqueantes** (Fase 2): tooltip/nota explicando por que "Estoque baixo" no `StatCard` só conta embalagens ativas — candidato a refinamento futuro
+
+### Confirmações de escopo
+
+| Item | Status |
+|------|--------|
+| Nova funcionalidade implementada | ❌ Não |
+| Escopo ampliado | ❌ Não |
+| Correção pontual decorrente da homologação | ✅ Sim (1 — linguagem de mensagem) |
+| Regra 11 mantida fora do escopo | ✅ Sim |
+
+### Decisão final
+
+**Módulo Cadastro de Embalagens (2.H) homologado pelo Product Owner e oficialmente encerrado.** Nenhum defeito bloqueante. Pendências registradas (Regra 11, `MENU_STRUCTURE.md`/`SCREENS.md`) não impedem o encerramento — são decisões de escopo já aprovadas ou débito documental pré-existente e não específico deste módulo.
+
+---
+
+## [Sprint 2.H.6] — 2026-07-20 — Frontend + Validação Funcional — Cadastro de Embalagens — **✅ APROVADA, HOMOLOGADA TECNICAMENTE E ENCERRADA (aceite do Product Owner em 20/07/2026)**
+
+**Tipo:** Sprint Oficial de Implementação de Frontend + Validação Funcional obrigatória. Nenhuma alteração de domínio, Service, Repository, Validator ou API — nem a implementação da Regra 11, conforme escopo explícito da Ordem de Missão.
+
+### Auditoria do Frontend existente (Fase 1)
+
+Revisados integralmente `fornecedores/page.tsx` (referência — `PageContainer`+`ResponsiveGrid`, paginação server-side, `StatCard`×3, `FilterChips`, modal único create/edit), `ingredientes/page.tsx` (listagem client-side, filtro "somente estoque baixo" via checkbox, sem `StatCard`), `receitas/page.tsx`+`receitas/[id]/page.tsx` (card da lista é `href` para detalhe, sem botão Editar inline; itens gerenciados item a item na página de detalhe com `AddItemModal`/`ItemCard`/`ConfirmRemoveItemModal`), `produtos/page.tsx` (modal único com `RecipeLinker` embutido — lista dinâmica de linhas dentro do próprio formulário, **sem página de detalhe**).
+
+**Achado crítico:** a API de `ProductPackaging` (2.H.3/2.H.4, item a item) é incompatível com o padrão de `ProductRecipe` (lista embutida no formulário, sem repository/endpoint próprio) já usado por Produtos. Resolvido conforme já decidido na Sprint 2.H.5: criadas `/admin/produtos/[id]` e `/admin/embalagens/[id]`, mirror do padrão de item a item já usado em `receitas/[id]`.
+
+### Telas implementadas (Fase 2/3)
+
+| Tela | Arquivo | Mirror de |
+|---|---|---|
+| Lista de Embalagens | `src/app/admin/embalagens/page.tsx` | `fornecedores/page.tsx` (paginação, `StatCard`, `FilterChips`) + `ingredientes/page.tsx` (checkbox "somente estoque baixo") |
+| Categorias de Embalagem | `src/app/admin/embalagens/categorias/page.tsx` | `ingredientes/categorias/page.tsx`, mas já nascendo em `PageContainer` (não herda o débito técnico da Sprint G.8) |
+| Detalhe da Embalagem (nova) | `src/app/admin/embalagens/[id]/page.tsx` | `receitas/[id]/page.tsx` (card de resumo, painéis somente leitura) |
+| Detalhe do Produto (nova) | `src/app/admin/produtos/[id]/page.tsx` | `receitas/[id]/page.tsx` (`AddItemModal`/`ItemCard`/editar quantidade/`ConfirmRemoveItemModal`, adaptado para `ProductPackaging`) |
+| Integração na lista de Produtos | `src/app/admin/produtos/page.tsx` (editado, aditivo) | `href` no `EntityCard` (mirror de `receitas/page.tsx`) + reabertura do modal de edição via `?edit=id` (mirror de `/?cart=open`, já documentado em `CLAUDE.md`) |
+| Item "Embalagens" no hub | `src/app/admin/page.tsx` (editado, aditivo) | Entrada adicionada ao array `MODULES` |
+
+**3 clientes de API novos:** `src/lib/api/packagingCategoryApi.ts`, `src/lib/api/packagingApi.ts`, `src/lib/api/productPackagingApi.ts` — todos mirror do padrão `request<T>`/`ApiRequestError` já usado em `supplierApi.ts`/`recipeApi.ts`.
+
+### Componentes reutilizados (Fase 3/5)
+
+`PageContainer`, `ResponsiveGrid`, `StatCard`, `SearchBar`, `StatusBadge`, `LoadingState` (só na lista — nas 2 páginas de detalhe, skeleton local, mesma exceção já documentada em `MODULE_G8_CLOSURE.md` para layout heterogêneo), `ErrorState`, `EmptyState`, `FilterChips`, `ConfirmDialog`, `EntityCard`, `EntityForm`, `Field`/`Section` (`FormPrimitives`). **Nenhum componente novo criado.** Duas exceções de markup local (card de resumo das páginas de detalhe, `ItemCard`/`PackagingLinkCard`) — mirror direto do precedente já aceito em `receitas/[id]/page.tsx`, não uma exceção nova.
+
+### Integrações com APIs (Fase 4)
+
+Todas as 5 telas conectadas às 10 rotas homologadas na Sprint 2.H.4 — paginação, busca com debounce 300ms, filtros (status/categoria/estoque baixo), ordenação, tratamento de erro por `instanceof ApiRequestError` e código (`DUPLICATE_NAME`, `CATEGORY_HAS_PACKAGINGS`, `INACTIVE_PACKAGING`, `DUPLICATE_PACKAGING`), feedback visual via `ValidationSummary` (toast). Nenhuma regra de negócio no Frontend — toda validação estrutural client-side espelha exatamente a validação já existente no Validator (mesmos limites, mesmas mensagens).
+
+### Fluxos implementados (Fase 5)
+
+CRUD completo de `Packaging`/`PackagingCategory`, Ativar/Desativar, Histórico de Preços (somente leitura), vínculo `Product`↔`Packaging` item a item (adicionar/editar quantidade/remover), navegação entre as 5 telas. **"Editar Produto" reutiliza o modal já existente em `produtos/page.tsx`** — navega para `/admin/produtos?edit={id}`, que busca o produto pela API e abre o modal automaticamente, sem duplicar formulário ou lógica (Recomendação #5), confirmado na Validação Funcional (cenário 16).
+
+### Revisão de reutilização (Fase 6)
+
+- **Componente duplicado?** Não.
+- **Hook duplicado?** Não — nenhum hook customizado foi criado; todas as telas usam `useState`/`useEffect`/`useRef` diretamente, mesmo padrão dos módulos irmãos.
+- **Lógica duplicada?** Não.
+- **Oportunidade de extração?** Registrada, não executada: as 5 telas repetem o padrão `toastTimer`/`showToast` já duplicado em todos os módulos admin do ERP (não introduzido por esta sprint) — candidato a um hook `useAdminToast` compartilhado, fora do escopo desta sprint.
+- **Oportunidade de reutilização?** Sim, já aplicada: `Field` de `FormPrimitives` reaproveitado em todos os formulários novos, nenhuma reimplementação.
+
+### Validação técnica (Fase 7)
+
+| Comando | Resultado |
+|---|---|
+| `npx prisma generate` | ✅ Prisma Client gerado |
+| `npx tsc --noEmit` | ✅ 0 erros |
+| `npm run lint` | ✅ 0 erros/avisos (1 aviso de `eslint-disable` desnecessário corrigido durante a sprint) |
+| `npm run build` | ✅ 0 erros — 4 páginas novas geradas (`/admin/embalagens`, `/admin/embalagens/categorias`, `/admin/embalagens/[id]`, `/admin/produtos/[id]`), nenhuma rota de API nova (as 10 já existem desde a Sprint 2.H.4). Corrigido durante a sprint: `useSearchParams()` sem `Suspense` em `produtos/page.tsx` quebrava o build de produção — envolvido em `<Suspense>`, mesma convenção já usada em `src/app/page.tsx` |
+
+### Validação Funcional — Playwright (Fase 8, obrigatória)
+
+Servidor de desenvolvimento local, login admin real, navegação real do início ao fim (sem simulação). **27/27 cenários aprovados:**
+
+| # | Cenário | Resultado |
+|---|---|---|
+| 1 | Cadastro de categoria | ✅ Toast de sucesso, categoria listada |
+| 2 | Edição de categoria | ✅ Nome atualizado |
+| 3 | Exclusão de categoria | ✅ Sem uso: excluída. Com uso: bloqueada com `409 CATEGORY_HAS_PACKAGINGS`, categoria permanece listada |
+| 4 | Cadastro de embalagem | ✅ Com categoria, custo, estoque, mínimo |
+| 5 | Edição de embalagem | ✅ Custo atualizado no card de resumo |
+| 6 | Ativação | ✅ `StatusBadge` muda para "Ativa" |
+| 7 | Desativação | ✅ `ConfirmDialog` obrigatório antes de desativar |
+| 8 | Pesquisa | ✅ Filtro por nome funcional |
+| 9 | Paginação | ✅ Ausente corretamente com < 12 itens (não é falha) |
+| 10 | Ordenação | ✅ Nome A-Z / Z-A invertendo a lista corretamente |
+| 11 | Filtros | ✅ Status, Categoria e "somente estoque baixo" funcionais |
+| 12 | Histórico de preços | ✅ 2+ entradas exibidas (criação + edição) |
+| 13 | Inclusão de histórico | ✅ Nova entrada aparece a cada alteração de custo |
+| 14 | Vínculo Produto ↔ Embalagem | ✅ Adicionado com quantidade, toast de sucesso |
+| 15 | Remoção do vínculo | ✅ Removido, `EmptyState` reaparece |
+| 16 | Navegação entre páginas | ✅ Lista→detalhe, "usado em N produtos"→produto, "Editar produto"→lista com modal reaberto automaticamente e pré-preenchido |
+| 17 | Estados de Loading | ✅ `aria-busy`/skeleton observados |
+| 18 | EmptyState | ✅ "Nenhuma embalagem encontrada" + busca sem resultado |
+| 19 | ErrorState | ✅ ID inexistente → "Embalagem não encontrada.", sem crash |
+| 20 | Mensagens de validação | ✅ Nome vazio + custo negativo simultâneos, nos campos certos |
+| 21 | Mensagens de sucesso | ✅ Toast em toda operação de escrita |
+| 22 | Responsividade | ✅ 390px, `scrollWidth === clientWidth` (sem overflow horizontal) em lista e detalhe |
+| 23 | Navegação por teclado | ✅ Foco automático no campo Nome ao abrir modal; `Escape` fecha |
+| 24 | Console sem erros | ✅ Só os 404/409 esperados dos próprios testes de erro; 0 erros de JavaScript/React |
+| 25 | Erros HTTP inesperados | ✅ Nenhum 500 observado |
+| 26 | Regra 11 inalterada | ✅ `costPrice` do produto permaneceu R$ 18,53 antes/depois de vincular e desvincular embalagem; aviso "Custo ainda não inclui embalagens vinculadas" visível |
+| 27 | Compatibilidade visual | ✅ Mesma paleta/componentes de Fornecedores/Receitas, por reuso integral (não inspeção visual isolada) |
+
+### Evidência de correção (Fase 8)
+
+**1 bug real encontrado durante a Validação Funcional:** pluralização incorreta no contador da lista de embalagens — `` `${total} embalagem${total !== 1 ? "ns" : ""}` `` produzia "embalagemns" no plural. Corrigido para `` `${total} embalage${total !== 1 ? "ns" : "m"}` `` (`src/app/admin/embalagens/page.tsx`). Recompilado (`tsc`/`lint`/`build` limpos) e reconfirmado via Playwright — "3 embalagens" exibido corretamente.
+
+### Revisão final (Fase 9)
+
+- **Diferença entre UX Foundation e implementação?** Nenhuma estrutural — as 5 telas seguem exatamente os wireframes da Sprint 2.H.5, incluindo a decisão de "Editar Produto" reabrir o modal existente via query string.
+- **Quebra do Design System?** Nenhuma.
+- **Comportamento inesperado?** O bug de pluralização (já corrigido) — nenhum outro.
+- **Melhoria de usabilidade identificada, não incorporada:** exibir a contagem "usado em N produtos" já no card da lista de embalagens (hoje só visível no detalhe) — registrada como recomendação para uma sprint futura de refinamento de UX.
+- **Oportunidade de simplificação:** hook `useAdminToast` compartilhado (ver Fase 6) — registrada, não implementada.
+
+### Documentação
+
+- `PLAN.md` — linha do módulo 2.H atualizada com o resultado completo da Validação Funcional
+- Nenhuma ADR nova — nenhuma decisão arquitetural estrutural nova; a criação das 2 páginas de detalhe já havia sido decidida e registrada na Sprint 2.H.5
+
+### Confirmações de escopo
+
+| Item | Status |
+|------|--------|
+| Regra de negócio implementada no Frontend | ❌ Não |
+| Design System reutilizado integralmente | ✅ Sim |
+| Nenhuma API alterada | ✅ Sim |
+| Nenhum Service alterado | ✅ Sim |
+| Nenhum Repository alterado | ✅ Sim |
+| Regra 11 preservada | ✅ Sim — reconfirmada por teste real |
+| Validação Funcional concluída com sucesso | ✅ Sim — 27/27 |
+
+### Próximo passo
+
+Módulo pronto para a Homologação do Product Owner (Sprint 2.H.7), mediante nova Ordem de Missão.
+
+---
+
+## [Sprint 2.H.5] — 2026-07-20 — UX Foundation + Wireframes — Cadastro de Embalagens — **✅ APROVADA, HOMOLOGADA E ENCERRADA (aceite do Product Owner expresso no contexto da Ordem de Missão da Sprint 2.H.6: "As Sprints 2.H.0 até 2.H.5 foram homologadas", 20/07/2026)**
+
+**Tipo:** Sprint Oficial de UX e Arquitetura de Interface. Nenhum componente React implementado, conforme escopo da Ordem de Missão.
+
+### Achado crítico (Fase 1)
+
+A API de `ProductPackaging` (Sprints 2.H.3/2.H.4, já homologadas) foi construída **item a item** (`POST/PATCH/DELETE /api/admin/products/[id]/packagings/[linkId]`, mirror de `RecipeIngredient`). O Frontend de Produtos hoje, porém, gerencia `ProductRecipe` como **lista embutida no próprio formulário** (`RecipeLinker` em `produtos/page.tsx`, substituição completa a cada `PATCH`) e **não tem página de detalhe** (`/admin/produtos/[id]` não existe). Essas duas formas são incompatíveis — o `RecipeLinker` não pode ser reaproveitado para embalagens sem reescrever a API já homologada.
+
+**Decisão:** criar duas páginas de detalhe novas — `/admin/produtos/[id]` (hospeda "Embalagens do Produto", item a item, mirror de `receitas/[id]`) e `/admin/embalagens/[id]` (hospeda "Histórico de Preços" e "Usado em N produtos", os dois sub-recursos só de `Packaging`) — em vez de empilhar mais modais sobre as páginas de lista já existentes (mirror de Fornecedores/Ingredientes). Ambas nascem em `PageContainer` (Recomendação Arquitetural #2 desta sprint), diferente do layout legado `max-w-app` que `receitas/[id]` ainda usa (débito já registrado em `MODULE_G8_CLOSURE.md`, não corrigido nesta sprint — fora de escopo).
+
+### Auditoria das interfaces existentes (Fase 1)
+
+Revisadas por completo `fornecedores/page.tsx`, `ingredientes/page.tsx`, `receitas/page.tsx` + `receitas/[id]/page.tsx`, `produtos/page.tsx`. Matriz comparativa completa em `MODULE_2H_UX_FOUNDATION.md` Seção 2. Achados adicionais:
+- `Ingredient` tem endpoint de histórico de preço (`GET /api/admin/ingredients/[id]/price-history`) mas **nenhuma tela do ERP o consome até hoje** — confirmado por `grep`, zero ocorrências em `ingredientes/page.tsx`/`ingredientApi.ts`. Não é um bug desta sprint; registrado como contexto para a Tela "Histórico de Preços" de Embalagens, que precisou ser desenhada sem precedente de UI direto (só de API).
+- `produtos/page.tsx` não tem `StatCard` nem `Ingredient`; só `fornecedores/page.tsx` adotou a faixa de estatísticas até agora (Sprint 2.E.7) — Embalagens adota `StatCard`×3 (Total/Ativas/Estoque baixo), segundo módulo a fazê-lo.
+- `ingredientes/page.tsx` filtra "somente estoque baixo" via checkbox, 100% client-side — padrão direto reaproveitado para Embalagens.
+
+### Telas especificadas (Fase 2)
+
+5 telas: Lista de Embalagens (`/admin/embalagens`), Cadastro/Edição (modal), Categorias (`/admin/embalagens/categorias`), Detalhe da Embalagem (`/admin/embalagens/[id]`, nova), Detalhe do Produto (`/admin/produtos/[id]`, nova) — cada uma com objetivo/atores/entradas/saídas/ações documentados em `MODULE_2H_UX_FOUNDATION.md` Seção 3.
+
+### Wireframes (Fase 3)
+
+5 wireframes de baixa fidelidade (texto/ASCII) produzidos — `MODULE_2H_UX_FOUNDATION.md` Seção 4 — cada um indicando `PageContainer`/`ResponsiveGrid`/Toolbar/`SearchBar`/Filtros/`EntityForm`/`ConfirmDialog`/estados vazios/`StatusBadge`/`StatCard` conforme aplicável.
+
+### Estados da interface (Fase 4)
+
+Matriz completa (10 estados × 5 telas) em `MODULE_2H_UX_FOUNDATION.md` Seção 6. Confirmado: `LoadingState` compartilhado **não** se aplica às duas páginas de detalhe novas (layout heterogêneo — card de resumo + painéis, não uma grade homogênea), mesma exceção já documentada na Cartografia de Compatibilidade (`MODULE_G8_CLOSURE.md`) para `receitas/[id]`.
+
+### Reutilização do Design System (Fase 5)
+
+Matriz Tela × Componentes Compartilhados completa em `MODULE_2H_UX_FOUNDATION.md` Seção 7 — **nenhum componente novo criado**. Duas exceções de markup local justificadas (card de resumo da Tela 4, `ItemCard` da Tela 5) — ambas mirror direto do precedente já aceito em `receitas/[id]/page.tsx`, não uma exceção nova desta sprint.
+
+### Acessibilidade e responsividade (Fase 6)
+
+Revisadas ordem de foco, navegação por teclado, contraste, mensagens de erro e comportamento mobile — nenhuma exceção a `UX_GUIDELINES.md` Seções 14–16 necessária; tudo herdado dos componentes compartilhados já validados.
+
+### Validação de UX (Fase 7)
+
+- Fluxo desnecessário evitado: descartado um modal de "editar direto da lista" (mirror Fornecedores) em favor de navegação para a página de detalhe — mais consistente com os sub-recursos reais de Embalagem
+- Nenhum clique redundante — Duplicar/Ativar/Desativar continuam de um clique na lista, só Editar exige navegação
+- Nenhuma informação escondida — card da lista já mostra custo/estoque/categoria
+- Simplificação aplicada: seção "Receitas" da Tela 5 é somente leitura, não duplica o `RecipeLinker` já existente
+- Reutilização confirmada — Tela 3 e os painéis das Telas 4/5 reaproveitam 100% de `ingredientes/categorias`/`receitas/[id]`
+
+### Documentação
+
+- `MODULE_2H_UX_FOUNDATION.md` (novo) — documento completo desta sprint
+- `PLAN.md` — linha do módulo 2.H atualizada com o achado da divergência API×UI e a decisão de criar as 2 páginas de detalhe
+
+### Recomendações registradas (Fase 11 do documento, não incorporadas)
+
+Catálogo unificado de contratos de API (hoje espalhado por sprint em `CHANGELOG.md`); Skeleton fiel ao componente real para `LoadingState` (lacuna já conhecida, reforçada pelas 2 páginas de detalhe novas); painel "usado em N X" como componente compartilhado, se um segundo caso de uso real surgir.
+
+### Confirmações de escopo
+
+| Item | Status |
+|------|--------|
+| Implementação React realizada | ❌ Não |
+| Design System reutilizado integralmente | ✅ Sim |
+| Componente novo criado sem justificativa | ❌ Não |
+| Frontend completamente especificado para a Sprint 2.H.6 | ✅ Sim |
+
+### Próximo passo
+
+Módulo pronto para iniciar a Sprint 2.H.6 (Frontend), mediante nova Ordem de Missão — que precisará decidir explicitamente como a edição de Produto (hoje só via modal) convive com a nova página `/admin/produtos/[id]` (ex: botão "Editar produto" na Tela 5 reabre o mesmo modal existente, sem duplicar lógica).
+
+---
+
+## [Sprint 2.H.4] — 2026-07-20 — API REST — Cadastro de Embalagens — **✅ APROVADA, HOMOLOGADA E ENCERRADA (aceite do Product Owner em 20/07/2026)**
+
+**Tipo:** Sprint Oficial de Implementação — exclusivamente camada de API REST (Route Handlers), expondo os Services homologados na Sprint 2.H.3. Nenhum Frontend, componente, hook, Service, Repository ou Validator alterado, conforme escopo da Ordem de Missão.
+
+### Auditoria prévia (Fase 1)
+
+Revisadas as rotas de `suppliers` (CRUD simples), `ingredient-categories` (delete físico bloqueado), `ingredients/[id]/price-history` (sub-rota de leitura), `recipes/[id]/items`/`items/[itemId]` (item de junção aninhado) e `products` (listagem paginada com filtros).
+
+**Matriz comparativa:**
+
+| Módulo | Estrutura de pastas | Paginação | Filtros | Auth | Serialização de erro |
+|---|---|---|---|---|---|
+| `Supplier` | `/suppliers`, `/suppliers/[id]`, `/[id]/activate`, `/[id]/deactivate` | ✅ query string (`page`/`pageSize`/`orderBy`/`orderDirection`) | `search`, `active` | `requireAdmin()` em toda função | `{success:false, error:{code,message,details?}}` |
+| `IngredientCategory` | `/ingredient-categories`, `/[id]` | ❌ | ❌ | Idem | Idem — `DELETE` físico com `409 CATEGORY_HAS_INGREDIENTS` |
+| `Ingredient` | `/ingredients`, `/[id]`, `/[id]/activate`, `/[id]/deactivate`, `/[id]/price-history` (só `GET`) | ❌ (`listAll`) | ❌ | Idem | Idem |
+| `Recipe`/`RecipeIngredient` | `/recipes`, `/[id]`, `/[id]/activate`, `/[id]/deactivate`, `/[id]/items` (`POST`), `/[id]/items/[itemId]` (`PATCH`/`DELETE`) | ❌ | ❌ | Idem | Idem — operações de item retornam o **pai** recalculado |
+| `Product`/`ProductRecipe` | `/products`, `/[id]`, `/[id]/activate`, `/[id]/deactivate` (sem sub-rota de itens — `ProductRecipe` só via `PATCH` do produto inteiro) | ✅ query string (mesmo shape de Supplier + `categoryId`) | `search`, `categoryId`, `active` | Idem | Idem |
+
+**Confirmações de convenção, todas seguidas nesta sprint:** `requireAdmin()` sempre a primeira linha de cada handler; `try { body = await request.json() } catch { return invalidBody() }` antes de qualquer parse de payload; mapeamento de erro de domínio → HTTP via `instanceof`, na ordem `NotFound → ValidationFailed → InvalidReference → Conflict`; **nenhum uso de HTTP 422** em nenhuma rota do projeto (confirmado — `src/lib/http/responses.ts` não expõe esse helper; validação sempre 400) — não introduzido nesta sprint.
+
+### Matriz de contratos públicos (Fase 2/Recomendação #7)
+
+**`PackagingCategory`**
+
+| Rota | Método | Payload/Query | Sucesso | Erros |
+|---|---|---|---|---|
+| `/api/admin/packaging-categories` | `GET` | — | `200 PackagingCategory[]` | `401,403,500` |
+| `/api/admin/packaging-categories` | `POST` | `{name}` | `201 PackagingCategory` | `400 VALIDATION_ERROR`, `409 DUPLICATE_NAME`, `401,403,500` |
+| `/api/admin/packaging-categories/[id]` | `PATCH` | `{name?}` | `200 PackagingCategory` | `400,404,409 DUPLICATE_NAME,401,403,500` |
+| `/api/admin/packaging-categories/[id]` | `DELETE` | — | `200 {id}` | `404`, `409 CATEGORY_HAS_PACKAGINGS`, `401,403,500` |
+
+**`Packaging`**
+
+| Rota | Método | Payload/Query | Sucesso | Erros |
+|---|---|---|---|---|
+| `/api/admin/packagings` | `GET` | `page,pageSize,search,categoryId,active,orderBy,orderDirection` | `200 {items,total,page,pageSize}` | `401,403,500` |
+| `/api/admin/packagings` | `POST` | `{name,categoryId?,unitCost,stockQuantity?,minStock?,supplierId?}` | `201 Packaging` | `400`, `404` (categoria/fornecedor), `409 DUPLICATE_NAME`, `401,403,500` |
+| `/api/admin/packagings/[id]` | `GET` | — | `200 Packaging` | `404,401,403,500` |
+| `/api/admin/packagings/[id]` | `PATCH` | Parcial do acima | `200 Packaging` | `400,404,409,401,403,500` |
+| `/api/admin/packagings/[id]/activate` | `PATCH` | — | `200 Packaging` | `404,401,403,500` |
+| `/api/admin/packagings/[id]/deactivate` | `PATCH` | — | `200 Packaging` | `404,401,403,500` |
+| `/api/admin/packagings/[id]/price-history` | `GET` | — | `200 PackagingPriceHistory[]` | `404,401,403,500` |
+| `/api/admin/packagings/[id]/usage` | `GET` | — | `200 PackagingUsageDTO[]` | `404,401,403,500` |
+
+**`ProductPackaging`**
+
+| Rota | Método | Payload | Sucesso | Erros |
+|---|---|---|---|---|
+| `/api/admin/products/[id]/packagings` | `GET` | — | `200 ProductPackagingDTO[]` | `404` (produto), `401,403,500` |
+| `/api/admin/products/[id]/packagings` | `POST` | `{packagingId,quantity}` | `201 ProductPackagingDTO` | `400`, `404` (produto/embalagem), `409 INACTIVE_PACKAGING`/`DUPLICATE_PACKAGING`, `401,403,500` |
+| `/api/admin/products/[id]/packagings/[linkId]` | `PATCH` | `{quantity}` | `200 ProductPackagingDTO` | `400,404,401,403,500` |
+| `/api/admin/products/[id]/packagings/[linkId]` | `DELETE` | — | `200 {id}` | `404,401,403,500` |
+
+### Endpoints implementados (Fase 3)
+
+10 arquivos de rota, 16 handlers HTTP no total — todos limitados a: validar body (`invalidBody()` em JSON malformado), chamar Service, mapear resposta/erro, retornar status HTTP. Nenhuma regra de negócio, nenhuma query Prisma direta em nenhuma rota.
+
+### Tratamento de erros (Fase 4)
+
+Códigos usados: `400` (validação — `badRequest`/`invalidBody`), `401` (`requireAdmin`, não autenticado), `403` (`requireAdmin`, role ≠ ADMIN), `404` (`notFound`, referência inexistente), `409` (`conflict` — `DUPLICATE_NAME`, `CATEGORY_HAS_PACKAGINGS`, `INACTIVE_PACKAGING`, `DUPLICATE_PACKAGING`), `500` (`internalError`, fallback). **`422` deliberadamente não usado** — o projeto inteiro usa `400` para erro de validação (confirmado na auditoria da Fase 1; mesma decisão já registrada na Sprint 2.E.4 para o módulo Fornecedores). Nenhuma mensagem nova inventada — todas seguem o padrão `"{Entidade} não encontrado(a)."`/`"Já existe um(a) {entidade} com o nome \"{name}\"."` já usado nos módulos irmãos.
+
+### Revisão de contratos (Fase 5)
+
+- **Quebra de padrão?** Não — todas as 10 rotas seguem `requireAdmin()` → parse → Service → mapeamento de erro, na mesma ordem dos módulos irmãos
+- **Endpoint redundante? Encontrado e evitado antes da implementação:** o Service (2.H.3) expõe tanto `listActivePackagings()` (sem paginação) quanto `listPackagingsPaged()` (paginado); em vez de criar duas rotas (`/packagings` e `/packagings/active`), só `GET /api/admin/packagings` foi exposta — um futuro consumidor que precise de "só embalagens ativas, sem paginação visual" usa `?active=true&pageSize=<alto>` no mesmo endpoint, mesmo padrão que `Ingredient`/`Supplier` já resolvem sem endpoint duplicado
+- **Inconsistência de nomenclatura?** Não — `packaging-categories` (kebab-case, plural) segue exatamente `ingredient-categories`; `packagings`/`products/[id]/packagings` seguem `suppliers`/`recipes/[id]/items`
+- **Oportunidade de simplificação?** Nenhuma nova além da já registrada acima (endpoint redundante evitado)
+- **Endpoint que deveria ser interno?** Não — todas as 10 rotas correspondem a um caso de uso real do blueprint (`MODULE_2H_PLANNING.md` Seção 4/6.3), incluindo `/usage` (painel "Usado em N produtos")
+
+### Validação (Fase 6)
+
+| Comando | Resultado |
+|---|---|
+| `npx prisma generate` | ✅ Prisma Client gerado |
+| `npx tsc --noEmit` | ✅ 0 erros |
+| `npm run lint` | ✅ 0 erros/avisos |
+| `npm run build` | ✅ 40 rotas geradas (10 novas de Embalagens), 0 erros |
+| Testes manuais via Playwright MCP (servidor de dev local, login admin real, requisições `fetch()` autenticadas — nenhuma UI existe ainda) | ✅ **27/27 testes aprovados** |
+
+**Cobertura dos 27 testes:** criação/validação/duplicidade/listagem/edição de `PackagingCategory` (5); criação com categoria, criação com custo 0 sem categoria/fornecedor (confirma que custo 0 é aceito — regra do blueprint), criação inválida com dois erros simultâneos, paginação, busca por nome, filtro por categoria, busca por id, atualização de custo, histórico de preço (2 entradas: criação + atualização), ativar/desativar, não encontrado (12); vincular a produto real, vínculo duplicado, listar vínculos, atualizar quantidade, painel de uso, remover vínculo, vincular embalagem inativa (7); exclusão de categoria em uso (1); acesso sem autenticação → 401 (1); **verificação extra da pendência da Regra 11** — reconsultado o produto após vincular/desvincular embalagem: `costPrice` permaneceu inalterado e `ProductDTO` não tem campo `packagings`, confirmando que `productService.ts` genuinamente não foi tocado (1).
+
+### Documentação
+
+- `PLAN.md` — linha do módulo 2.H atualizada com a matriz de contratos referenciada e a pendência da Regra 11 mantida
+- Nenhuma ADR nova — nenhuma decisão arquitetural estrutural nova; a rota `/usage` e a decisão de não duplicar `/packagings/active` são decisões de contrato HTTP, não arquiteturais
+
+### Confirmações de escopo
+
+| Item | Status |
+|------|--------|
+| Regra de negócio implementada | ❌ Não |
+| Service alterado | ❌ Não |
+| Repository alterado | ❌ Não |
+| Contratos HTTP consistentes com o padrão do ERP | ✅ Sim |
+| Pendência da Regra 11 preservada | ✅ Sim — confirmada por teste real nesta sprint |
+
+### Próximo passo
+
+Módulo pronto para iniciar a Sprint 2.H.5 (UX Foundation), mediante nova Ordem de Missão.
+
+---
+
+## [Sprint 2.H.3] — 2026-07-20 — Service — Cadastro de Embalagens — **✅ APROVADA, HOMOLOGADA E ENCERRADA (aceite do Product Owner em 20/07/2026)**
+
+**Tipo:** Sprint Oficial de Implementação — exclusivamente camada Service (regras de negócio, orquestração de Repositories, validações funcionais). Nenhuma API, Frontend, Hook, Componente React ou Controller implementado, conforme escopo da Ordem de Missão.
+
+### Auditoria prévia (Fase 1)
+
+Revisados `supplierService.ts`, `ingredientCategoryService.ts`, `ingredientService.ts`, `recipeService.ts` e `productService.ts` por completo.
+
+**Matriz comparativa:**
+
+| Módulo | Responsabilidade | Transações | Tratamento de erros | Integração entre Repositories | Retorno |
+|---|---|---|---|---|---|
+| `Supplier` | CRUD simples, sem relação | Não usa | Classes de erro (`{X}NotFoundError`, `{X}ValidationFailedError`, `Duplicate{X}Error`) | Só `supplierRepository` | DTO com datas ISO string |
+| `IngredientCategory` | CRUD + delete físico bloqueado por uso | Não usa (checagem + delete não atômicos) | Idem | `ingredientCategoryRepository` + `countIngredientsByCategory` de `ingredientRepository` (contagem de uso vive no repository do **filho**, não do pai) | Tipo Prisma puro |
+| `Ingredient` | CRUD + histórico de preço, cross-ref (unidade/categoria) | Não usa (create/priceHistory não atômicos) | Idem + `Invalid{X}ReferenceError` para FK cruzada | `ingredientRepository` + leitura de `unitRepository`/`ingredientCategoryRepository` | DTO com campo derivado (`isLowStock`) |
+| `Recipe`/`RecipeIngredient` | CRUD da receita + itens (item a item: add/update/remove, cada um retorna o DTO do **pai** recalculado) | Não usa | Idem + erros de item (`{X}ItemNotFoundError`, `LastItemRemovalError`) | `recipeRepository` + `recipeIngredientRepository` + leitura de `ingredientRepository`/`unitRepository`/`unitConversionRepository` | DTO com custo sempre recalculado, nunca armazenado |
+| `Product`/`ProductRecipe` | CRUD do produto + receitas vinculadas (**lista completa substituída** a cada update, não item a item) | ✅ (`productRepository.updateProduct` usa `$transaction` — mas a transação vive no **Repository**, não no Service) | Idem | `productRepository` + **Service** `recipeService.getRecipeById` (não o repository de Recipe) para calcular `costPrice` | DTO com `costPrice`/`margin` calculados a cada leitura |
+
+**Achado-chave:** existem dois padrões legítimos e diferentes para "item de uma coleção aninhada" já convivendo no projeto — item a item (`RecipeIngredient`, com repository e operações próprias) vs. substituição em lote (`ProductRecipe`, sem repository próprio, nested write no repository do pai). A Sprint 2.H.2 já havia escolhido o padrão item a item para `productPackagingRepository.ts` (mirror de `recipeIngredientRepository.ts`); esta sprint manteve a mesma escolha no Service, por ter precedente de rota real (`/api/admin/recipes/[id]/items/[itemId]`) e por não exigir nenhuma alteração em `productRepository.ts`/`productService.ts` (módulo 2.J, encerrado). `validateProductPackagingsList` (Sprint 2.H.2, mirror de `ProductRecipe`) foi mantida no validator, não removida — documentada como alternativa disponível caso uma sprint futura prefira substituição em lote.
+
+### Matriz de classificação das regras (Fase 2)
+
+| # | Regra (resumo) | Validator | Repository | Service | Futuro módulo |
+|---|---|---|---|---|---|
+| 1 | Definição de embalagem (item físico, não matéria-prima) | — | — | — | Conceitual — só `REGRAS_NEGOCIO.md`, sem camada de código |
+| 2 | Fornecedor único opcional, FK real | — | ✅ (schema, 2.H.1) | ✅ `assertSupplierExists` | Múltiplos fornecedores — Backlog Futuro |
+| 3 | Sem "embalagem composta"/"kit" — resolvido por múltiplos `ProductPackaging` | — | ✅ (schema N:N, 2.H.1) | ✅ (nenhum limite de quantidade de vínculos por produto) | — |
+| 4 | Custo = `unitCost` direto, sem conversão | ✅ (`unitCost` ≥ 0) | — | ✅ (`mapToPackaging`/`mapLink` usam `unitCost` direto) | — |
+| 5 | Alteração de `unitCost` gera `PackagingPriceHistory` | ✅ `packagingPriceHistoryValidator` | ✅ (2.H.2) | ✅ `packagingService` → `recordPriceChange` (create e update) | — |
+| 6 | Estoque sempre inteiro, alerta `stockQuantity <= minStock` | ✅ (`Number.isInteger`) | — | ✅ (`isLowStock` no `PackagingDTO`) | UI de alerta — nenhum módulo do ERP tem ainda |
+| 7 | Embalagem inativa não pode ser adicionada a novo vínculo | — | — | ✅ `productPackagingService.assertPackagingUsable` | — |
+| 8 | Uma embalagem em vários produtos | — | ✅ (schema N:N) | ✅ (nenhuma restrição de uso único) | — |
+| 9 | Quantidade sempre inteira, sem uso parcial | ✅ (`Number.isInteger`, `> 0`) | ✅ (`Int` no schema) | — | — |
+| 10 | `PackagingCategory` delete físico bloqueado por uso; `Packaging` nunca hard-delete | — | ✅ (sem `deletePackaging`, 2.H.2) | ✅ `packagingCategoryService.deletePackagingCategory` + `countPackagingsByCategory` | — |
+| **11** | **Custo da embalagem compõe `Product.costPrice` automaticamente** | — | — | 🟡 **Parcial** — `productPackagingService` calcula `unitCost`/`quantity` por vínculo; a soma final em `Product.costPrice` exige alterar `productService.calculateCostPrice` (módulo 2.J, encerrado) — **fora do escopo declarado da Fase 3 desta sprint** | **Pendência registrada** — próxima sprint (2.H.4 ou dedicada) |
+| 12 | Zero ou mais embalagens por produto; escolha do cliente fora do MVP | — | — | ✅ (nenhum limite de quantidade) | Escolha do cliente no checkout — Backlog Futuro (já registrado na Sprint 2.H.0) |
+| 13 | Sem relação com `Recipe`/`RecipeIngredient` | — | ✅ (confirmado, nenhuma alteração em `Recipe` desde 2.H.1) | ✅ (nenhum import de `recipeService`/`recipeRepository` em nenhum dos 4 Services) | — |
+
+Nenhuma regra ficou sem camada responsável — a Regra 11 tem responsável (Service), mas sua implementação está **parcial e explicitamente registrada como pendência**, não esquecida.
+
+### Services criados (`src/lib/`)
+
+| Arquivo | Responsabilidade | Mirror de |
+|---|---|---|
+| `packagingCategoryService.ts` | CRUD de `PackagingCategory`, delete bloqueado por uso | `ingredientCategoryService.ts` (mirror exato) |
+| `packagingPriceHistoryService.ts` | `recordPriceChange`/`getPackagingPriceHistory` — arquivo dedicado (mesma divergência já registrada no Repository, Sprint 2.H.2) | Funções de histórico em `ingredientService.ts`, promovidas a serviço próprio |
+| `packagingService.ts` | CRUD de `Packaging`, cross-ref de categoria/fornecedor, orquestra `packagingPriceHistoryService` | `ingredientService.ts` |
+| `productPackagingService.ts` | Vínculo item a item `ProductPackaging` (`addProductPackaging`/`updateProductPackagingQuantity`/`removeProductPackaging`/`listProductPackagings`/`listPackagingUsage`) | `recipeService.ts` (operações de item da receita) |
+
+### Regras de negócio implementadas (Fase 4)
+
+Regras 1–10, 12 e 13 do blueprint implementadas integralmente (ver matriz acima). **Regra 11 implementada parcialmente** — decisão de interromper a extensão a `productService.ts` por estar fora do escopo declarado desta sprint (Fase 3 lista exclusivamente os 4 Services de Embalagens); nenhuma regra nova, não documentada, foi criada.
+
+### Transações (Fase 5)
+
+Nenhuma transação Prisma foi necessária nos 4 Services. Auditoria método a método:
+- `packagingCategoryService`/`packagingService`/`productPackagingService`: cada método público faz no máximo uma escrita real após as checagens de leitura — nada a coordenar atomicamente
+- `packagingService.createPackaging`/`updatePackaging`: fazem duas escritas (`dbCreatePackaging`/`dbUpdatePackaging` + `recordPriceChange`), **sem** transação — mesmo padrão não-transacional já aceito em `ingredientService.createIngredient`/`updateIngredient` (risco pré-existente e equivalente no precedente, não introduzido por esta sprint)
+
+### Tratamento de erros (Fase 6)
+
+16 classes de erro de domínio novas (4 em `packagingCategoryService.ts`, 1 em `packagingPriceHistoryService.ts`, 5 em `packagingService.ts`, 6 em `productPackagingService.ts`), todas seguindo o padrão `{Entidade}{Motivo}Error` já usado em `Supplier`/`Ingredient`/`Recipe`/`Product`. Nenhuma duplicação entre Services — `PackagingNotFoundError` (de `packagingService`) e `InvalidPackagingReferenceError` (de `productPackagingService`) são erros **distintos e intencionais**: o primeiro é "não existe" numa leitura direta; o segundo é "referência inválida" numa validação cruzada de outro agregado — mesma distinção já usada entre `RecipeNotFoundError` e `InvalidRecipeReferenceError` em `recipeService.ts`/`productService.ts`.
+
+### Revisão crítica (Fase 7)
+
+- **Regra de negócio em Repository?** Não — auditados os 4 Repositories da Sprint 2.H.2, nenhuma alteração necessária
+- **Regra estrutural em Validator?** Não — o `DUPLICATE_PACKAGING` de `validateProductPackagingsList` é validação estrutural de um array submetido (mesmo padrão de `validateRecipesList`/`DUPLICATE_INGREDIENT`), distinto do `DuplicatePackagingInProductError` do Service, que consulta o banco (duplicidade contra vínculos já persistidos) — não são a mesma checagem
+- **Lógica duplicada?** Não — `assertProductExists` e `assertPackagingUsable` são funções privadas reutilizadas pelas 5 funções públicas de `productPackagingService.ts`, não repetidas inline
+- **Oportunidade de extração?** `recordPriceChange` já foi extraída para `packagingPriceHistoryService.ts` e reutilizada por `createPackaging`/`updatePackaging`
+- **Responsabilidade excessiva?** Não — cada Service cobre exatamente uma entidade/relação
+- **Acoplamento desnecessário — encontrado e corrigido antes da implementação final:** o rascunho inicial de `productPackagingService.ts` chamava `productService.getProductById`/`packagingService.getPackagingById` (Service→Service, mirror do padrão mais pesado de `productService.assertRecipesUsable`) só para checar existência/estado ativo — trocado por `findProductById`/`findPackagingById` direto do Repository (mirror do padrão mais simples de `recipeService.assertIngredientUsable`), já que o DTO completo do Service não era necessário
+
+### Validação (Fase 8)
+
+| Comando | Resultado |
+|---|---|
+| `npx prisma generate` | ✅ Prisma Client gerado |
+| `npx tsc --noEmit` | ✅ 0 erros |
+| `npm run lint` | ✅ 0 erros/avisos |
+| Testes automatizados | Não há suíte de testes no projeto — nada a executar |
+
+### Documentação
+
+- `PLAN.md` — linha do módulo 2.H atualizada, com a pendência da Regra 11 registrada explicitamente
+- `REGRAS_NEGOCIO.md` — nenhuma regra foi refinada durante a implementação (todas já estavam corretamente documentadas na Sprint 2.H.0); nenhuma alteração necessária
+- Nenhuma ADR nova — nenhuma decisão arquitetural estrutural nova foi tomada; a escolha de padrão item a item vs. lista (Fase 1/7) é uma decisão de organização de código dentro do já decidido por ADR-014, não uma nova decisão arquitetural
+
+### Pendência explícita para a próxima sprint
+
+`Product.costPrice` **ainda não** inclui o custo de `ProductPackaging` — a Regra 11 do blueprint só é realizada integralmente quando `productService.ts` (`calculateCostPrice`/`mapToDTO`) for estendido para somar `Σ(ProductPackaging cost)`, além de `Σ(ProductRecipe cost)`. Essa alteração toca o módulo 2.J (já encerrado) e não estava no escopo declarado da Fase 3 desta sprint (que lista exclusivamente `PackagingCategoryService`/`PackagingService`/`PackagingPriceHistoryService`/`ProductPackagingService`). Registrada como recomendação para a Sprint 2.H.4 (API) ou uma sprint dedicada, mediante decisão do Product Owner.
+
+### Confirmações de escopo
+
+| Item | Status |
+|------|--------|
+| API criada | ❌ Não |
+| Frontend criado | ❌ Não |
+| Repository alterado sem necessidade | ❌ Não — os 4 Repositories da Sprint 2.H.2 permanecem inalterados |
+| Todas as regras de negócio residem na camada Service | ✅ Sim (Regra 11 parcialmente, com pendência explícita) |
+| Código aderente ao blueprint e às ADRs vigentes | ✅ Sim |
+
+### Próximo passo
+
+Módulo pronto para iniciar a Sprint 2.H.4 (API), mediante nova Ordem de Missão — que deverá decidir explicitamente como tratar a pendência da Regra 11 (`Product.costPrice`).
+
+---
+
+## [Sprint 2.H.2] — 2026-07-20 — Repository + Validator — Cadastro de Embalagens — **✅ APROVADA, HOMOLOGADA E ENCERRADA (aceite do Product Owner em 20/07/2026)**
+
+**Tipo:** Sprint Oficial de Implementação — exclusivamente camadas de Repository (acesso a dados) e Validator (validação estrutural). Nenhum Service, API ou Frontend implementado, conforme escopo da Ordem de Missão.
+
+### Auditoria prévia (Fase 1)
+
+Revisados `supplierRepository.ts`, `ingredientRepository.ts`, `ingredientCategoryRepository.ts`, `recipeIngredientRepository.ts`, `productRepository.ts` e os validators equivalentes. **Achado relevante:** `ProductRecipe` — o par estrutural mais próximo de `ProductPackaging` (mesmo formato de junção, mirror explícito por ADR-014) — não tem repository dedicado; é gravado via nested write dentro de `productRepository.ts` (`deleteMany` + `create`, em transação, no update). Isso difere do padrão item-a-item de `RecipeIngredient` (que tem `recipeIngredientRepository.ts` próprio, com `create`/`update`/`delete` por item). A Ordem de Missão exigiu explicitamente um `ProductPackagingRepository` dedicado — decisão registrada: seguir o padrão de `recipeIngredientRepository.ts` (mais completo), sem comprometer a Sprint 2.H.3 a uma estratégia de escrita específica (item a item ou substituição em lote).
+
+### Matriz comparativa (Repositories existentes)
+
+| Módulo | Paginação | Pesquisa | Ordenação | Soft delete | Erros | Transações | Tipagem de retorno |
+|---|---|---|---|---|---|---|---|
+| `Supplier` | ✅ `listSuppliersPaged` | ✅ `name contains insensitive` | ✅ `orderBy`/`orderDirection` | ✅ `active` | Lançados no Service, não no Repository | Não usa | Tipo Prisma puro (`Supplier`) |
+| `Ingredient` | ❌ só `listAll`/`listActive` | Só via filtro de categoria/nome no Service | Fixa (`name asc`) | ✅ `active` | Idem | Não usa | `IngredientWithRelations` (`Prisma...GetPayload`) |
+| `IngredientCategory` | ❌ | ❌ | Fixa (`name asc`) | ❌ (delete físico bloqueado por contagem) | Idem | Não usa | Tipo Prisma puro |
+| `RecipeIngredient` (item) | ❌ | ❌ | — | ❌ (delete físico, item de junção) | Idem | Não usa | `RecipeIngredientWithRelations` |
+| `Product` | ✅ `listProductsPaged` | ✅ | ✅ | ✅ `active` | Idem | ✅ (`updateProduct` usa `$transaction` para substituir `ProductRecipe`) | `ProductWithRelations` |
+
+### Repositories criados (`src/lib/repositories/`)
+
+| Arquivo | Responsabilidade | Mirror de |
+|---|---|---|
+| `packagingCategoryRepository.ts` | CRUD de `PackagingCategory` — delete físico (bloqueio de uso fica no Service, 2.H.3) | `ingredientCategoryRepository.ts` (mirror exato) |
+| `packagingRepository.ts` | CRUD de `Packaging`, listagem paginada (`listPackagingsPaged`) + listagem simples ativa (`listActivePackagings`, para `<select>`), `countPackagingsByCategory` | `ingredientRepository.ts` + `supplierRepository.ts`/`productRepository.ts` (paginação) |
+| `packagingPriceHistoryRepository.ts` | `addPackagingPriceHistoryEntry`/`listPackagingPriceHistory` — registro imutável | `IngredientPriceHistory` (funções de `ingredientRepository.ts`), promovido a arquivo próprio por exigência explícita da Ordem de Missão |
+| `productPackagingRepository.ts` | CRUD do vínculo `ProductPackaging`, nas duas direções de consulta (`listLinksByProduct`, `listLinksByPackaging`) | `recipeIngredientRepository.ts` (escolha deliberada — ver Fase 1) |
+
+**Métodos implementados:** 6 em `packagingCategoryRepository.ts`, 9 em `packagingRepository.ts`, 2 em `packagingPriceHistoryRepository.ts`, 8 em `productPackagingRepository.ts` — todos usando Prisma Client tipado, nenhuma query SQL manual, nenhuma lógica de negócio ou cálculo.
+
+### Validators criados (`src/lib/validators/`)
+
+| Arquivo | Cobertura |
+|---|---|
+| `packagingCategoryValidator.ts` | `name` obrigatório, 2–100 caracteres — mirror de `ingredientCategoryValidator.ts` |
+| `packagingValidator.ts` | `name` 2–150 caracteres; `unitCost` obrigatório e **≥ 0** (não `> 0` como `Ingredient.currentPrice` — embalagem pode ter custo zero, já registrado no blueprint); `stockQuantity`/`minStock` inteiros ≥ 0 |
+| `packagingPriceHistoryValidator.ts` | Só `validate...Create` (registro imutável, sem update); `packagingId` obrigatório, `price` ≥ 0, `notes` ≤ 500 caracteres |
+| `productPackagingValidator.ts` | Validação em **lista** (`validateProductPackagingsList`), não item a item — mirror exato de `ProductRecipeInput`/`validateRecipeLink`/`validateRecipesList` em `productValidator.ts`, coerente com ADR-014 ("mesmo padrão de `ProductRecipe`"); bloqueia embalagem duplicada no mesmo produto e quantidade não inteira ou ≤ 0 |
+
+### Divergências registradas (Fase 5 — não copiadas automaticamente, justificadas)
+
+- `PackagingPriceHistoryRepository` como arquivo próprio, diferente da co-localização usada em `Ingredient`/`IngredientPriceHistory` — decisão da própria Ordem de Missão, não uma escolha desta sprint
+- `ProductPackagingRepository` com CRUD completo por item, diferente da ausência de repository dedicado em `ProductRecipe` — ver Fase 1 acima
+
+### Revisão crítica (Fase 6)
+
+- **Duplicação encontrada e corrigida antes da implementação final:** um método de contagem de uso (`countProductsUsingPackaging`) havia sido desenhado tanto em `packagingRepository.ts` quanto em `productPackagingRepository.ts` durante o rascunho — mantido apenas em `productPackagingRepository.ts` (`countLinksByPackaging`), dono real da tabela de junção
+- **Nenhum método desnecessário** identificado nos 4 Repositories — todos usados por algum caso de uso do blueprint (`MODULE_2H_PLANNING.md` Seção 4/6)
+- **Nenhuma responsabilidade excessiva** — todos os métodos são puramente Prisma Client, sem cálculo/regra de negócio
+- **Oportunidade de reutilização registrada, não executada nesta sprint:** a interface `PagedResult<T>` está duplicada em 3 arquivos agora (`supplierRepository.ts`, `productRepository.ts`, `packagingRepository.ts`) com definição idêntica; o mesmo vale para o padrão `buildWhere(...)`. Extrair para um utilitário compartilhado (`src/lib/repositories/shared.ts` ou similar) tocaria os módulos já encerrados 2.E/2.J sem necessidade funcional para esta sprint — registrado como recomendação de "Repository Standards" (ver abaixo), não executado
+
+### Validação (Fase 7)
+
+| Comando | Resultado |
+|---|---|
+| `npx prisma generate` | ✅ Prisma Client gerado |
+| `npx tsc --noEmit` | ✅ 0 erros |
+| `npm run lint` | ✅ 0 erros/avisos |
+| Testes automatizados | Não há suíte de testes no projeto — nada a executar |
+
+### Documentação
+
+- `PLAN.md` — linha do módulo 2.H atualizada: "Repository + Validator implementados (Sprint 2.H.2)"
+- Nenhuma ADR nova necessária — nenhuma decisão de modelagem de dados foi tomada nesta sprint (o schema já estava fechado na Sprint 2.H.1); as divergências de padrão de Repository (Fase 5) são decisões de organização de código, não arquiteturais, e estão documentadas acima
+
+### Recomendação de governança registrada (não bloqueia a sprint)
+
+Oportunidade para um documento futuro de **Repository Standards**, cobrindo pelo menos: (1) quando um Repository de item de junção deve ser dedicado (`RecipeIngredient`, agora `ProductPackaging`) vs. nested write no repository pai (`ProductRecipe`); (2) extração de `PagedResult<T>`/`buildWhere` para um utilitário compartilhado; (3) quando price history deve viver no repository do pai vs. arquivo próprio. Não formalizado nesta sprint — registrado para avaliação futura do Product Owner.
+
+### Confirmações de escopo
+
+| Item | Status |
+|------|--------|
+| Regra de negócio implementada | ❌ Não |
+| API criada | ❌ Não |
+| Service criado | ❌ Não |
+| Repositories limitados à persistência | ✅ Sim |
+| Validators limitados à validação estrutural | ✅ Sim |
+| Código aderente ao blueprint e ao Schema homologados | ✅ Sim |
+
+### Próximo passo
+
+Módulo pronto para iniciar a Sprint 2.H.3 (Service), mediante nova Ordem de Missão.
+
+---
+
+## [Sprint 2.H.1] — 2026-07-20 — Modelagem Prisma — Cadastro de Embalagens
+
+**Tipo:** Sprint Oficial de Implementação — exclusivamente camada de modelagem Prisma. Nenhum Repository, Validator, Service, API ou Frontend implementado, conforme escopo da Ordem de Missão.
+
+### Auditoria prévia (Fase 1/2)
+
+Confirmados os padrões já usados no schema antes de implementar: entidades "categoria" leves (`IngredientCategory`, `ProductCategory`) e tabelas de junção (`ProductRecipe`, `ProductOccasion`, `RecipeIngredient`) não têm `createdAt`/`updatedAt` — confirma que `PackagingCategory`/`ProductPackaging` (sem timestamps) e `Packaging`/`PackagingPriceHistory` (com/parcial, mesma lógica de `Ingredient`/`IngredientPriceHistory`) seguem exatamente o padrão já existente. Nenhuma oportunidade adicional de simplificação encontrada além das já decididas na Sprint 2.H.0 (quantidade sempre `Int`, sem `UnitOfMeasure`; categoria dinâmica em vez de enum fixo).
+
+### Models criados (`prisma/schema.prisma`)
+
+- `PackagingCategory` — `id`, `name @unique`, `packagings Packaging[]`
+- `Packaging` — `id`, `name`, `categoryId?`, `unitCost Decimal(12,4)`, `stockQuantity Int @default(0)`, `minStock Int @default(0)`, `supplierId?`, `active Boolean @default(true)`, `priceHistory[]`, `products ProductPackaging[]`, `createdAt`/`updatedAt`; índices `@@index([name])`, `@@index([categoryId])`
+- `PackagingPriceHistory` — `id`, `packagingId` (`onDelete: Cascade`), `price Decimal(12,4)`, `notes?`, `recordedAt`; índice `@@index([packagingId, recordedAt])`
+- `ProductPackaging` — `id`, `productId` (`onDelete: Cascade`), `packagingId`, `quantity Int @default(1)`; `@@unique([productId, packagingId])`
+
+### Relações inversas (estritamente aditivas — Fase 3/4)
+
+- `Supplier` ganhou `packagings Packaging[]` — nenhum campo existente alterado
+- `Product` ganhou `packagings ProductPackaging[]` — nenhum campo existente alterado
+- Comentário do bloco `Supplier` em `prisma/schema.prisma` corrigido (afirmava "sem relacionamento... com Packaging", desatualizado pela própria mudança desta sprint)
+
+### Padrões obrigatórios aplicados (Fase 4)
+
+- `Packaging.supplierId` é FK real para `Supplier` desde o nascimento do modelo (diferente de `Ingredient.supplier`, que é texto livre — dívida técnica conhecida, não repetida aqui)
+- `Product` como proprietário da relação com `Packaging` — nenhum campo/relação adicionada a `Recipe`/`RecipeIngredient` (ADR-014)
+- `ProductPackaging.quantity` e `Packaging.stockQuantity`/`minStock` sempre `Int`
+- Nomenclatura consistente com os módulos irmãos (`Packaging{X}`, `Product{X}` — mesmo padrão de `Ingredient{X}`/`ProductRecipe`)
+- Índices só onde há precedente direto (nome, categoria, histórico cronológico) — nenhum índice especulativo
+
+### Validação (Fase 5)
+
+| Comando | Resultado |
+|---|---|
+| `npx prisma format` | ✅ Aplicado |
+| `npx prisma validate` | ✅ "The schema... is valid" |
+| `npx prisma generate` | ✅ Prisma Client gerado |
+| `npx prisma db push` | ✅ "Your database is now in sync with your Prisma schema" |
+| `npx tsc --noEmit` | ✅ 0 erros |
+| Introspecção direta do banco real (script temporário, removido ao final) | ✅ 4 tabelas confirmadas (`PackagingCategory`, `Packaging`, `PackagingPriceHistory`, `ProductPackaging`); `Packaging.supplierId` confirmada; FKs de `ProductPackaging` confirmadas (`packagingId→Packaging`, `productId→Product`); `prisma.packaging.count()` retorna `0` via Client real |
+
+### Migrations
+
+Projeto usa exclusivamente `prisma db push` (sem pasta `prisma/migrations/`, confirmado na Sprint 2.H.0) — nenhuma migration versionada gerada, por não ser a estratégia deste projeto.
+
+### Documentação
+
+- `PLAN.md` — linha do módulo 2.H atualizada: "Schema implementado (Sprint 2.H.1)"
+- `DOMAIN_MODEL.md` — `Packaging`/`PackagingCategory`/`PackagingPriceHistory`/`ProductPackaging` movidos de "Entidades Planejadas" para uma nova seção "Domínio: Embalagens" com status `Schema ✅`; diagrama de relacionamentos e tabela comparativa (Seção 4) atualizados
+- Nenhuma nova ADR necessária — toda decisão de modelagem desta sprint já estava coberta pela ADR-014 e pelo blueprint da Sprint 2.H.0; nenhuma decisão nova surgiu durante a implementação
+
+### Confirmações de escopo
+
+| Item | Status |
+|------|--------|
+| Modelagem aderente ao blueprint aprovado | ✅ Sim |
+| ADR-014 respeitada integralmente | ✅ Sim — `Packaging` vinculado a `Product`, nenhuma alteração em `Recipe`/`RecipeIngredient` |
+| Regra de negócio implementada | ❌ Não |
+| API criada | ❌ Não |
+| Repository/Service/Validator criados | ❌ Não |
+| Código fora do escopo da sprint | ❌ Não |
+
+### Próximo passo
+
+Módulo pronto para iniciar a Sprint 2.H.2 (Repository + Validator), mediante nova Ordem de Missão.
+
+---
+
 ## [Sprint 2.H.0] — 2026-07-20 — Blueprint Funcional e Arquitetural — Cadastro de Embalagens
 
 **Tipo:** Sprint Oficial de Planejamento Arquitetural. Nenhuma implementação de código — só documentação. Primeiro módulo do ERP projetado integralmente sob o padrão consolidado na Sprint G.8.

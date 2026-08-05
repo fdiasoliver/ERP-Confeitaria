@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
+import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
 import type { ToastState } from "@/components/admin/config/ValidationSummary";
 import { Field } from "@/components/admin/config/FormPrimitives";
@@ -204,7 +205,7 @@ export default function IngredientCategoriasAdminPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-app bg-cream pb-8">
+    <PageContainer>
       <HeaderMinimal title="Categorias de Ingrediente" />
 
       <div className="space-y-4 p-5">
@@ -302,6 +303,6 @@ export default function IngredientCategoriasAdminPage() {
       )}
 
       <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
-    </div>
+    </PageContainer>
   );
 }

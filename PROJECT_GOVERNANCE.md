@@ -84,6 +84,17 @@ Exemplos:
   Sprint 2.F.6 — QA
 ```
 
+### Prefixos reservados fora do Épico (a partir do ADR-018, `CLAUDE.md`)
+
+Sprints que não pertencem a um Módulo de um Épico específico usam um prefixo dedicado — nunca um `{N}.{LETRA}` já ocupado (ver ADR-016, colisão real já ocorrida com `2.I`):
+
+| Prefixo | Escopo | Origem |
+|---|---|---|
+| `G.x` | Governança/metodologia de IA | Sprint G.1 em diante (ADR-016 formalizou a reserva) |
+| `I.x` | Infraestrutura (banco, ambiente, Storage, migrations) | Seção 4.4 desta Seção |
+| `DS.x` | Design System — iniciativas visuais transversais, afetam telas de múltiplos módulos já implementados | ADR-018 (`CLAUDE.md`), 02/08/2026 |
+| `PRIV.x` | Privacidade/LGPD — políticas de dado pessoal transversais, afetam múltiplos módulos que já expõem dado de cliente | ADR-019 (`CLAUDE.md`), 03/08/2026 |
+
 ### Camadas padrão de sprint por módulo
 
 | Sprint | Camada | Conteúdo típico |
@@ -616,6 +627,7 @@ Não se aplica retroativamente a rotas já implementadas sem paginação (ex. `G
 | `DEMO_ENVIRONMENT.md` | Mudança na arquitetura do ambiente de demonstração (Sprint T.3) |
 | `DEMO_DATASET.md` | Novo model/produto/receita relevante ao fluxo demonstrado (Sprint T.3) |
 | `DEMO_GUIDE.md` | Mudança no fluxo sugerido ou nos Demo Users (Sprint T.3) |
+| `PROJECT_STATE.md` | Ao final de toda Sprint Oficial, **somente depois** de `CHANGELOG.md`/`PLAN.md`/ADRs já atualizados (Sprint G.9) — snapshot executivo para sincronização de contexto entre IAs, nunca fonte de verdade |
 
 ### Estilo
 
@@ -883,6 +895,8 @@ Diferente da taxonomia A–F de Product Review (Seção 16.5), Platform Review u
 
 Sub-agent `platform-reviewer` (`.claude/agents/platform-reviewer.md`, Sprint G.6.1) — nunca implementa ou corrige o que encontra. Ver `.claude/skills/platform-review/SKILL.md`.
 
+> **Nota da Sprint 2.I.1 (20/07/2026):** auditoria de governança (ver `CHANGELOG.md`) confirmou, por evidência (varredura de `CHANGELOG.md`), que esta etapa nunca foi executada desde sua criação, incluindo o ciclo completo do Módulo 2.H — nenhuma sprint registrou achado Bloqueante/Não-bloqueante. Recomendação fundamentada (tornar opcional) registrada em `GOVERNANCE_DECISIONS.md` GD-001, aguardando decisão do Product Owner. Esta seção permanece válida e inalterada até essa decisão.
+
 ---
 
 ## 16.5. Processo de Product Review (a partir da Sprint G.6)
@@ -920,6 +934,8 @@ Sub-agent `product-reviewer` (`.claude/agents/product-reviewer.md`, Sprint G.6) 
 
 Sem navegador disponível neste ambiente de desenvolvimento, a revisão é feita por leitura de código (classes Tailwind, estrutura JSX, texto exibido, presença dos estados exigidos) contra `DESIGN_SYSTEM.md`/`UX_GUIDELINES.md` — mesma limitação já registrada em todo QA funcional deste projeto desde a Sprint 2.D.5. Isso não dispensa a etapa; apenas define o método disponível.
 
+> **Nota da Sprint 2.I.1 (20/07/2026):** a premissa "sem navegador disponível" acima ficou desatualizada a partir da Sprint G.8 MT4, quando o Playwright MCP passou a estar disponível e em uso extensivo (Validação Funcional, Homologação do Product Owner) — sem que esta seção fosse revisitada. Na prática, o que substituiu esta etapa foi o padrão `Homologação Técnica → Validação Funcional → Homologação do Product Owner` (`QUALITY_GUIDELINES.md` Seção 3), que cobre o mesmo território com julgamento real do Product Owner. Recomendação fundamentada (fundir) registrada em `GOVERNANCE_DECISIONS.md` GD-002, aguardando decisão do Product Owner. Esta seção permanece válida e inalterada até essa decisão.
+
 ---
 
 ## 16.6. Processo de Demo Validation (a partir da Sprint T.3)
@@ -954,6 +970,8 @@ Dentro do fluxo de sessão única (`ERP_DEVELOPMENT_WORKFLOW.md`), a própria IA
 ### Limitação de ambiente
 
 Mesma limitação já registrada em Product Review (Seção 16.5): sem automação de navegador disponível (`DEMO_ENVIRONMENT.md`, "Contexto"), a validação é manual, seguindo o roteiro de `DEMO_GUIDE.md` — não dispensa a etapa, apenas define o método disponível até que uma ferramenta de automação esteja acessível.
+
+> **Nota da Sprint 2.I.1 (20/07/2026):** auditoria de governança confirmou que esta etapa é hoje inexecutável pela própria fonte de verdade citada acima — `prisma/demo-seeds/` não contém nenhum dado real (decisão deliberada do ADR-008, "apenas arquitetura"). Não é uma etapa pulada; é uma etapa sem pré-requisito satisfeito. Recomendação fundamentada (tornar opcional, mover para releases) registrada em `GOVERNANCE_DECISIONS.md` GD-003, aguardando decisão do Product Owner. Esta seção permanece válida e inalterada até essa decisão.
 
 ---
 
@@ -1017,7 +1035,9 @@ Após qualquer sprint, verificar que as funcionalidades existentes não foram qu
 
 ### Papel da IA neste projeto
 
-A IA (Claude Code) atua como **engenheiro de implementação sênior**, responsável por:
+**A partir do ADR-017 (`CLAUDE.md`, 31/07/2026):** a IA (Claude Code) acumula os papéis de **Arquiteto** e **Desenvolvedor** — antes, a arquitetura era decidida externamente (ChatGPT) e retransmitida pelo Product Owner como Ordem de Missão; essa divisão foi retirada por perda de contexto do Arquiteto externo, que comprometia a evolução do projeto. Isso é operacionalizado através dos 11 Sub-agents já implementados em `.claude/agents/` (Sprint G.5.4) — `ai-project-manager` recebe a missão do Product Owner e orquestra `ai-solution-architect` (decisão arquitetural), `ai-backend-engineer`/`ai-frontend-engineer` (implementação), `platform-reviewer`, `product-reviewer`, `ai-qa-engineer`, `ai-documentation-engineer` e `ai-release-manager` — fluxo completo em `.claude/agents/EXECUTION_FLOW.md`, não repetido aqui. Antes do ADR-017, essa estrutura existia mas nunca havia sido usada (classificada EXPERIMENTAL na auditoria da Sprint 2.I.1) — todo trabalho anterior foi implementação direta pela sessão principal.
+
+Em qualquer um dos dois modos (orquestrado via Sub-agents, ou implementação direta pela sessão principal quando a tarefa já tem escopo óbvio e não exige coordenação — ver `ai-project-manager.md` Seção 2), a IA continua responsável por:
 - Ler e respeitar toda a documentação antes de implementar
 - Seguir este documento de governança sem exceções
 - Apresentar plano de implementação e aguardar aprovação antes de executar
@@ -1051,6 +1071,8 @@ Usuário solicita sprint
   → IA aguarda aceite
   → Usuário aceita → próxima sprint
 ```
+
+**A partir do ADR-017:** este fluxo passa a ser executado, por padrão, através de `ai-project-manager` (ponto de entrada) delegando para os demais Sub-agents (`.claude/agents/EXECUTION_FLOW.md`) — cada etapa acima corresponde a um Sub-agent específico, não a uma etapa nova. A sessão principal continua podendo implementar diretamente quando a tarefa já tem escopo óbvio e uma persona única evidente (`ai-project-manager.md` Seção 2, "Quando NÃO utilizar").
 
 ### Uso de agentes fork
 
@@ -1341,6 +1363,40 @@ O objetivo é manter o documento enxuto, estável e aplicável durante todo o ci
 
 ---
 
+## 27. Fluxo Oficial de Desenvolvimento de Módulo (a partir da Sprint 2.I.0)
+
+Consolida, como padrão oficial do ERP, a metodologia validada na prática durante o ciclo completo do Módulo 2.H (Embalagens, Sprints 2.H.0–2.H.7 — ver `CHANGELOG.md`). Aplica-se a todo módulo novo do roadmap (`PLAN.md`) que envolva Schema + Repository + Service + API + Frontend — não se aplica a sprints de correção isolada, documentação ou governança (essas seguem apenas o fluxo de 6 etapas da Seção 4).
+
+Este fluxo opera em um nível **acima** do fluxo já documentado na Seção 4 ("Fluxo obrigatório de desenvolvimento"): cada uma das 11 etapas abaixo é, ela própria, uma ou mais Sprints Oficiais que seguem integralmente a Seção 4 internamente (planejamento → implementação → revisão técnica → QA → documentação → aceite). **A Seção 4 não é substituída** — esta Seção 27 define apenas a ordem e o objetivo de cada sprint dentro do ciclo completo de um módulo. Detalhamento operacional de cada checklist em `QUALITY_GUIDELINES.md`.
+
+### As 11 etapas
+
+| # | Etapa | Objetivo | Entrada | Saída | Skill/Seção relacionada |
+|---|---|---|---|---|---|
+| 1 | Planejamento Arquitetural | Decidir onde o módulo entra no roadmap e suas dependências | Estado atual do roadmap (`PLAN.md`) | Módulo registrado no roadmap, com dependências | `sprint-planning` (Skill) |
+| 2 | Blueprint | Especificar completamente o domínio antes de qualquer código: modelo de domínio, regras de negócio com origem explícita, casos de uso, integrações, estratégia de reutilização do Design System, modelo de dados proposto, roadmap das sprints seguintes, riscos, backlog futuro | Planejamento arquitetural do módulo | `MODULE_{N}{LETRA}_PLANNING.md` | Checklist Blueprint (`QUALITY_GUIDELINES.md`) |
+| 3 | Schema | Modelagem Prisma exclusivamente (models, relations, enums, índices, constraints) | Blueprint homologado | `prisma/schema.prisma` sincronizado com o banco | `schema-pattern` (Skill) |
+| 4 | Repository + Validator | Camada de persistência (Repository) e validação estrutural (Validator) — nenhuma regra de negócio | Schema sincronizado | Arquivos em `src/lib/repositories/`/`src/lib/validators/` | `repository-pattern` (Skill) para Repository; **Validator sem Skill dedicada — lacuna identificada nesta sprint, ver Fase 5/Recomendações** |
+| 5 | Service | Toda regra de negócio, orquestração de Repositories, transações | Repository + Validator homologados | Arquivos em `src/lib/` | **Sem Skill dedicada — mesma lacuna** |
+| 6 | API | Route Handlers REST, exclusivamente adaptação HTTP | Service homologado | Rotas em `src/app/api/admin/` | `api-pattern` (Skill) |
+| 7 | UX Foundation | Especificar toda a experiência antes de qualquer componente React: telas, wireframes de baixa fidelidade, fluxos de navegação, matriz Tela×Componentes Compartilhados, matriz Estado×Feedback, acessibilidade | API homologada + `DESIGN_SYSTEM.md`/`UX_GUIDELINES.md` vigentes | `MODULE_{N}{LETRA}_UX_FOUNDATION.md` | Checklist UX (`QUALITY_GUIDELINES.md`) |
+| 8 | Frontend | Implementar as telas especificadas na UX Foundation, exclusivamente com componentes já homologados no Design System | UX Foundation homologada | Páginas em `src/app/admin/` | `frontend-pattern` (Skill) |
+| 9 | Validação Funcional | Roteiro completo de cenários reais (CRUD, paginação, filtros, navegação, estados de UI, mensagens, responsividade, acessibilidade, console/rede limpos), executado contra o sistema real rodando — nunca suposição | Frontend implementado | Evidências cenário a cenário em `CHANGELOG.md` | Checklist Validação Funcional (`QUALITY_GUIDELINES.md`); ver também Seção 17 (Processo de QA) |
+| 10 | Homologação do Product Owner | Confirmar, sob ótica de **negócio** (não técnica), que o módulo atende ao Blueprint e é utilizável por quem não é desenvolvedor — clareza de mensagens, coerência de nomes, fluxos de trabalho reais | Validação Funcional aprovada | Decisão final registrada em `CHANGELOG.md` | Checklist Homologação (`QUALITY_GUIDELINES.md`) |
+| 11 | Encerramento do Módulo | Consolidar o módulo como oficialmente concluído | Homologação do Product Owner aprovada | `PLAN.md` atualizado para "Concluído" + `MODULE_{N}{LETRA}_CLOSURE.md` (obrigatório — padrão real confirmado em 2.D/2.E/2.G/2.I/2.J; lacuna do Módulo 2.H fechada retroativamente na Sprint 2.I.0) | Seção 23 (DoD de Módulo) + Seção 25 (Checklist de Encerramento) |
+
+### Distinção formal entre as 3 validações finais (Recomendação Arquitetural #4 da Sprint 2.I.0)
+
+| Validação | O que confirma | Quem/o quê executa | Pode ser pulada? |
+|---|---|---|---|
+| **Validação Técnica** (Seção 16 + 17) | Qualidade de código: tipagem, arquitetura em camadas, nomenclatura, segurança, `tsc`/`lint`/`build` limpos | IA, a cada sprint | Não — obrigatória em toda sprint |
+| **Validação Funcional** (etapa 9 acima) | Comportamento observável real do sistema rodando — não é o mesmo que "compila sem erro" | IA via Playwright MCP (quando disponível) ou testes manuais equivalentes, ao final do Frontend | Não, para módulos com Frontend — critério de evidência já formalizado pela ADR-013 (`CLAUDE.md`) |
+| **Homologação do Product Owner** (etapa 10 acima) | Adequação ao negócio — clareza, usabilidade, nomes, se o que foi pedido é o que foi entregue | Product Owner (com apoio de execução da IA) | Não — é o critério final antes do Encerramento do Módulo |
+
+Nenhuma das três substitui as outras. Um módulo com Validação Técnica e Funcional aprovadas mas sem Homologação do Product Owner **não pode ser encerrado**.
+
+---
+
 ## Documentação de IA
 
 O projeto possui documentação específica para colaboração entre Inteligências Artificiais.
@@ -1364,4 +1420,5 @@ Em caso de conflito entre estes documentos e o PROJECT_GOVERNANCE.md, prevalece 
 *Atualizado em 06/07/2026 — Seção "Documentação de IA" corrigida (caminho `docs/ai/` → `docs/`, refletindo a localização real de AI_PROMPT_ORCHESTRATOR.md); Seção 26 (Política de Evolução da Governança) adicionada.*
 *Atualizado em 15/07/2026 — Sprint G.6 (Product Review System): Seção 4 (fluxo obrigatório) recebeu o passo 3.5 Product Review; Seção 16.5 (Processo de Product Review) adicionada, com a taxonomia A–F e a regra de que somente Problema Funcional (A) bloqueia. ADR correspondente registrado em `CLAUDE.md` raiz.*
 *Atualizado em 15/07/2026 — Sprint G.6.1 (Platform & Product Architecture Consolidation): Seção 4 recebeu o passo 3.4 Platform Review; Seção 16.4 (Processo de Platform Review) adicionada, com classificação bloqueante/não-bloqueante, distinta da taxonomia A–F de Product Review. `product-review`/`product-reviewer` preservados sem alteração, conforme exigido pela Ordem de Missão. ADR correspondente registrado em `CLAUDE.md` raiz.*
+*Atualizado em 20/07/2026 — Sprint 2.I.0 (Consolidação da Metodologia de Desenvolvimento do ERP): Seção 27 (Fluxo Oficial de Desenvolvimento de Módulo, 11 etapas) adicionada, consolidando a metodologia validada na prática no ciclo completo do Módulo 2.H (Sprints 2.H.0–2.H.7) como padrão oficial para todo módulo futuro com Schema+Repository+Service+API+Frontend. Formaliza a distinção entre Validação Técnica, Validação Funcional e Homologação do Product Owner. Novo documento `QUALITY_GUIDELINES.md` criado como companion operacional (checklists por etapa, critérios de evidência, classificação oficial de achados). ADR correspondente (ADR-015) registrado em `CLAUDE.md` raiz.*
 *Qualquer alteração neste documento exige aprovação explícita e registro de ADR.*

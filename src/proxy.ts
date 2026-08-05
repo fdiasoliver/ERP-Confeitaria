@@ -5,9 +5,25 @@ import { NextResponse, type NextRequest } from "next/server";
 // Rotas não listadas aqui requerem apenas autenticação admin (qualquer UserRole).
 const ROLE_REQUIRED: Record<string, string[]> = {
   "/admin/config": ["ADMIN"],
+  "/admin/clientes": ["ADMIN", "ATENDIMENTO"],
+  "/admin/producao": ["ADMIN", "ATENDIMENTO", "PRODUCAO", "FINANCEIRO"],
+  "/admin/unidades": ["ADMIN", "PRODUCAO"],
+  "/admin/ingredientes": ["ADMIN", "PRODUCAO"],
+  "/admin/receitas": ["ADMIN", "PRODUCAO"],
+  "/admin/fornecedores": ["ADMIN", "PRODUCAO"],
+  "/admin/embalagens": ["ADMIN", "PRODUCAO"],
   // "/admin/usuarios": ["ADMIN"],
   // "/admin/financeiro": ["ADMIN", "FINANCEIRO"],
 };
+
+// Casa tanto a rota exata quanto suas sub-rotas (ex.: "/admin/clientes/[id]"
+// deve respeitar a mesma exigência de papel de "/admin/clientes").
+function findRequiredRoles(pathname: string): string[] | undefined {
+  const key = Object.keys(ROLE_REQUIRED).find(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+  return key ? ROLE_REQUIRED[key] : undefined;
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -28,7 +44,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Verifica papel específico quando a rota exige
-  const requiredRoles = ROLE_REQUIRED[pathname];
+  const requiredRoles = findRequiredRoles(pathname);
   if (requiredRoles && token.role && !requiredRoles.includes(token.role as string)) {
     return NextResponse.redirect(new URL("/admin/em-construcao", request.url));
   }

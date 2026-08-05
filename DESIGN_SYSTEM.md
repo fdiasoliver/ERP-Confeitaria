@@ -13,16 +13,21 @@ Todo texto de interface deve estar em **português do Brasil (pt-BR)**.
 
 ### Paleta de cores (tokens CSS)
 
-| Token | Variável CSS | Uso principal |
-|-------|-------------|--------------|
-| Creme | `--cream` | Fundo de todas as páginas cliente |
-| Chocolate | `--chocolate` | CTAs primários, textos de destaque |
-| Rosa | `--rose` | Destaques, badges de confirmação, links |
-| Sálvia | `--sage` | Sucesso, status positivo, confirmado |
-| Areia | `--sand` | Fundos de cards, divisores, campos |
-| Muted | `--muted` | Textos secundários, placeholders, labels |
+| Token | Variável CSS | Valor hex | Uso principal |
+|-------|-------------|-----------|--------------|
+| Creme | `--cream` | `#FAF6EF` | Fundo de todas as páginas cliente |
+| Chocolate | `--chocolate` | `#191715` | CTAs primários, textos de destaque |
+| Rosa (cereja) | `--rose` | `#C42E3C` | Destaques, badges de confirmação, links |
+| Sálvia (pistache) | `--sage` | `#4F7530` | Sucesso, status positivo, confirmado |
+| Areia | `--sand` | `#E3DCCB` | Bordas, divisores, linhas |
+| Muted | `--muted` | `#726A5F` | Textos secundários, placeholders, labels |
+| Superfície secundária | `--surface-2` (novo) | `#F5EFE1` | Fundos de card/tint sutil (separado de `sand`, que agora é só borda/linha) |
 
 > **Regra:** nunca introduzir novas cores sem decisão explícita. A paleta é a identidade visual do negócio.
+
+**Redesign "Ateliê Contemporâneo" (03/08/2026):** os 6 valores hex acima foram atualizados nesta data, decisão do Product Owner após comparação visual de 3 direções de paleta (contraste WCAG verificado na mesma sessão). Os **nomes** dos tokens (`cream`, `chocolate`, `rose`, `sage`, `sand`, `muted`) não mudaram — apenas os valores hex em `src/app/globals.css`. Qualquer código ou documentação que referencie os tokens pelo nome continua válido sem alteração.
+
+**Redesign de front-end mais amplo — Sprint `DS.2` (04/08/2026):** nova direção "A × C", escolhida pelo Product Owner por comparação visual de 3 direções + 1 combinação (Artifact, mesmo processo de DS.1). Os 6 valores hex acima foram atualizados novamente, mais o token novo `surface-2`. Contraste WCAG verificado antes de aplicar — `rose` e `sage` originais da direção aprovada (`#E63946`/`#6B8E4E`) não passavam em 4,5:1 contra `cream` (4,21:1 e 3,48:1); ajustados para `#C42E3C`/`#4F7530` (5,13:1/4,97:1), mesma família de cor (cereja/pistache), mais escuros. Ao contrário de `DS.1`, esta sprint também muda layout/componentes (produto-herói na Vitrine, sidebar de navegação no admin, tratamento fotográfico de produto) — não é só troca de token. Novos: `ProductHero` (`src/components/vitrine/ProductCard.tsx`) — primeiro produto com `featured: true` em destaque, acima do grid de `ProductCard` (que não repete esse produto); `getProductGradientClass()` (`src/lib/utils.ts`) — gradiente determinístico por `product.id` (5 combinações), substitui o gradiente único fixo usado antes em todo `imageEmoji` (`KI-06` segue aberta — isto não é foto real, é um tratamento melhor que o emoji cru). Ver `CHANGELOG.md`, Sprint DS.2.
 
 ### Tipografia
 
@@ -1208,10 +1213,17 @@ Usar as cores do design system:
 Eliminar a duplicação identificada na Sprint 2.E.6 (`MODULE_2E_UX_REVIEW.md`) entre as páginas de Cadastro Mestre (Unidades, Ingredientes, Receitas, Produtos, Fornecedores) — 6 componentes redeclarados de forma quase idêntica em 5 arquivos. Implementados na Sprint 2.E.7, estreados em `/admin/fornecedores`. Adotados nas páginas principais de Unidades, Ingredientes, Receitas e Produtos, e — na Sprint G.8 — nas partes classificadas como seguras de `unidades/conversoes`, `ingredientes/categorias` e `receitas/[id]` (ver `MODULE_G8_CLOSURE.md`, seção "Cartografia de Compatibilidade do Design System", para o critério completo de quando um componente é seguro para migrar e quando depende de pré-requisito de layout/modelo de interface).
 
 ### `PageContainer`
-- **Responsabilidade:** wrapper raiz de página admin — aplica `mx-auto min-h-screen max-w-5xl bg-cream pb-8`.
+- **Responsabilidade (revisada na Sprint DS.2):** wrapper de **conteúdo** de página admin — aplica `mx-auto max-w-5xl pb-8`. Não é mais o shell raiz da página (isso passou para `AdminShell`/`admin/layout.tsx` na Sprint DS.2) — `min-h-screen`/`bg-cream` agora vivem um nível acima, fora de cada página individual.
 - **Propriedades:** `children`.
-- **Caso de uso:** substitui a div raiz repetida em toda página de Cadastro Mestre.
-- **Restrição:** não usar na área cliente (usa `.max-w-app`, componente diferente).
+- **Caso de uso:** todas as 19 páginas admin autenticadas (exceto `/admin/login`) usam `PageContainer` logo após `HeaderMinimal` — inclusive as 7 que ainda usavam wrapper `max-w-app` próprio antes da Sprint DS.2 (`/admin` hub, `categorias`, `ocasioes`, `ingredientes/categorias`, `receitas/[id]`, `unidades/conversoes`, `em-construcao`).
+- **Restrição:** não adicionar padding horizontal/vertical próprio a `PageContainer` — `HeaderMinimal` (sticky, full-bleed) e o conteúdo interno de cada página já gerenciam o próprio `px-5`/`p-5`; padding aqui causaria duplicação. Não usar na área cliente (usa `.max-w-app`, componente diferente).
+
+### `Sidebar` / `AdminShell` (novos na Sprint DS.2)
+- **Arquivos:** `src/components/admin/shared/Sidebar.tsx`, `src/components/admin/shared/AdminShell.tsx`, `src/app/admin/layout.tsx`.
+- **Responsabilidade:** navegação persistente do admin — sidebar vertical fixa (240px, `UX_GUIDELINES.md` Seção 15) em desktop/tablet (`md:` — 768px+); barra horizontal com rolagem em mobile. `AdminShell` decide se renderiza o shell (`min-h-screen bg-cream` + `Sidebar` + `<main>`) ou passa `children` direto — `/admin/login` fica fora do shell (decisão do Product Owner, Sprint DS.2).
+- **Filtragem por papel:** os itens de navegação são filtrados pelo `role` da sessão (`useSession()`), espelhando `src/proxy.ts` `ROLE_REQUIRED` — um usuário só vê no menu o que pode de fato acessar (princípio já registrado em `MENU_STRUCTURE.md`, nunca implementado antes de DS.2).
+- **Caso de uso:** aplicado automaticamente a todas as páginas sob `/admin/*` via `admin/layout.tsx` — nenhuma página individual precisa importar `Sidebar`.
+- **Restrição:** a lista de rotas/papéis em `Sidebar.tsx` deve ser mantida manualmente em sincronia com `src/proxy.ts` `ROLE_REQUIRED` — não há fonte única compartilhada entre os dois ainda (achado registrado, não uma dívida técnica formal nesta sprint).
 
 ### `ResponsiveGrid`
 - **Responsabilidade:** grid de listagem responsivo — 1 coluna (mobile) → 2 (tablet, `md:`) → 3 (desktop, `xl:`, opcional via prop `cols`).
