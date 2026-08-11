@@ -11,41 +11,53 @@ function LoginContent() {
   const callbackUrl = searchParams.get("callbackUrl") ?? "/pedidos";
 
   const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
-  const [step, setStep] = useState<"phone" | "name">("phone");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<"phone" | "code">("phone");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handlePhoneSubmit = () => {
+  const requestCode = async () => {
     const cleaned = phone.replace(/\D/g, "");
     if (cleaned.length < 10) {
       setError("Digite um celular válido com DDD.");
       return;
     }
     setError(null);
-    setStep("name");
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      setStep("code");
+    } catch {
+      setError("Não foi possível enviar o código. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogin = async () => {
-    if (!name.trim()) {
-      setError("Informe seu nome para continuar.");
+    if (code.trim().length !== 6) {
+      setError("Digite o código de 6 dígitos recebido no WhatsApp.");
       return;
     }
     setError(null);
     setIsLoading(true);
 
-    // TODO (Fase 8): antes de chamar signIn, enviar OTP via WhatsApp e validar o código.
-    // Por enquanto, o login é direto por telefone + nome (sem código de verificação).
     const result = await signIn("customer", {
       phone: phone.trim(),
-      name: name.trim(),
+      code: code.trim(),
       redirect: false,
     });
 
     setIsLoading(false);
 
     if (result?.error) {
-      setError("Não foi possível fazer login. Tente novamente.");
+      setError("Código incorreto ou expirado. Tente novamente.");
       return;
     }
 
@@ -76,24 +88,27 @@ function LoginContent() {
             )}
             <button
               type="button"
-              onClick={handlePhoneSubmit}
-              className="w-full rounded-xl bg-chocolate py-4 font-semibold text-white"
+              onClick={requestCode}
+              disabled={isLoading}
+              className="w-full rounded-xl bg-chocolate py-4 font-semibold text-white disabled:opacity-60"
             >
-              Continuar
+              {isLoading ? "Enviando…" : "Enviar código"}
             </button>
           </>
         ) : (
           <>
             <p className="text-muted mb-4 text-sm">
-              Celular: <strong>{phone}</strong>
+              Enviamos um código para <strong>{phone}</strong> via WhatsApp.
             </p>
-            <label className="mb-1.5 block text-sm font-semibold">Seu nome</label>
+            <label className="mb-1.5 block text-sm font-semibold">Código de 6 dígitos</label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Como prefere ser chamado(a)?"
-              className="mb-4 w-full rounded-xl border border-sand px-4 py-3"
+              inputMode="numeric"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="000000"
+              className="mb-4 w-full rounded-xl border border-sand px-4 py-3 tracking-[0.3em]"
               autoFocus
             />
             {error && (
@@ -109,8 +124,16 @@ function LoginContent() {
             </button>
             <button
               type="button"
-              onClick={() => { setStep("phone"); setError(null); }}
-              className="mt-3 w-full text-sm text-muted"
+              onClick={requestCode}
+              disabled={isLoading}
+              className="mt-3 w-full text-sm text-rose"
+            >
+              Reenviar código
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStep("phone"); setCode(""); setError(null); }}
+              className="mt-2 w-full text-sm text-muted"
             >
               Alterar número
             </button>

@@ -558,7 +558,7 @@ function ProdutosAdminPageContent() {
                     <>
                       <StatusBadge isActive={product.active} />
                       {product.featured && (
-                        <span className="rounded-full bg-rose/10 px-2 py-0.5 text-xs font-semibold text-rose">Destaque</span>
+                        <span className="rounded-full bg-caramel/10 px-2 py-0.5 text-xs font-semibold text-caramel">Destaque</span>
                       )}
                     </>
                   }

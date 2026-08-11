@@ -106,6 +106,13 @@ export async function findCustomerById(id: string): Promise<CustomerWithDetail |
   return prisma.customer.findUnique({ where: { id }, include: withDetail });
 }
 
+// Leitura mínima (só telefone) — usada pelo hook de notificação WhatsApp em
+// updateOrderStatus (orderService.ts), evita puxar endereços/pedidos à toa.
+export async function findCustomerPhoneById(id: string): Promise<string | null> {
+  const customer = await prisma.customer.findUnique({ where: { id }, select: { phone: true } });
+  return customer?.phone ?? null;
+}
+
 // ─── Escrita — apenas `notes` ──────────────────────────────────────────────────
 
 export async function updateCustomerNotes(id: string, notes: string | null): Promise<Customer> {

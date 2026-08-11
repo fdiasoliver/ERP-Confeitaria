@@ -11,14 +11,17 @@ import { useUserOrders } from "@/hooks/useUserOrders";
 import type { CartItem } from "@/lib/types";
 import { STATUS_LABELS } from "@/lib/types";
 
+// Cores do design system (Sprint DS.3) — corrige uso anterior de Tailwind cru
+// (amber/blue/red) fora do sistema de tokens. sage=positivo, caramel=em
+// andamento, rose=negativo, sand/muted=neutro (ainda não entrou em produção).
 const STATUS_CLASS: Record<string, string> = {
   RASCUNHO: "bg-sand text-muted",
-  CONFIRMADO: "bg-rose/20 text-chocolate",
-  EM_PRODUCAO: "bg-amber-100 text-amber-800",
-  PRONTO: "bg-sage/20 text-sage",
-  SAIU_ENTREGA: "bg-blue-100 text-blue-800",
-  ENTREGUE: "bg-sand text-muted",
-  CANCELADO: "bg-red-100 text-red-700",
+  CONFIRMADO: "bg-sand text-muted",
+  EM_PRODUCAO: "bg-caramel/15 text-caramel",
+  PRONTO: "bg-sage/15 text-sage",
+  SAIU_ENTREGA: "bg-caramel/15 text-caramel",
+  ENTREGUE: "bg-sage/15 text-sage",
+  CANCELADO: "bg-rose/15 text-rose",
 };
 
 export default function PedidosPage() {

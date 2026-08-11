@@ -2,6 +2,7 @@ import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { validateOtp } from "@/lib/otpService";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -37,25 +38,35 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Provider para clientes (identificados por celular)
-    // TODO (Fase 8): adicionar verificação de código OTP via WhatsApp antes de autorizar.
-    // Por enquanto, o login é por telefone + nome — sem validação de código.
+    // Provider para clientes (identificados por celular) — login por código OTP
+    // via WhatsApp (Módulo 5.B). validateOtp lança se o código for inválido,
+    // expirado, já usado ou tiver excedido o número máximo de tentativas
+    // (REGRAS_NEGOCIO.md 15.5, regra 14) — authorize() retorna null em todos
+    // esses casos, sem distinguir o motivo para o cliente (mesmo padrão do
+    // provider "credentials" acima).
     CredentialsProvider({
       id: "customer",
       name: "Cliente",
       credentials: {
         phone: { label: "Telefone", type: "text" },
-        name: { label: "Nome", type: "text" },
+        code: { label: "Código", type: "text" },
       },
       async authorize(credentials) {
         const phone = credentials?.phone?.trim();
-        if (!phone) return null;
+        const code = credentials?.code?.trim();
+        if (!phone || !code) return null;
+
+        try {
+          await validateOtp(phone, code);
+        } catch {
+          return null;
+        }
 
         const customer = await prisma.customer.upsert({
           where: { phone },
           update: {},
           create: {
-            name: credentials?.name?.trim() || "Cliente",
+            name: "Cliente",
             phone,
           },
         });

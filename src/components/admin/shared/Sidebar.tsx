@@ -89,7 +89,7 @@ export function Sidebar() {
                   href={item.href}
                   className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                     isActive(pathname, item.href)
-                      ? "bg-surface-2 font-semibold text-rose"
+                      ? "bg-surface-2 font-semibold text-sage"
                       : "text-chocolate hover:bg-surface-2/60"
                   }`}
                 >

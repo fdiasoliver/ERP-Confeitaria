@@ -11,6 +11,8 @@ import {
   type OrderWithItems,
 } from "@/lib/repositories/orderRepository";
 import { resolveConversionFactor } from "@/lib/recipeService";
+import { notifyOrderStatus } from "@/lib/whatsappNotificationService";
+import { findCustomerPhoneById } from "@/lib/repositories/customerRepository";
 
 // ─── Erros de domínio ─────────────────────────────────────────────────────────
 
@@ -286,5 +288,21 @@ export async function updateOrderStatus(orderId: string, newStatus: OrderStatus,
   }
 
   const updated = await updateStatusWithHistory(orderId, newStatus as PrismaOrderStatus, notes);
-  return mapOrderDTO(updated);
+  const dto = mapOrderDTO(updated);
+
+  // Best-effort — nunca bloqueia nem falha a mutação principal de status
+  // (notifyOrderStatus já engole os próprios erros, ver whatsappNotificationService.ts).
+  const phone = await findCustomerPhoneById(dto.customerId).catch(() => null);
+  if (phone) {
+    await notifyOrderStatus({
+      orderId: dto.id,
+      phone,
+      orderNumber: dto.orderNumber,
+      status: dto.status,
+      deliveryDate: dto.deliveryDate,
+      deliveryType: dto.deliveryType,
+    });
+  }
+
+  return dto;
 }

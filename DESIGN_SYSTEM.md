@@ -15,26 +15,32 @@ Todo texto de interface deve estar em **português do Brasil (pt-BR)**.
 
 | Token | Variável CSS | Valor hex | Uso principal |
 |-------|-------------|-----------|--------------|
-| Creme | `--cream` | `#FAF6EF` | Fundo de todas as páginas cliente |
+| Creme | `--cream` | `#FAF6EF` | Fundo de todas as páginas |
 | Chocolate | `--chocolate` | `#191715` | CTAs primários, textos de destaque |
-| Rosa (cereja) | `--rose` | `#C42E3C` | Destaques, badges de confirmação, links |
-| Sálvia (pistache) | `--sage` | `#4F7530` | Sucesso, status positivo, confirmado |
+| Rosa (cereja) | `--rose` | `#C42E3C` | **Admin:** negativo/erro/destrutivo/urgente (excluir, cancelar, estoque baixo, validação). **Cliente final:** acento de marca/CTA (não é semântico lá) |
+| Sálvia (pistache) | `--sage` | `#4F7530` | Positivo/sucesso/confirmado/item ativo de navegação |
+| Caramelo (novo, Sprint `DS.3`) | `--caramel` | `#8A5B22` | Atenção/em andamento/neutro-destacado (ex.: coluna "Em produção" do Kanban, badge "Destaque") — nunca o valor cru do modelo de referência (`#C6884F`, falha WCAG como texto); esta é a variante escura calibrada |
 | Areia | `--sand` | `#E3DCCB` | Bordas, divisores, linhas |
 | Muted | `--muted` | `#726A5F` | Textos secundários, placeholders, labels |
-| Superfície secundária | `--surface-2` (novo) | `#F5EFE1` | Fundos de card/tint sutil (separado de `sand`, que agora é só borda/linha) |
+| Superfície secundária | `--surface-2` | `#F5EFE1` | Fundos de card/tint sutil (separado de `sand`, que é só borda/linha) |
 
 > **Regra:** nunca introduzir novas cores sem decisão explícita. A paleta é a identidade visual do negócio.
+> **Regra de uso semântico no admin (Sprint `DS.3`):** `rose`/`sage`/`caramel` têm papel fixo — negativo / positivo / atenção-neutro, respectivamente. Antes de usar qualquer um dos três num elemento novo, perguntar "esse elemento é negativo, positivo ou neutro-em-destaque?" — não escolher pela cor que "combina visualmente". Dois usos incorretos foram encontrados e corrigidos nesta sprint (destaque do item ativo da Sidebar e da coluna "Em produção" do Kanban, ambos usavam `rose` sem ser negativos).
 
 **Redesign "Ateliê Contemporâneo" (03/08/2026):** os 6 valores hex acima foram atualizados nesta data, decisão do Product Owner após comparação visual de 3 direções de paleta (contraste WCAG verificado na mesma sessão). Os **nomes** dos tokens (`cream`, `chocolate`, `rose`, `sage`, `sand`, `muted`) não mudaram — apenas os valores hex em `src/app/globals.css`. Qualquer código ou documentação que referencie os tokens pelo nome continua válido sem alteração.
 
 **Redesign de front-end mais amplo — Sprint `DS.2` (04/08/2026):** nova direção "A × C", escolhida pelo Product Owner por comparação visual de 3 direções + 1 combinação (Artifact, mesmo processo de DS.1). Os 6 valores hex acima foram atualizados novamente, mais o token novo `surface-2`. Contraste WCAG verificado antes de aplicar — `rose` e `sage` originais da direção aprovada (`#E63946`/`#6B8E4E`) não passavam em 4,5:1 contra `cream` (4,21:1 e 3,48:1); ajustados para `#C42E3C`/`#4F7530` (5,13:1/4,97:1), mesma família de cor (cereja/pistache), mais escuros. Ao contrário de `DS.1`, esta sprint também muda layout/componentes (produto-herói na Vitrine, sidebar de navegação no admin, tratamento fotográfico de produto) — não é só troca de token. Novos: `ProductHero` (`src/components/vitrine/ProductCard.tsx`) — primeiro produto com `featured: true` em destaque, acima do grid de `ProductCard` (que não repete esse produto); `getProductGradientClass()` (`src/lib/utils.ts`) — gradiente determinístico por `product.id` (5 combinações), substitui o gradiente único fixo usado antes em todo `imageEmoji` (`KI-06` segue aberta — isto não é foto real, é um tratamento melhor que o emoji cru). Ver `CHANGELOG.md`, Sprint DS.2.
 
+**Redesenho a partir de modelo de referência real — Sprint `DS.3` (10/08/2026):** Product Owner forneceu um arquivo HTML de referência ("Modelo 1" — painel de Estoque & Financeiro, visual SaaS/back-office) e pediu aplicação a todo o app (admin + cliente final), substituindo a direção `DS.2`. Fonte única `Manrope` (ver Tipografia acima); token novo `--caramel`; correção de sobreposição de significado do token `rose` (achado real, não previsto no plano original — encontrado em 4 lugares: item ativo da Sidebar, coluna "Em produção" do Kanban, badge "Destaque" de produto, e confirmado correto nos demais ~30 usos de `rose` do projeto, que já eram negativo/erro/destrutivo). `getProductGradientClass()` removido (código morto) — `ProductCard`/`ProductHero` passaram de foto com gradiente para ícone flat sobre `surface-2`, com borda `sand` no lugar de `shadow-card`, mesma linguagem visual do admin. `src/app/pedidos/page.tsx` `STATUS_CLASS` corrigido de Tailwind cru (`amber`/`blue`/`red`) para tokens do design system — dívida técnica pré-existente resolvida de graça dentro do escopo desta sprint. Componentes novos sem tela consumidora real ainda (decisão explícita do Product Owner de construir mesmo assim): `BarChart`, `StockItem`/`StockTag` (`src/components/admin/shared/`); `StatCard` ganhou props opcionais `trend`/`note` (badge de variação ↑/↓, sem fonte de dado real hoje). Ver `CHANGELOG.md`, Sprint DS.3.
+
 ### Tipografia
 
 | Papel | Família | Classe Tailwind | Uso |
 |-------|---------|-----------------|-----|
-| Display / Títulos | Fraunces (serif) | `font-display` | Títulos de seção, nomes de produtos, H1–H2 |
-| Interface / Corpo | DM Sans (sans-serif) | padrão (sem classe) | Todos os demais textos, labels, botões |
+| Display / Títulos | Manrope, peso 800 (sans-serif) | `font-display` | Títulos de seção, nomes de produtos, H1–H2 |
+| Interface / Corpo | Manrope, peso 400–600 (sans-serif) | padrão (sem classe) | Todos os demais textos, labels, botões |
+
+**Fonte única desde a Sprint `DS.3` (10/08/2026):** `Manrope` substituiu `Fraunces` (display) + `DM Sans` (corpo) — decisão do Product Owner, fidelidade ao modelo de referência adotado (nenhum título do modelo usa serifa). Diferenciação display/corpo passou a ser só por peso, não por família. `src/app/layout.tsx` carrega uma única fonte via `next/font/google`.
 
 ### Espaçamento e layout
 
@@ -1232,10 +1238,22 @@ Eliminar a duplicação identificada na Sprint 2.E.6 (`MODULE_2E_UX_REVIEW.md`) 
 - **Restrição:** não é virtualizado — para volumes muito grandes (centenas de itens visíveis simultaneamente), avaliar Tabela (ver componente 5) em vez de forçar mais colunas.
 
 ### `StatCard`
-- **Responsabilidade:** célula individual de estatística (valor grande + label).
-- **Propriedades:** `value: string | number`, `label: string`.
-- **Caso de uso:** faixas de estatística no topo de listagens (Total/Ativos/Inativos em Fornecedores).
-- **Restrição:** não busca dados sozinho — o número é calculado pela página (ver `MODULE_2E_UX_REVIEW.md` 3.1 sobre a decisão de 2 chamadas leves em vez de alterar a API).
+- **Responsabilidade:** célula individual de estatística — label+badge de variação no topo, valor grande, nota pequena embaixo (layout revisado na Sprint `DS.3`, padrão "kpi" do modelo de referência).
+- **Propriedades:** `value: string | number`, `label: string`, `trend?: {direction: "up"|"down", text: string}` (novo, DS.3), `note?: string` (novo, DS.3).
+- **Caso de uso:** faixas de estatística no topo de listagens (Total/Ativos/Inativos em Fornecedores, Pedidos/Itens/Urgentes em Produção).
+- **Restrição:** não busca dados sozinho — o número é calculado pela página. `trend`/`note` são opcionais e hoje sem consumidor real (nenhuma API calcula "vs. período anterior") — construídos mesmo assim por decisão explícita do Product Owner na Sprint `DS.3`.
+
+### `BarChart` (novo, Sprint `DS.3`)
+- **Arquivo:** `src/components/admin/shared/BarChart.tsx`.
+- **Responsabilidade:** gráfico de barras simples, CSS puro (sem lib) — padrão do modelo de referência.
+- **Propriedades:** `data: {label: string, value: number, highlight?: boolean}[]`.
+- **Restrição:** sem tela consumidora real hoje (nenhum módulo tem série temporal, ex. faturamento diário) — construído por decisão explícita do Product Owner, pronto para quando existir.
+
+### `StockItem` (novo, Sprint `DS.3`)
+- **Arquivo:** `src/components/admin/shared/StockItem.tsx`.
+- **Responsabilidade:** item de estoque crítico com tag de status (`low`/`mid`/`ok`), borda tracejada — padrão "stock-item" do modelo de referência.
+- **Propriedades:** `icon: string`, `name: string`, `sub: string`, `qty: string`, `status: "low"|"mid"|"ok"`.
+- **Restrição:** sem tela consumidora real hoje (não existe módulo de Insumos/Estoque implementado) — construído por decisão explícita do Product Owner, pronto para quando existir.
 
 ### `SearchBar`
 - **Responsabilidade:** input de busca padronizado (`type="search"`, estilo `.input-field`).

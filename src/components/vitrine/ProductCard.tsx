@@ -2,7 +2,6 @@
 
 import type { Product } from "@/lib/types";
 import { formatCurrency } from "@/lib/mock-data";
-import { getProductGradientClass } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 
 interface ProductCardProps {
@@ -14,10 +13,8 @@ export function ProductCard({ product, quantity }: ProductCardProps) {
   const { addItem, updateQuantity } = useCart();
 
   return (
-    <article className="overflow-hidden rounded-2xl bg-white shadow-card">
-      <div
-        className={`flex aspect-square items-center justify-center bg-gradient-to-br text-5xl ${getProductGradientClass(product.id)}`}
-      >
+    <article className="overflow-hidden rounded-2xl border border-sand bg-white">
+      <div className="flex aspect-square items-center justify-center bg-surface-2 text-5xl">
         {product.imageEmoji}
       </div>
       <div className="p-3">
@@ -66,10 +63,8 @@ export function ProductHero({ product, quantity }: ProductHeroProps) {
   const { addItem, updateQuantity } = useCart();
 
   return (
-    <article className="flex items-center gap-4 rounded-2xl bg-surface-2 p-4 shadow-card">
-      <div
-        className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-4xl ${getProductGradientClass(product.id)}`}
-      >
+    <article className="flex items-center gap-4 rounded-2xl border border-sand bg-white p-4">
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-4xl">
         {product.imageEmoji}
       </div>
       <div className="min-w-0 flex-1">

@@ -354,7 +354,7 @@ export default function ProducaoPage() {
                         <div key={column}>
                           <h4
                             className={`mb-2 border-b-2 pb-2 text-center text-[10px] font-bold uppercase ${
-                              column === "EM_PRODUCAO" ? "border-rose text-rose" : "border-sand text-muted"
+                              column === "EM_PRODUCAO" ? "border-caramel text-caramel" : "border-sand text-muted"
                             }`}
                           >
                             {COLUMN_LABELS[column]} ({orders.length})

@@ -4,6 +4,85 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Sprint DS.3] — 2026-08-10 — Redesenho a partir de modelo de referência real ("Modelo 1")
+
+**Tipo:** Sprint Oficial — terceira sprint sob o prefixo `DS.x` (ADR-018), substituindo a direção `DS.2` ("A × C") em todo o app (admin + cliente final). Diferente de `DS.1`/`DS.2` (que compararam 3 direções geradas via Artifact), esta sprint partiu de um arquivo HTML real fornecido pelo Product Owner. Conduzida via `ai-project-manager`/`ai-solution-architect` (planejamento) → implementação direta na sessão principal, em 5 fases (DS.3.1–DS.3.5), cada uma validada (`tsc`/`lint`/`build`/visual real) antes da próxima.
+
+### Planejamento
+
+Product Owner forneceu `3-estoque-financeiro.html` ("Modelo 1" de 2 modelos) — painel de Estoque & Financeiro, visual SaaS/back-office: fonte `Manrope` única, paleta `paper`/`card`/`ink`/`pistachio`/`caramel`/`berry`, sidebar 230px, cards de KPI, gráfico de barras, lista de estoque crítico com tags de status. Decisão do Product Owner: aplicar a todo o admin (20 páginas) + área do cliente final, não só às telas de estoque/financeiro que o modelo mostrava.
+
+`ai-solution-architect` verificou contraste WCAG de cada acento antes de propor valores finais (mesma prática de `DS.1`/`DS.2`) — encontrou que o `caramel` cru do modelo (`#C6884F`) falha como texto (~2,8:1); adotado o padrão "cor sólida + fundo em opacidade baixa" já usado no projeto (`StatusBadge`/`ValidationSummary`) em vez de criar tokens `-soft` extras. `--cream`/`--sand`/`--chocolate` mantidos nos valores já calibrados em `DS.2.1` (diferença do modelo imperceptível, sem ganho real em trocar). Achado que motivou a criação do `--caramel`: `src/app/pedidos/page.tsx` já tinha uma dívida técnica real (Tailwind cru fora do design system) que o novo token resolve de graça.
+
+Sete decisões do Product Owner antes de implementar: fonte `Manrope` única (não híbrida); destaque de item ativo da Sidebar migra de `rose` para `sage` (corrige sobreposição de significado); área do cliente final também adota card flat estilo back-office (não só paleta/fonte); token `--caramel` criado mesmo sem consumidor imediato no admin; `BarChart`/`StockItem` construídos mesmo sem tela real; `StatCard` ganha badge de variação mesmo sem dado real; `--cream`/`--sand`/`--chocolate` mantidos nos valores atuais.
+
+### Implementação
+
+**DS.3.1 (Fundação):** `src/app/globals.css` — token novo `--caramel:#8A5B22`. `src/app/layout.tsx` — `Fraunces`+`DM Sans` substituídos por `Manrope` único. **Bug real encontrado e corrigido durante a implementação:** `.font-display` em `globals.css` estava hardcoded para `var(--font-fraunces)` (variável removida do `layout.tsx`), o que teria silenciosamente quebrado para o fallback `Georgia, serif` em todo elemento com essa classe — corrigido para `var(--font-display)` (o token, não a variável de fonte direto) + `font-weight: 800` (diferenciação display/corpo passa a ser só por peso).
+
+**DS.3.2 (Admin):** `Sidebar.tsx` — destaque do item ativo de `bg-surface-2 text-rose` para `bg-surface-2 text-sage`; `rose` mantido só no botão "Sair". `ConfirmDialog`/`ErrorState`/`StatusBadge`/`ValidationSummary`/`FormPrimitives`/`UploadImage` revisados — já usavam `rose`/`sage` corretamente (destrutivo/erro), nenhuma mudança necessária.
+
+**DS.3.3 (Componentes novos):** `BarChart.tsx` e `StockItem.tsx` novos em `src/components/admin/shared/` — sem tela consumidora real, prontos para quando existir módulo de Insumos/Estoque ou série temporal. `StatCard.tsx` — layout revisado (label+badge no topo, valor grande, nota embaixo) + props opcionais `trend`/`note`.
+
+**DS.3.4 (Cliente final):** `ProductCard`/`ProductHero` (`src/components/vitrine/ProductCard.tsx`) — gradiente determinístico substituído por ícone flat sobre `surface-2` com borda `sand` (mesma linguagem do admin); `getProductGradientClass()` removido de `src/lib/utils.ts` (código morto após a troca). `src/app/pedidos/page.tsx` `STATUS_CLASS` corrigido de Tailwind cru (`amber-100`/`blue-100`/`red-100`) para tokens do design system (`sage`=positivo, `caramel`=em andamento, `rose`=negativo, `sand`=neutro) — dívida técnica pré-existente resolvida dentro do escopo desta sprint. `bg-red-50`/`text-red-700` de mensagens de erro (`checkout`/`login`/`pedidos`) revisados e mantidos como estão — mesma decisão já tomada na Sprint `DS.1` (semânticos, fora da identidade de marca).
+
+**Achado adicional, fora do plano original, corrigido na Fase 5:** varredura ampla por `rose` em todo o admin encontrou mais 2 usos com sobreposição de significado — coluna "Em produção" do Kanban (`src/app/admin/producao/page.tsx`, herdado da Sprint `DS.2.4`) e badge "Destaque" de produto (`src/app/admin/produtos/page.tsx`) — ambos corrigidos para `caramel` (em andamento/atenção-neutro, não negativo). Demais ~30 usos de `rose` no projeto revisados e confirmados corretos (excluir/desativar/remover/cancelar/erro de validação/estoque baixo/urgente, no admin; acento de marca/CTA na área cliente, onde `rose` não é semântico).
+
+### Validação
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` (após cada fase) | 0 erros |
+| `npm run lint` (após cada fase) | 0 erros/avisos |
+| `npm run build` (após DS.3.3 e ao final) | Build de produção completo, 0 erros |
+
+**Validação funcional (Playwright, navegador real):** varredura em admin (`/admin/fornecedores` — StatCard redesenhado, `/admin/produtos` — badge "Destaque" em caramel, `/admin/producao` — Kanban com coluna "Em produção" em caramel) e cliente (`/`, `/pedidos`, `/checkout`) em 3 larguras (1280px desktop, 834px tablet, 390px mobile). Sidebar com item ativo em `sage` confirmado. 0 erros de console em todos os cenários.
+
+### Documentação
+
+`DESIGN_SYSTEM.md` (paleta, tipografia, regra de uso semântico dos 3 acentos, `StatCard`/`BarChart`/`StockItem`), `PLAN.md` atualizados conforme acima.
+
+---
+
+## [Épico 5 — Módulo 5.B] — 2026-08-05 — WhatsApp OTP + Notificações (Evolution API)
+
+**Tipo:** Primeiro módulo do Épico 5 (Integrações Externas), escolhido pelo Product Owner por resolver o único problema Crítico ainda aberto do projeto (`KI-03` — WhatsApp/PIX ausentes bloqueiam uso real em produção). Precedido por planejamento arquitetural do Épico inteiro (5 sub-domínios mapeados) e planejamento específico do módulo, ambos via `ai-project-manager`/`ai-solution-architect`. Implementação em 6 microtarefas de camada única (5.B.1–5.B.6), cada uma validada (`tsc`/`lint`) antes da próxima; build de produção validado após 5.B.6.
+
+### Planejamento
+
+Confirmado por leitura direta do schema: `OtpCode` e `WhatsAppLog` já existiam (nunca usados por código real), `TODO` explícito já marcado em `authorize()` do provider `"customer"` desde a fundação do projeto. Achado da Sprint: `OtpCode` não tinha proteção contra força bruta (sem campo de tentativas). Provedor WhatsApp confirmado pelo Product Owner: Evolution API (self-hosted, instância já existente fora deste projeto). Decisões do Product Owner antes de implementar: 3 tentativas máximas por código; validação do código dentro do `authorize()` do NextAuth, sem rota `/verify` separada; 4 status disparam notificação (Confirmado, Pronto, Saiu para entrega, Entregue — `EM_PRODUCAO`/`CANCELADO` não disparam); textos das 4 mensagens aprovados um a um; nova camada `src/lib/clients/` (para I/O HTTP de provedor externo, distinta de Repository) formalizada como ADR (ADR-023).
+
+### Implementação
+
+**5.B.1 (Schema):** `OtpCode.attempts Int @default(0)`.
+
+**5.B.2 (Client):** `src/lib/clients/whatsappClient.ts` — `sendWhatsAppMessage(phone, text)`, chama `POST {WHATSAPP_API_URL}/message/sendText/{WHATSAPP_INSTANCE_ID}` (Evolution API), header `apikey`. Todo o contrato específico do provedor isolado neste arquivo (ADR-023) — nenhum Service/Route conhece o formato real da API externa. Fallback gracioso se `WHATSAPP_*` ausentes (mesmo padrão de `upload/route.ts` para Supabase Storage).
+
+**5.B.3 (Service):** `src/lib/otpService.ts` — `requestOtp(phone)` gera código de 6 dígitos, persiste `OtpCode` (expiração 5 min), envia via `whatsappClient`, registra `WhatsAppLog`. `validateOtp(phone, code)` — 5 erros de domínio (`OtpNotFoundError`/`OtpExpiredError`/`OtpAlreadyUsedError`/`OtpMaxAttemptsError`/`OtpInvalidCodeError`), incrementa `attempts` a cada tentativa errada. Novo `src/lib/repositories/otpRepository.ts` e `src/lib/repositories/whatsappLogRepository.ts` (este último compartilhado com Notificações).
+
+**5.B.4 (API + NextAuth):** `POST /api/auth/otp/request` (rota pública, sem auth — envia o código). `authorize()` do provider `"customer"` (`src/app/api/auth/[...nextauth]/route.ts`) passou a receber `phone`+`code` em vez de `phone`+`name`, validando via `otpService.validateOtp` antes do upsert do `Customer`. Contrato de sessão (`phone`/`userType: "customer"` no JWT) confirmado preservado sem alteração nos callbacks `jwt`/`session`.
+
+**5.B.5 (Frontend):** `src/app/login/page.tsx` — fluxo de 2 passos telefone → código (era telefone → nome), com opção de reenviar código. Campo de nome removido; clientes novos recebem `name: "Cliente"` por padrão (mesmo fallback que já existia antes desta sprint).
+
+**5.B.6 (Notificações):** `src/lib/whatsappNotificationService.ts` — `notifyOrderStatus()`, best-effort (nunca lança, sempre registrado em `WhatsAppLog`). Hook adicionado em `updateOrderStatus` (`src/lib/orderService.ts`), resolvendo o telefone do `Customer` via novo `findCustomerPhoneById` (`customerRepository.ts`, leitura mínima — evita puxar endereços/pedidos à toa).
+
+### Validação
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` (após cada microtarefa) | 0 erros |
+| `npm run lint` (após cada microtarefa) | 0 erros/avisos |
+| `npm run build` (após 5.B.6) | Build de produção completo, 0 erros — nova rota `/api/auth/otp/request` presente |
+
+**Validação funcional real (Playwright, banco real), exceto envio real de WhatsApp:** fluxo completo de login testado ponta a ponta — solicitação de código (`OtpCode` criado, `WhatsAppLog` registrado com `success:false`/`"WhatsApp não configurado."`, fallback gracioso confirmado), código errado (rejeitado, `attempts` incrementado de 0→1, mensagem de erro exibida), código certo (login bem-sucedido, sessão criada, `usedAt` marcado, redirecionamento para `/pedidos`, `Customer` novo criado com `name: "Cliente"`). Hook de notificação testado via API real: `CONFIRMADO→EM_PRODUCAO` (não notifica, confirmado) e `EM_PRODUCAO→PRONTO` (notifica — `WhatsAppLog` criado com o texto correto por `deliveryType`, telefone resolvido via `Customer`, não `receiverPhone`). Dados de teste (Customer/OtpCode/WhatsAppLog/status do pedido) revertidos ao estado original após a validação, nenhum resquício.
+**Envio real de WhatsApp (mensagem de fato chegando no celular) ainda não testado** — depende do Product Owner preencher `WHATSAPP_API_URL`/`WHATSAPP_API_TOKEN`/`WHATSAPP_INSTANCE_ID` no `.env` local com os dados reais da instância Evolution API (hoje escaffoldadas, vazias). O risco de formato de contrato (Seção 2 do planejamento — número com/sem `+55`, sufixo `@c.us`) só é confirmável nesse teste real, não antes.
+
+### Documentação
+
+`REGRAS_NEGOCIO.md` (Seção 12.10, nova — templates de notificação; Seção 15.5, regra 21 — bloqueio por tentativas), `CLAUDE.md` (ADR-023), `KNOWN_ISSUES.md` (`KI-05` fechada), `PLAN.md` (Épico 5 "Em andamento", Módulo 5.B concluído) atualizados conforme acima.
+
+---
+
 ## [Sprint DS.2] — 2026-08-04/05 — Redesenho de front-end mais amplo: direção "A × C"
 
 **Tipo:** Sprint Oficial — segunda sprint sob o prefixo `DS.x` (ADR-018), continuação de `DS.1` mas com escopo maior: não só paleta, também layout e componentes (admin + cliente final). Conduzida via `ai-project-manager` → `ai-solution-architect` (planejamento) → implementação direta na sessão principal, em 5 fases (DS.2.1–DS.2.5), cada uma validada (`tsc`/`lint`/`build`/visual real via Playwright) antes da próxima.

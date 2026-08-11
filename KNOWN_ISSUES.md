@@ -40,10 +40,11 @@ Atualizado na Sprint A2 — Consolidação da Arquitetura (29/06/2026).
 **Prioridade:** Alta
 
 ### ✅ KI-05 — Auth OTP sem backend (PEN-04)
-**Status:** PARCIALMENTE RESOLVIDO em Sprint A2
-**Arquivo:** `src/app/login/page.tsx`
-**Resolução:** O login do cliente agora funciona: telefone + nome → `signIn("customer")` → `NextAuth.authorize` → upsert do `Customer` no banco → sessão JWT com phone e userType. O campo de OTP foi substituído pelo campo de nome (temporário). O fluxo de OTP via WhatsApp será adicionado na Fase 8 na função `authorize` do provider, sem alterar estrutura.
-**Nota:** O estado `otp` morto da versão anterior foi removido.
+**Status:** RESOLVIDO — Módulo `5.B` (Épico 5, Integrações Externas), 05/08/2026
+**Arquivo:** `src/app/login/page.tsx`, `src/lib/otpService.ts`, `src/lib/clients/whatsappClient.ts`, `src/app/api/auth/[...nextauth]/route.ts`
+**Resolução parcial (Sprint A2):** login funcionava por telefone + nome, sem código de verificação real.
+**Resolução completa (Módulo 5.B):** fluxo real de OTP via WhatsApp (Evolution API) — `POST /api/auth/otp/request` gera código de 6 dígitos, persiste `OtpCode` (`expiresAt` 5 min, `attempts`), envia via `whatsappClient.sendWhatsAppMessage`, registra em `WhatsAppLog`. `authorize()` do provider `"customer"` valida o código (`otpService.validateOtp` — expiração, uso único, máximo de 3 tentativas, `REGRAS_NEGOCIO.md` 15.5 regras 14/21) antes de autorizar. Contrato de sessão (`phone`/`userType: "customer"` no JWT) preservado sem alteração.
+**Nota:** o campo "nome" foi removido do login — clientes novos são criados com `name: "Cliente"`, sem regressão de comportamento visível (mesmo fallback que já existia antes desta sprint).
 
 ---
 
@@ -154,7 +155,7 @@ Atualizado na Sprint A2 — Consolidação da Arquitetura (29/06/2026).
 | PEN-01 | Checkout não persistia pedidos | ✅ Resolvido (Sprint 0.6) | — |
 | PEN-02 | /pedidos usava MOCK_ORDERS | ✅ Resolvido (Sprint 0.6) | — |
 | PEN-03 | /admin/producao usa dados hardcoded | 🔲 Aberto — Sprint 1 | KI-04 |
-| PEN-04 | Auth OTP cliente sem backend | 🟡 Parcial — login funciona sem OTP | KI-05 |
+| PEN-04 | Auth OTP cliente sem backend | ✅ Resolvido — Módulo 5.B | KI-05 |
 | PEN-05 | Produtos têm imageUrl=null, vitrine usa imageEmoji | ✅ Tipo alinhado — upload pendente Fase 8 | KI-06 |
 
 ---

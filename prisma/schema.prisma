@@ -185,6 +185,7 @@ model OtpCode {
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
   phone      String
   code       String
+  attempts   Int       @default(0) // máximo de 3 tentativas de validação — Regra 15.5, REGRAS_NEGOCIO.md
   expiresAt  DateTime
   usedAt     DateTime?
   createdAt  DateTime  @default(now())

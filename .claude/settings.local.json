@@ -70,7 +70,11 @@
       "Bash(powershell -Command \"Stop-Process -Id 121016 -Force\")",
       "Bash(echo \"started, PID: $!\")",
       "mcp__playwright__browser_run_code_unsafe",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(openssl s_client -connect api.indicadoresdi.com.br:443 -servername api.indicadoresdi.com.br)",
+      "Bash(openssl x509 *)",
+      "mcp__playwright__browser_tabs",
+      "mcp__playwright__browser_file_upload"
     ]
   },
   "enabledMcpjsonServers": [
