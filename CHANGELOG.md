@@ -4,6 +4,36 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Sprint DS.4] — 2026-08-11 — Área cliente responsiva (Vitrine + Checkout/Pedidos/Login)
+
+**Tipo:** Sprint Oficial — quarta sprint sob o prefixo `DS.x` (ADR-018). Diferente de `DS.1`–`DS.3` (cor/tipografia/estilo visual), esta sprint tratou especificamente de layout e responsividade: a área cliente não aproveitava a largura da tela em telas maiores, ao contrário do admin (`DS.2`). Planejada via `ai-solution-architect`, com múltiplas decisões do Product Owner divergindo da recomendação original (registradas na ADR-024, `CLAUDE.md`). Implementada em 5 fases (DS.4.1–DS.4.5), cada uma validada (`tsc`/`lint`/`build`/visual real) antes da próxima.
+
+### Planejamento
+
+Pedido do Product Owner: cores e fontes da Sprint `DS.3` já estavam corretas — o problema era o layout da Vitrine não aproveitar a largura da tela como o admin, em telas maiores. Direção escolhida entre as opções apresentadas: sidebar de categorias na área cliente, no mesmo padrão visual do admin. Decisões que divergiram da recomendação original do `ai-solution-architect`, todas explícitas do Product Owner: breakpoint `md` (768px, igual ao admin) em vez de `lg` (1024px); sidebar recolhível para modo só-ícone ("magnética"), inspirada em uma referência visual genérica de UX (mantendo as cores e a aparência já existentes do projeto, não as da referência); carrinho (`CartFab`/`CartDrawer`/`Toast`) disponível em todas as páginas cliente (Vitrine, Checkout, Pedidos, Login), não só na Vitrine; escopo expandido de "só Vitrine" para "Vitrine + Checkout/Pedidos/Login"; ADR registrada ao final da sprint, não antes da implementação.
+
+### Implementação
+
+**DS.4.1 (Fundação):** `lucide-react` instalado (primeira biblioteca de ícones do projeto). Páginas movidas para `src/app/(client)/` (route group — mesma URL, sem mudança de rota): `page.tsx`, `checkout/page.tsx`, `pedidos/page.tsx`, `login/page.tsx`. Novo `src/components/layout/ClientShell.tsx` + `src/app/(client)/layout.tsx`, paralelo a `AdminShell.tsx` (`DS.2`). **Incidente:** apagar apenas `.next/types` com o servidor de desenvolvimento rodando corrompeu o cache do Turbopack (erro de SST file, HTTP 500 em todas as rotas) — corrigido parando o servidor, removendo `.next` por completo e reiniciando.
+
+**DS.4.2 (VitrineSidebar):** `OccasionTag.icon` das 6 ocasiões reais atualizado no banco (antes sempre `"calendar"`, o valor padrão nunca customizado) — `aniversario→cake, mesversario→gift, docinhos→candy, corporativo→briefcase, casamento→heart, cafe→coffee`. Novo `src/lib/icons.ts` (mapa explícito nome→ícone Lucide, não lookup dinâmico do pacote inteiro, para tree-shaking). Novo `src/components/vitrine/VitrineSidebar.tsx` — componente próprio, não reaproveita `src/components/admin/shared/Sidebar.tsx` (fonte de dados distinta: ocasiões públicas via API, não sessão/papel); recolhível para modo só-ícone via botão do próprio usuário, breakpoint `md`. `src/app/(client)/page.tsx` restruturado: sidebar à esquerda, chips de categoria (`CategoryChips`) só em mobile, grid de produtos `md:grid-cols-3 xl:grid-cols-4`.
+
+**DS.4.3 (CartDrawer responsivo + disponível em todas as páginas):** `CartDrawer` ganhou variante desktop (`md:`+: painel ancorado à direita, altura cheia, `w-96`) mantendo o bottom-sheet mobile inalterado; `CartFab` reposicionado (`right-6` fixo no desktop, substituindo a fórmula antiga calculada para o layout centralizado `max-w-app` que não fazia mais sentido no layout com sidebar). Estado do carrinho (`cartOpen`, sincronização de `?cart=open`) e renderização de `CartFab`/`CartDrawer`/`Toast` movidos de `src/app/(client)/page.tsx` (só Vitrine) para `ClientShell.tsx` (todas as páginas cliente). **Achado corrigido durante a validação funcional, não previsto no planejamento:** com o `CartFab` global, em mobile ele sobrepunha completamente o botão final "Confirmar e pagar com PIX" do Checkout, bloqueando o toque — o Checkout já exibe o carrinho inline, tornando o FAB ali redundante. Corrigido ocultando o `CartFab` especificamente em `/checkout` (`usePathname()` no `ClientShell`), decisão validada com o Product Owner via pergunta explícita antes da correção.
+
+**DS.4.4 (Checkout/Pedidos/Login — layouts largos):** Checkout (`src/app/(client)/checkout/page.tsx`) ganhou layout de 2 colunas em `lg:`+ (formulário à esquerda, resumo do pedido `sticky` à direita, container `max-w-5xl`) — validado com 2 pedidos reais criados via fluxo real de checkout (retirada, sem endereço) e removidos após o teste. Pedidos (`src/app/(client)/pedidos/page.tsx`) ganhou grid `lg:grid-cols-2` (antes lista de 1 coluna sempre) — validado com os mesmos 2 pedidos reais. Login (`src/app/(client)/login/page.tsx`) permanece `max-w-app` (decisão explícita do Product Owner de não alargar), mas passou a centralizar verticalmente (`flex` + `justify-center`) em vez de ficar ancorado ao topo com um vazio grande abaixo em telas altas.
+
+### Validação
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` (após cada fase) | 0 erros |
+| `npm run lint` (após cada fase) | 0 erros/avisos |
+| `npm run build` (após DS.4.1 e ao final) | Build de produção completo, 0 erros — todas as rotas do route group `(client)` preservam a URL original |
+
+**Validação funcional (Playwright, navegador real):** varredura em 3 larguras (1440px desktop, 768px tablet — exatamente no limite do breakpoint `md` — e 390px mobile) nas 4 páginas (`/`, `/checkout`, `/pedidos`, `/login`). Login real via OTP (telefone de teste, código lido do banco), 2 pedidos reais criados via fluxo de checkout completo para validar o grid de Pedidos e removidos ao final (pedido, itens, cliente e código OTP). Persistência do carrinho confirmada entre páginas via navegação client-side (SPA); confirmado que `page.goto`/reload de página inteira zera o carrinho — comportamento pré-existente do `CartContext` (sem `localStorage`), não uma regressão desta sprint. 0 erros de console em todos os cenários.
+
+---
+
 ## [Sprint DS.3] — 2026-08-10 — Redesenho a partir de modelo de referência real ("Modelo 1")
 
 **Tipo:** Sprint Oficial — terceira sprint sob o prefixo `DS.x` (ADR-018), substituindo a direção `DS.2` ("A × C") em todo o app (admin + cliente final). Diferente de `DS.1`/`DS.2` (que compararam 3 direções geradas via Artifact), esta sprint partiu de um arquivo HTML real fornecido pelo Product Owner. Conduzida via `ai-project-manager`/`ai-solution-architect` (planejamento) → implementação direta na sessão principal, em 5 fases (DS.3.1–DS.3.5), cada uma validada (`tsc`/`lint`/`build`/visual real) antes da próxima.

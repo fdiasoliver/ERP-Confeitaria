@@ -59,10 +59,10 @@ export default function PedidosPage() {
   };
 
   return (
-    <div className="mx-auto min-h-screen max-w-app bg-cream pb-8">
+    <div className="mx-auto min-h-screen max-w-app bg-cream pb-8 lg:max-w-5xl">
       <HeaderMinimal title="Meus Pedidos" />
 
-      <div className="px-5 py-4">
+      <div className="px-5 py-4 lg:px-8 lg:py-8">
         {!customer && (
           <div className="py-12 text-center">
             <p className="text-muted mb-4 text-sm">Faça login para ver seus pedidos.</p>
@@ -98,52 +98,56 @@ export default function PedidosPage() {
           </div>
         )}
 
-        {customer && !isLoading && !error && orders.map((order) => (
-          <article
-            key={order.id}
-            className="shadow-card mb-3 rounded-2xl bg-white p-4"
-          >
-            <div className="mb-2 flex items-start justify-between">
-              <div>
-                <strong>#{order.orderNumber}</strong>
-                <p className="text-muted text-xs">
-                  Entrega: {formatDate(order.deliveryDate)}
-                </p>
-              </div>
-              <span
-                className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${STATUS_CLASS[order.status] ?? "bg-sand"}`}
+        {customer && !isLoading && !error && orders.length > 0 && (
+          <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
+            {orders.map((order) => (
+              <article
+                key={order.id}
+                className="shadow-card rounded-2xl bg-white p-4"
               >
-                {STATUS_LABELS[order.status]}
-              </span>
-            </div>
-
-            <div className="text-sm">
-              {order.items.map((item) => (
-                <div key={item.productId}>
-                  {item.productName} × {item.quantity}
+                <div className="mb-2 flex items-start justify-between">
+                  <div>
+                    <strong>#{order.orderNumber}</strong>
+                    <p className="text-muted text-xs">
+                      Entrega: {formatDate(order.deliveryDate)}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${STATUS_CLASS[order.status] ?? "bg-sand"}`}
+                  >
+                    {STATUS_LABELS[order.status]}
+                  </span>
                 </div>
-              ))}
-            </div>
 
-            <p className="mt-2 font-semibold">{formatCurrency(order.total)}</p>
+                <div className="text-sm">
+                  {order.items.map((item) => (
+                    <div key={item.productId}>
+                      {item.productName} × {item.quantity}
+                    </div>
+                  ))}
+                </div>
 
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                className="flex-1 rounded-lg border border-sand py-2.5 text-sm font-semibold"
-              >
-                Ver detalhes
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRepeat(order.id, order.status === "ENTREGUE")}
-                className="flex-1 rounded-lg bg-rose py-2.5 text-sm font-semibold text-white"
-              >
-                {order.status === "ENTREGUE" ? "Pedir e personalizar" : "Pedir novamente"}
-              </button>
-            </div>
-          </article>
-        ))}
+                <p className="mt-2 font-semibold">{formatCurrency(order.total)}</p>
+
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    className="flex-1 rounded-lg border border-sand py-2.5 text-sm font-semibold"
+                  >
+                    Ver detalhes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRepeat(order.id, order.status === "ENTREGUE")}
+                    className="flex-1 rounded-lg bg-rose py-2.5 text-sm font-semibold text-white"
+                  >
+                    {order.status === "ENTREGUE" ? "Pedir e personalizar" : "Pedir novamente"}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
 
         <Link
           href="/"

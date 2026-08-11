@@ -65,10 +65,10 @@ function LoginContent() {
   };
 
   return (
-    <div className="mx-auto min-h-screen max-w-app bg-cream">
+    <div className="mx-auto flex min-h-screen max-w-app flex-col bg-cream">
       <HeaderMinimal title="Entrar" />
 
-      <div className="px-5 py-6">
+      <div className="flex flex-1 flex-col justify-center px-5 py-6">
         <p className="text-muted mb-6 text-sm">
           Use seu celular com DDD para acessar ou criar sua conta.
         </p>

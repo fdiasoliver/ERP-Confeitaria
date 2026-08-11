@@ -520,16 +520,18 @@ Exibir conteúdo deslizante a partir de uma borda da tela, sem bloquear completa
 - Exibe lista de itens com controles de quantidade
 - Total fixo no rodapé com botão "Finalizar pedido"
 - Lista com `scrollbar-none` e `overflow-y-auto`
-- CartFab: botão flutuante que abre o drawer, `position: fixed`, canto inferior direito
+- CartFab: botão flutuante que abre o drawer, `position: fixed`; canto inferior central em mobile, `right-6` fixo em `md:`+
+- **Variante desktop (Sprint DS.4):** em `md:`+ (768px), o drawer deixa de ser bottom sheet e passa a ser um painel ancorado à direita, altura cheia (`md:inset-y-0 md:right-0 md:h-full md:w-96`) — mesmo conteúdo/comportamento, só a posição/dimensão mudam
+- Renderizado pelo `ClientShell` (não por cada página) — disponível em Vitrine, Pedidos e Login; `CartFab` oculto apenas em `/checkout` (carrinho já exibido inline nessa tela)
 
 ### Boas práticas
 - Drawer não deve exigir scroll na área fora do drawer
 - Conteúdo principal do drawer deve ser `overflow-y-auto` para listas longas
 - Não usar drawer para formulários complexos — prefira página própria
-- Handle de arraste ajuda na descoberta do gesto de fechar em mobile
+- Handle de arraste ajuda na descoberta do gesto de fechar em mobile (oculto na variante painel de desktop, `md:hidden`)
 
 ### Responsividade
-- Bottom sheet: exclusivo para mobile (telas < 768px); em desktop usar painel lateral ou modal
+- Bottom sheet: exclusivo para mobile (< 768px); painel lateral direito em `md:`+ (768px) — implementado na Sprint DS.4, CartDrawer acima
 - Drawer lateral admin: aparece apenas em mobile; em desktop o menu fica fixo visível
 
 ### Acessibilidade
@@ -1230,6 +1232,13 @@ Eliminar a duplicação identificada na Sprint 2.E.6 (`MODULE_2E_UX_REVIEW.md`) 
 - **Filtragem por papel:** os itens de navegação são filtrados pelo `role` da sessão (`useSession()`), espelhando `src/proxy.ts` `ROLE_REQUIRED` — um usuário só vê no menu o que pode de fato acessar (princípio já registrado em `MENU_STRUCTURE.md`, nunca implementado antes de DS.2).
 - **Caso de uso:** aplicado automaticamente a todas as páginas sob `/admin/*` via `admin/layout.tsx` — nenhuma página individual precisa importar `Sidebar`.
 - **Restrição:** a lista de rotas/papéis em `Sidebar.tsx` deve ser mantida manualmente em sincronia com `src/proxy.ts` `ROLE_REQUIRED` — não há fonte única compartilhada entre os dois ainda (achado registrado, não uma dívida técnica formal nesta sprint).
+
+### `VitrineSidebar` / `ClientShell` (novos na Sprint DS.4)
+- **Arquivos:** `src/components/vitrine/VitrineSidebar.tsx`, `src/components/layout/ClientShell.tsx`, `src/app/(client)/layout.tsx`.
+- **Responsabilidade:** navegação persistente da área cliente (Vitrine) e chrome de carrinho compartilhado — sidebar de ocasiões (`OccasionTag`, ícone `lucide-react` real por ocasião via `src/lib/icons.ts`) em `md:`+ (768px, mesmo breakpoint do admin); recolhível para modo só-ícone via botão do próprio usuário (`w-60` ↔ `w-16`), sem auto-colapso por faixa de largura. `ClientShell` hospeda `CartFab`/`CartDrawer`/`Toast` e a sincronização de `?cart=open` — disponíveis em todas as páginas cliente (Vitrine, Checkout, Pedidos, Login), exceto o `CartFab` especificamente em `/checkout` (já mostra o carrinho inline; ver `CartDrawer`/`CartFab` abaixo).
+- **Diferença deliberada de `Sidebar`/`AdminShell`:** **não é o mesmo componente reaproveitado** — fonte de dados distinta (ocasiões públicas via `/api/occasions`, não sessão/papel do usuário) e por isso implementado como componente próprio, não uma variante do `Sidebar` do admin.
+- **Caso de uso:** `VitrineSidebar` só é renderizada em `src/app/(client)/page.tsx` (Vitrine); `ClientShell` é aplicado automaticamente a todas as páginas sob `(client)` via `(client)/layout.tsx` — nenhuma página individual precisa importar `CartFab`/`CartDrawer`/`Toast`.
+- **Restrição:** ao adicionar uma ocasião nova sem ícone mapeado em `src/lib/icons.ts`, o fallback é o ícone genérico `Tag` — cadastrar o nome do ícone Lucide correspondente em `OccasionTag.icon` e no mapa ao criar a ocasião.
 
 ### `ResponsiveGrid`
 - **Responsabilidade:** grid de listagem responsivo — 1 coluna (mobile) → 2 (tablet, `md:`) → 3 (desktop, `xl:`, opcional via prop `cols`).

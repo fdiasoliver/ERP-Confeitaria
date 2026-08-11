@@ -191,10 +191,11 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-app bg-cream pb-8">
+    <div className="mx-auto min-h-screen max-w-app bg-cream pb-8 lg:max-w-5xl">
       <HeaderMinimal title="Finalizar pedido" />
 
-      <div className="px-5 py-4">
+      <div className="px-5 py-4 lg:flex lg:items-start lg:gap-8 lg:px-8 lg:py-8">
+      <div className="lg:flex-1">
         <p className="text-muted mb-5 text-sm">
           Prazo mínimo deste pedido:{" "}
           <strong className="text-chocolate">
@@ -357,8 +358,10 @@ export default function CheckoutPage() {
             ))}
           </div>
         </Field>
+      </div>
 
-        <div className="mt-5 rounded-xl bg-sand p-4">
+      <div className="lg:sticky lg:top-6 lg:w-96 lg:shrink-0">
+        <div className="mt-5 rounded-xl bg-sand p-4 lg:mt-0">
           <Row label="Subtotal" value={formatCurrency(subtotal)} />
           <Row
             label="Entrega"
@@ -386,6 +389,7 @@ export default function CheckoutPage() {
               ? "Confirmar e pagar com PIX"
               : "Confirmar pedido"}
         </button>
+      </div>
       </div>
     </div>
   );

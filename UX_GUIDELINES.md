@@ -850,7 +850,7 @@ Quando disponível (ações em lote):
 
 ### Layout mobile
 
-- Container principal: `mx-auto max-w-app px-5` (480px centralizado)
+- Container principal: `mx-auto max-w-app px-5` (480px centralizado) — válido abaixo do breakpoint `md` (768px); a partir de `md` a área cliente usa o layout largo descrito em "Layout área cliente em desktop" (Seção 15) e "Adaptações para tablet" (Seção 16)
 - Header fixo no topo: `sticky top-0 z-40`
 - Botão de ação principal: sempre na parte inferior da tela, acima do safe area do iOS
 - Bottom sheet / drawer: âncora no rodapé para conteúdo contextual
@@ -922,6 +922,25 @@ Quando disponível (ações em lote):
 - Formulários em 2 colunas para campos relacionados (Nome | Categoria)
 - Sidebar de filtros visível por padrão (não colapsada)
 
+### Layout área cliente em desktop (Sprint DS.4)
+
+```
+┌────────┬───────────────────────────────────────┐
+│        │  Header (logo + pedidos/perfil/carr.) │
+│ Cate-  ├───────────────────────────────────────┤
+│ gorias │                                       │
+│ (60px  │  Conteúdo principal                   │
+│  a     │  max-w-6xl                            │
+│ 240px) │                                       │
+└────────┴───────────────────────────────────────┘
+```
+
+- Breakpoint `md` (768px) — igual ao admin (Seção 14), decisão explícita do Product Owner em vez de um breakpoint próprio da área cliente
+- `VitrineSidebar` (componente próprio, não compartilhado com o admin): lista as ocasiões (`OccasionTag`, ícone Lucide real por ocasião), recolhível para modo só-ícone via botão do próprio usuário — largura `w-60` expandida / `w-16` recolhida
+- Conteúdo com `md:mx-auto md:max-w-6xl md:px-6 md:py-6`; grid de produtos `md:grid-cols-3 xl:grid-cols-4`
+- `CartFab`/`CartDrawer`/`Toast` centralizados no `ClientShell` (`src/components/layout/ClientShell.tsx`) — disponíveis em Vitrine, Pedidos e Login; ocultos apenas no Checkout, que já exibe o carrinho inline
+- Checkout: 2 colunas em `lg:`+ (formulário à esquerda, resumo do pedido `sticky` à direita); Pedidos: grid `lg:grid-cols-2`; Login permanece `max-w-app` mas centralizado verticalmente
+
 ### Atalhos de teclado (admin — futuro)
 
 | Atalho | Ação |
@@ -967,10 +986,10 @@ Para ícones sem label de texto em contextos admin:
 
 ### Adaptações para tablet
 
-**Área cliente (768px):**
-- Grid de produtos: 2 colunas (vs. 1 coluna no mobile)
-- CartDrawer: pode ocupar `max-w-sm` ancorado à direita em vez de bottom sheet
-- Formulários: grid de 2 colunas para campos curtos
+**Área cliente (768px — confirmado na Sprint DS.4):**
+- `VitrineSidebar` aparece a partir de 768px (breakpoint `md`, igual ao admin); grid de produtos: 3 colunas (`md:grid-cols-3`, 4 em `xl:`+)
+- CartDrawer: `w-96` ancorado à direita e com altura cheia em vez de bottom sheet
+- Checkout ganha o layout de 2 colunas apenas em `lg:`+ (1024px) — em tablet (768–1023px) permanece 1 coluna, formulário completo antes do resumo do pedido
 
 **Dashboard de produção (768px–1024px):**
 - Kanban: colunas visíveis sem scroll horizontal (se couberem em 4 colunas)
@@ -979,9 +998,8 @@ Para ícones sem label de texto em contextos admin:
 
 ### Menu lateral em tablet
 
-- Tablet estreito (768–900px): menu colapsado, exibe apenas ícones
-- Tablet largo (900–1024px): menu expandido com ícones + labels
-- Botão hamburger no header para expandir/colapsar
+- `VitrineSidebar` (área cliente, Sprint DS.4): sempre expandida por padrão a partir de 768px — não colapsa automaticamente por faixa de largura; recolher para modo só-ícone é uma ação manual do usuário (botão com seta), sem distinção entre "tablet estreito" e "tablet largo"
+- Sidebar do admin (`src/components/admin/shared/Sidebar.tsx`): comportamento não alterado nesta sprint — continua fora do escopo desta seção até ganhar o mesmo modo recolhível
 
 ### Toque em tablet
 
