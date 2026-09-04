@@ -4,6 +4,39 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Sprint I.4] — 2026-09-04 — Deploy em produção (Vercel + Supabase + Hostgator)
+
+**Tipo:** Sprint Oficial de Infraestrutura, prefixo `I.x` (`PROJECT_GOVERNANCE.md` Seção 4.4) — pendência registrada ao final da Sprint DS.5. Em andamento; sem encerramento formal (`MODULE_I4_CLOSURE.md`) ainda.
+
+### Implementação
+
+**Conta Vercel:** o CLI já estava autenticado com uma conta de terceiro (`rodrigolopesandrade-5681`) nesta máquina — `vercel logout` executado antes de qualquer ação, Product Owner então autenticou com a própria conta (`fdiasoliver-6772`) via `vercel login` interativo.
+
+**Projeto:** `vercel link` criou e vinculou o projeto `doce-menina/confeitaria-app`, conectando automaticamente o repositório GitHub (`fdiasoliver/ERP-Confeitaria`) — push em `main` agora aciona redeploy de produção automaticamente (confirmado nesta sprint).
+
+**Domínio:** subdomínio `app.confeitariadocemenina.com.br` (domínio raiz já registrado na Hostgator) adicionado ao projeto (`vercel domains add`). Decisão explícita: registro **A** isolado (`76.76.21.21`) na Hostgator, não troca de nameservers — mantém e-mail/demais serviços do domínio raiz sob controle da Hostgator, únicas as configurações do subdomínio afetadas. DNS verificado (`vercel domains verify`) e funcionando.
+
+**Variáveis de ambiente (Produção apenas — decisão explícita do Product Owner):** `DATABASE_URL` (mesma connection string já usada em desenvolvimento, Supabase pooler porta 5432), `NEXTAUTH_SECRET` (gerado novo, distinto do valor de desenvolvimento — nunca passou pelo terminal em texto plano), `NEXTAUTH_URL=https://app.confeitariadocemenina.com.br`, `WHATSAPP_API_URL`/`WHATSAPP_API_TOKEN`/`WHATSAPP_INSTANCE_ID` (mesmos valores já ativos desde o Módulo 5.B). **Preview deliberadamente sem `DATABASE_URL`** — decisão explícita do Product Owner para não expor o banco de produção (único banco existente, sem staging) a deploys de PR/branch.
+
+**Achado corrigido durante a sessão:** o primeiro `vercel deploy` embarcou o `.env` local no build (log: "Detected .env file..."), apesar de `.env*` já estar no `.gitignore` — comportamento do CLI, não do git. Sem impacto real (Next.js prioriza variáveis já injetadas pela Vercel sobre arquivo `.env` embarcado), mas `.vercelignore` (`.env`/`.env.local`/`.env.*.local`) criado para eliminar o problema em deploys futuros.
+
+**Primeiro deploy:** `vercel deploy` (sem `--prod`) foi automaticamente promovido a Produção pela Vercel por ser o primeiro deploy do projeto. Build 0 erros; smoke test real no domínio final: `/`, `/api/config`, `/api/products`, `/admin/login` — todos HTTP 200, `/api/config` confirmado retornando dado real do Supabase de produção (StoreConfig "Doce Menina").
+
+### Validação
+
+| Verificação | Resultado |
+|---|---|
+| `vercel domains verify` | DNS ok, registro A confirmado |
+| Build de produção (`vercel deploy`) | 0 erros |
+| Smoke test HTTP real (`/`, `/api/config`, `/api/products`, `/admin/login`) | 200 em todos, dado real do banco confirmado |
+| Redeploy automático via push em `main` | Confirmado — novo deploy disparado e promovido sem intervenção manual |
+
+### Pendência
+
+Credenciais de Supabase Storage (`SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, upload de imagens em produção), PIX e Google Maps ainda não configuradas em produção — mesmo gap já registrado desde a Sprint I.2, fora do escopo desta sessão. Encerramento formal do módulo (`MODULE_I4_CLOSURE.md`) ainda não feito.
+
+---
+
 ## [Sprint DS.5] — 2026-08-27/28 — Redesign completo com shadcn/ui
 
 **Tipo:** Sprint Oficial — quinta sprint sob o prefixo `DS.x` (ADR-018), primeira a trocar a camada de componentes em si (não só paleta/tokens/layout como `DS.1`–`DS.4`). Planejada em modo de planejamento dedicado (pesquisa do código real + agente de design de implementação), aprovada pelo Product Owner via `ExitPlanMode`, implementada em 7 microtarefas (`DS.5.1`–`DS.5.7`), cada uma validada (`tsc`/`lint`/`build`/visual real) antes da próxima.
