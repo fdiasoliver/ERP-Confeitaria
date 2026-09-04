@@ -43,3 +43,6 @@ next-env.d.ts
 # QA / Playwright MCP session artifacts (screenshots, console logs) — not source
 /.playwright-mcp/
 /*.png
+
+.vercel
+.env*
