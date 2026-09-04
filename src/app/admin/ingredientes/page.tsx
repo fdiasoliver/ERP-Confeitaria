@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import { Field } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ResponsiveGrid } from "@/components/admin/shared/ResponsiveGrid";
@@ -63,7 +62,6 @@ export default function IngredientesAdminPage() {
   const [units, setUnits] = useState<UnitOfMeasure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -75,15 +73,6 @@ export default function IngredientesAdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState<Ingredient | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadAll(silent = false) {
     if (!silent) {
@@ -103,14 +92,14 @@ export default function IngredientesAdminPage() {
       if (!silent) {
         setError(err instanceof Error ? err.message : "Erro ao carregar ingredientes.");
       } else {
-        showToast("error", "Erro ao atualizar lista de ingredientes.");
+        toast.error("Erro ao atualizar lista de ingredientes.");
       }
     } finally {
       if (!silent) setLoading(false);
     }
   }
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/set-state-in-effect
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -193,7 +182,7 @@ export default function IngredientesAdminPage() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    showToast("loading", modal === "create" ? "Criando ingrediente…" : "Salvando alterações…");
+    const toastId = toast.loading(modal === "create" ? "Criando ingrediente…" : "Salvando alterações…");
     try {
       const payload = {
         name: form.name,
@@ -207,18 +196,18 @@ export default function IngredientesAdminPage() {
       };
       if (modal === "create") {
         await ingredientApi.createIngredient(payload);
-        showToast("success", "Ingrediente criado com sucesso.");
+        toast.success("Ingrediente criado com sucesso.", { id: toastId });
       } else if (editing) {
         await ingredientApi.updateIngredient(editing.id, payload);
-        showToast("success", "Ingrediente atualizado.");
+        toast.success("Ingrediente atualizado.", { id: toastId });
       }
       closeModal();
       await loadAll(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar ingrediente.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar ingrediente.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -227,13 +216,13 @@ export default function IngredientesAdminPage() {
 
   async function handleActivate(ingredient: Ingredient) {
     setActionLoading(ingredient.id);
-    showToast("loading", "Ativando ingrediente…");
+    const toastId = toast.loading("Ativando ingrediente…");
     try {
       await ingredientApi.activateIngredient(ingredient.id);
-      showToast("success", `"${ingredient.name}" ativado com sucesso.`);
+      toast.success(`"${ingredient.name}" ativado com sucesso.`, { id: toastId });
       await loadAll(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao ativar ingrediente.");
+      toast.error(err instanceof Error ? err.message : "Erro ao ativar ingrediente.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -244,13 +233,13 @@ export default function IngredientesAdminPage() {
     const ingredient = confirmDeactivate;
     setConfirmDeactivate(null);
     setActionLoading(ingredient.id);
-    showToast("loading", "Desativando ingrediente…");
+    const toastId = toast.loading("Desativando ingrediente…");
     try {
       await ingredientApi.deactivateIngredient(ingredient.id);
-      showToast("success", `"${ingredient.name}" desativado.`);
+      toast.success(`"${ingredient.name}" desativado.`, { id: toastId });
       await loadAll(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao desativar ingrediente.");
+      toast.error(err instanceof Error ? err.message : "Erro ao desativar ingrediente.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -535,8 +524,6 @@ export default function IngredientesAdminPage() {
           onConfirm={handleDeactivateConfirm}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

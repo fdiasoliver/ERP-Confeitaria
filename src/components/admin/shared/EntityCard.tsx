@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Card } from "@/components/ui/card";
 
 export function EntityCard({ title, href, badges, children, actions }: {
   title: string;
@@ -25,9 +26,9 @@ export function EntityCard({ title, href, badges, children, actions }: {
   );
 
   return (
-    <div className="shadow-card rounded-2xl bg-white p-4">
+    <Card className="shadow-card gap-0 rounded-2xl p-4">
       {href ? <Link href={href} className="block">{body}</Link> : body}
       <div className="flex gap-2">{actions}</div>
-    </div>
+    </Card>
   );
 }

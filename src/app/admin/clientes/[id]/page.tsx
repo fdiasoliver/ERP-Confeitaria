@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
@@ -52,20 +51,9 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
 
   const [notesInput, setNotesInput] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
-
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadCustomer() {
     setLoading(true);
@@ -89,18 +77,18 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   async function handleSaveNotes() {
     if (!customer || notesTooLong) return;
     setSavingNotes(true);
-    showToast("loading", "Salvando observações…");
+    const toastId = toast.loading("Salvando observações…");
     try {
       const updated = await customerApi.updateCustomerNotes(id, notesInput.trim() === "" ? null : notesInput);
       setCustomer((prev) => (prev ? { ...prev, notes: updated.notes } : prev));
       setNotesInput(updated.notes ?? "");
-      showToast("success", "Observações salvas.");
+      toast.success("Observações salvas.", { id: toastId });
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR") {
         const details = Array.isArray(err.details) ? (err.details as { message: string }[]) : [];
-        showToast("error", details[0]?.message ?? err.message);
+        toast.error(details[0]?.message ?? err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar observações.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar observações.", { id: toastId });
       }
     } finally {
       setSavingNotes(false);
@@ -256,8 +244,6 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           )}
         </div>
       </div>
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

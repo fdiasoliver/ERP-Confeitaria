@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import { Field } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ResponsiveGrid } from "@/components/admin/shared/ResponsiveGrid";
@@ -43,7 +42,6 @@ export default function UnidadesAdminPage() {
   const [units, setUnits] = useState<UnitOfMeasure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -54,15 +52,6 @@ export default function UnidadesAdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState<UnitOfMeasure | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadUnits(silent = false) {
     if (!silent) {
@@ -76,14 +65,14 @@ export default function UnidadesAdminPage() {
       if (!silent) {
         setError(err instanceof Error ? err.message : "Erro ao carregar unidades.");
       } else {
-        showToast("error", "Erro ao atualizar lista de unidades.");
+        toast.error("Erro ao atualizar lista de unidades.");
       }
     } finally {
       if (!silent) setLoading(false);
     }
   }
 
-  useEffect(() => { loadUnits(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { loadUnits(); }, []); // eslint-disable-line react-hooks/set-state-in-effect
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -152,7 +141,7 @@ export default function UnidadesAdminPage() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    showToast("loading", modal === "create" ? "Criando unidade…" : "Salvando alterações…");
+    const toastId = toast.loading(modal === "create" ? "Criando unidade…" : "Salvando alterações…");
     try {
       const payload = {
         name: form.name,
@@ -162,18 +151,18 @@ export default function UnidadesAdminPage() {
       };
       if (modal === "create") {
         await unitApi.createUnit(payload);
-        showToast("success", "Unidade criada com sucesso.");
+        toast.success("Unidade criada com sucesso.", { id: toastId });
       } else if (editing) {
         await unitApi.updateUnit(editing.id, payload);
-        showToast("success", "Unidade atualizada.");
+        toast.success("Unidade atualizada.", { id: toastId });
       }
       closeModal();
       await loadUnits(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar unidade.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar unidade.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -182,13 +171,13 @@ export default function UnidadesAdminPage() {
 
   async function handleActivate(unit: UnitOfMeasure) {
     setActionLoading(unit.id);
-    showToast("loading", "Ativando unidade…");
+    const toastId = toast.loading("Ativando unidade…");
     try {
       await unitApi.activateUnit(unit.id);
-      showToast("success", `"${unit.name}" ativada com sucesso.`);
+      toast.success(`"${unit.name}" ativada com sucesso.`, { id: toastId });
       await loadUnits(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao ativar unidade.");
+      toast.error(err instanceof Error ? err.message : "Erro ao ativar unidade.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -199,13 +188,13 @@ export default function UnidadesAdminPage() {
     const unit = confirmDeactivate;
     setConfirmDeactivate(null);
     setActionLoading(unit.id);
-    showToast("loading", "Desativando unidade…");
+    const toastId = toast.loading("Desativando unidade…");
     try {
       await unitApi.deactivateUnit(unit.id);
-      showToast("success", `"${unit.name}" desativada.`);
+      toast.success(`"${unit.name}" desativada.`, { id: toastId });
       await loadUnits(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao desativar unidade.");
+      toast.error(err instanceof Error ? err.message : "Erro ao desativar unidade.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -424,8 +413,6 @@ export default function UnidadesAdminPage() {
           onConfirm={handleDeactivateConfirm}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

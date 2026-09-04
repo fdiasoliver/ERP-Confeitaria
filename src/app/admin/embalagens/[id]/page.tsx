@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import { Field } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
@@ -160,7 +159,6 @@ export default function EmbalagemDetailPage({ params }: { params: Promise<{ id: 
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<PackagingEditForm>({
@@ -170,16 +168,6 @@ export default function EmbalagemDetailPage({ params }: { params: Promise<{ id: 
   const [submitting, setSubmitting] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
-
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadAll(silent = false) {
     if (!silent) {
@@ -203,7 +191,7 @@ export default function EmbalagemDetailPage({ params }: { params: Promise<{ id: 
       if (!silent) {
         setError(err instanceof Error ? err.message : "Erro ao carregar embalagem.");
       } else {
-        showToast("error", "Erro ao atualizar embalagem.");
+        toast.error("Erro ao atualizar embalagem.");
       }
     } finally {
       if (!silent) setLoading(false);
@@ -267,7 +255,7 @@ export default function EmbalagemDetailPage({ params }: { params: Promise<{ id: 
   async function handleEditSubmit() {
     if (!validateEditForm()) return;
     setSubmitting(true);
-    showToast("loading", "Salvando alterações…");
+    const toastId = toast.loading("Salvando alterações…");
     try {
       const input: Partial<PackagingInput> = {
         name: editForm.name.trim(),
@@ -278,17 +266,17 @@ export default function EmbalagemDetailPage({ params }: { params: Promise<{ id: 
         supplierId: editForm.supplierId === "" ? null : editForm.supplierId,
       };
       await packagingApi.updatePackaging(id, input);
-      showToast("success", "Embalagem atualizada.");
+      toast.success("Embalagem atualizada.", { id: toastId });
       setEditModalOpen(false);
       await loadAll(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else if (err instanceof ApiRequestError && err.code === "DUPLICATE_NAME") {
         setEditErrors({ name: err.message });
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar embalagem.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar embalagem.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -300,13 +288,13 @@ export default function EmbalagemDetailPage({ params }: { params: Promise<{ id: 
   async function handleActivate() {
     if (!packaging) return;
     setStatusLoading(true);
-    showToast("loading", "Ativando embalagem…");
+    const toastId = toast.loading("Ativando embalagem…");
     try {
       await packagingApi.activatePackaging(id);
-      showToast("success", "Embalagem ativada.");
+      toast.success("Embalagem ativada.", { id: toastId });
       await loadAll(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao ativar embalagem.");
+      toast.error(err instanceof Error ? err.message : "Erro ao ativar embalagem.", { id: toastId });
     } finally {
       setStatusLoading(false);
     }
@@ -315,13 +303,13 @@ export default function EmbalagemDetailPage({ params }: { params: Promise<{ id: 
   async function handleDeactivateConfirm() {
     setConfirmDeactivate(false);
     setStatusLoading(true);
-    showToast("loading", "Desativando embalagem…");
+    const toastId = toast.loading("Desativando embalagem…");
     try {
       await packagingApi.deactivatePackaging(id);
-      showToast("success", "Embalagem desativada.");
+      toast.success("Embalagem desativada.", { id: toastId });
       await loadAll(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao desativar embalagem.");
+      toast.error(err instanceof Error ? err.message : "Erro ao desativar embalagem.", { id: toastId });
     } finally {
       setStatusLoading(false);
     }
@@ -465,8 +453,6 @@ export default function EmbalagemDetailPage({ params }: { params: Promise<{ id: 
           onConfirm={handleDeactivateConfirm}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

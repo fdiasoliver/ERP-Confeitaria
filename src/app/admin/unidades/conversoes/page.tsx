@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import type { ValidationError } from "@/lib/types";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
@@ -236,7 +235,6 @@ export default function ConversoesAdminPage() {
   const [units, setUnits] = useState<UnitOfMeasure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<UnitConversion | null>(null);
@@ -245,15 +243,6 @@ export default function ConversoesAdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<UnitConversion | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadAll(silent = false) {
     if (!silent) {
@@ -271,14 +260,14 @@ export default function ConversoesAdminPage() {
       if (!silent) {
         setError(err instanceof Error ? err.message : "Erro ao carregar conversões.");
       } else {
-        showToast("error", "Erro ao atualizar lista de conversões.");
+        toast.error("Erro ao atualizar lista de conversões.");
       }
     } finally {
       if (!silent) setLoading(false);
     }
   }
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/set-state-in-effect
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -341,7 +330,7 @@ export default function ConversoesAdminPage() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    showToast("loading", modal === "create" ? "Criando conversão…" : "Salvando alterações…");
+    const toastId = toast.loading(modal === "create" ? "Criando conversão…" : "Salvando alterações…");
     try {
       const payload = {
         fromUnitId: form.fromUnitId,
@@ -351,18 +340,18 @@ export default function ConversoesAdminPage() {
       };
       if (modal === "create") {
         await conversionApi.createConversion(payload);
-        showToast("success", "Conversão criada com sucesso.");
+        toast.success("Conversão criada com sucesso.", { id: toastId });
       } else if (editing) {
         await conversionApi.updateConversion(editing.id, payload);
-        showToast("success", "Conversão atualizada.");
+        toast.success("Conversão atualizada.", { id: toastId });
       }
       closeModal();
       await loadAll(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar conversão.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar conversão.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -374,13 +363,13 @@ export default function ConversoesAdminPage() {
     const conversion = confirmDelete;
     setConfirmDelete(null);
     setActionLoading(conversion.id);
-    showToast("loading", "Excluindo conversão…");
+    const toastId = toast.loading("Excluindo conversão…");
     try {
       await conversionApi.deleteConversion(conversion.id);
-      showToast("success", "Conversão excluída.");
+      toast.success("Conversão excluída.", { id: toastId });
       await loadAll(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao excluir conversão.");
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir conversão.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -473,8 +462,6 @@ export default function ConversoesAdminPage() {
           onCancel={() => setConfirmDelete(null)}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

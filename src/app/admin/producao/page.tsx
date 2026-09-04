@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { StatCard } from "@/components/admin/shared/StatCard";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
@@ -109,7 +108,6 @@ export default function ProducaoPage() {
   const [kanbanData, setKanbanData] = useState<KanbanDataDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
 
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -125,16 +123,6 @@ export default function ProducaoPage() {
   const [cmvWeek, setCmvWeek] = useState<CMVResultDTO | null>(null);
   const [cmvLoading, setCmvLoading] = useState(true);
   const [cmvError, setCmvError] = useState<string | null>(null);
-
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   // Abas Semana/Calendário: a API só aceita um único dia ou nenhum filtro (não
   // suporta intervalo) — sem endpoint de intervalo pronto, mesmo padrão de
@@ -160,7 +148,7 @@ export default function ProducaoPage() {
       setKanbanData(result);
     } catch (err) {
       if (silent) {
-        showToast("error", "Erro ao atualizar dados de produção.");
+        toast.error("Erro ao atualizar dados de produção.");
       } else {
         setError(err instanceof Error ? err.message : "Erro ao carregar dados de produção.");
       }
@@ -242,22 +230,22 @@ export default function ProducaoPage() {
     const { order, newStatus } = moveTarget;
     setMoveTarget(null);
     setActionLoading(order.id);
-    showToast("loading", "Atualizando status do pedido…");
+    const toastId = toast.loading("Atualizando status do pedido…");
     try {
       await orderAdminApi.updateOrderStatus(order.id, newStatus);
-      showToast("success", `Pedido #${order.orderNumber} movido para "${STATUS_LABELS[newStatus]}".`);
+      toast.success(`Pedido #${order.orderNumber} movido para "${STATUS_LABELS[newStatus]}".`, { id: toastId });
       await load(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "INVALID_STATUS_TRANSITION") {
         const details = err.details as { from?: OrderStatus; to?: OrderStatus } | undefined;
         const from = details?.from ? STATUS_LABELS[details.from] : STATUS_LABELS[order.status];
         const to = details?.to ? STATUS_LABELS[details.to] : STATUS_LABELS[newStatus];
-        showToast(
-          "error",
+        toast.error(
           `Não é possível mover de "${from}" para "${to}" — outro usuário pode já ter alterado este pedido. Atualize a página.`,
+          { id: toastId },
         );
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao atualizar status do pedido.");
+        toast.error(err instanceof Error ? err.message : "Erro ao atualizar status do pedido.", { id: toastId });
       }
     } finally {
       setActionLoading(null);
@@ -480,8 +468,6 @@ export default function ProducaoPage() {
           onConfirm={handleConfirmMove}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
 
       <nav className="flex justify-center gap-4 pb-4 text-sm">
         <Link href="/admin" className="text-muted hover:text-chocolate">

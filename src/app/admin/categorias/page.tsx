@@ -1,10 +1,22 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { StatusBadge } from "@/components/admin/shared/StatusBadge";
+import { EntityForm } from "@/components/admin/shared/EntityForm";
+import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
+import { Card } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import type { ProductCategoryInput, ProductCategoryWithCount } from "@/lib/types";
 import * as categoryApi from "@/lib/api/productCategoryApi";
 
@@ -28,16 +40,6 @@ function Field({ label, required, error, htmlFor, children }: {
       {children}
       {error && <p className="mt-1 text-xs text-rose">{error}</p>}
     </div>
-  );
-}
-
-function StatusBadge({ isActive }: { isActive: boolean }) {
-  return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-      isActive ? "bg-sage/10 text-sage" : "bg-sand text-muted"
-    }`}>
-      {isActive ? "Ativa" : "Inativa"}
-    </span>
   );
 }
 
@@ -91,7 +93,7 @@ function CategoryCard({ category, actionLoading, onEdit, onActivate, onDeactivat
   onDeactivate: () => void;
 }) {
   return (
-    <div className="shadow-card rounded-2xl bg-white p-4">
+    <Card className="shadow-card gap-0 rounded-2xl p-4">
       <div className="mb-3 flex items-start gap-3">
         <span
           className="mt-0.5 h-8 w-8 shrink-0 rounded-lg border border-sand"
@@ -101,7 +103,7 @@ function CategoryCard({ category, actionLoading, onEdit, onActivate, onDeactivat
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate font-semibold text-chocolate">{category.name}</p>
-            <StatusBadge isActive={category.isActive} />
+            <StatusBadge isActive={category.isActive} activeLabel="Ativa" inactiveLabel="Inativa" />
           </div>
           <p className="mt-0.5 text-xs text-muted font-mono">{category.slug}</p>
         </div>
@@ -154,7 +156,7 @@ function CategoryCard({ category, actionLoading, onEdit, onActivate, onDeactivat
           </button>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -168,19 +170,13 @@ function CategoryModal({ mode, form, errors, submitting, onClose, onChange, onSu
   onSubmit: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-end bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    <EntityForm
+      title={mode === "create" ? "Nova categoria" : "Editar categoria"}
+      submitting={submitting}
+      submitLabel={mode === "create" ? "Criar" : "Salvar"}
+      onClose={onClose}
+      onSubmit={onSubmit}
     >
-      <div className="w-full rounded-t-3xl bg-white pb-8 pt-5 px-5">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-chocolate">
-            {mode === "create" ? "Nova categoria" : "Editar categoria"}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="text-muted text-xl">✕</button>
-        </div>
-
-        <div className="space-y-4">
           <Field label="Nome" required htmlFor="cat-name" error={errors.name}>
             <input
               id="cat-name"
@@ -247,87 +243,34 @@ function CategoryModal({ mode, form, errors, submitting, onClose, onChange, onSu
               />
             </div>
           </Field>
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 rounded-xl border border-sand py-3 text-sm font-semibold text-chocolate disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={submitting}
-            className="flex-1 rounded-xl bg-chocolate py-3 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {submitting ? "Salvando…" : mode === "create" ? "Criar" : "Salvar"}
-          </button>
-        </div>
-      </div>
-    </div>
+    </EntityForm>
   );
 }
 
-function ConfirmModal({ category, onConfirm, onCancel }: {
+/** Variante informativa (sem ação destrutiva) do fluxo de desativação — categoria
+ * com produtos vinculados não pode ser desativada. Usa as primitivas AlertDialog
+ * do shadcn/ui diretamente (ConfirmDialog compartilhado sempre exige 2 botões). */
+function BlockedDeactivateDialog({ category, onClose }: {
   category: ProductCategoryWithCount;
-  onConfirm: () => void;
-  onCancel: () => void;
+  onClose: () => void;
 }) {
-  const hasProducts = category.productCount > 0;
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-5">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6">
-        <p className="font-display mb-2 font-semibold text-chocolate">
-          {hasProducts ? "Não é possível desativar" : "Desativar categoria?"}
-        </p>
-        {hasProducts ? (
-          <>
-            <p className="mb-2 text-sm text-muted">
-              A categoria <strong className="text-chocolate">{'"'}{category.name}{'"'}</strong> possui{" "}
-              <strong className="text-rose">
-                {category.productCount} produto{category.productCount !== 1 ? "s" : ""} vinculado{category.productCount !== 1 ? "s" : ""}
-              </strong>.
-            </p>
-            <p className="mb-4 text-sm text-muted">
-              Remova ou mova os produtos desta categoria antes de desativá-la.
-            </p>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="w-full rounded-xl bg-chocolate py-2.5 text-sm font-semibold text-white"
-            >
-              Fechar
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="mb-4 text-sm text-muted">
-              A categoria <strong className="text-chocolate">{'"'}{category.name}{'"'}</strong> ficará invisível no catálogo.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="flex-1 rounded-xl border border-sand py-2.5 text-sm font-semibold text-chocolate"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={onConfirm}
-                className="flex-1 rounded-xl bg-rose py-2.5 text-sm font-semibold text-white"
-              >
-                Desativar
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+    <AlertDialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-display text-chocolate">Não é possível desativar</AlertDialogTitle>
+          <AlertDialogDescription className="text-muted">
+            A categoria <strong className="text-chocolate">{'"'}{category.name}{'"'}</strong> possui{" "}
+            <strong className="text-rose">
+              {category.productCount} produto{category.productCount !== 1 ? "s" : ""} vinculado{category.productCount !== 1 ? "s" : ""}
+            </strong>. Remova ou mova os produtos desta categoria antes de desativá-la.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction type="button" onClick={onClose}>Fechar</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -337,7 +280,6 @@ export default function CategoriasAdminPage() {
   const [categories, setCategories] = useState<ProductCategoryWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<ProductCategoryWithCount | null>(null);
   const [form, setForm] = useState<CategoryForm>(EMPTY_FORM);
@@ -345,15 +287,6 @@ export default function CategoriasAdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState<ProductCategoryWithCount | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadCategories(silent = false) {
     if (!silent) {
@@ -366,14 +299,14 @@ export default function CategoriasAdminPage() {
       if (!silent) {
         setError(err instanceof Error ? err.message : "Erro ao carregar categorias.");
       } else {
-        showToast("error", "Erro ao atualizar lista de categorias.");
+        toast.error("Erro ao atualizar lista de categorias.");
       }
     } finally {
       if (!silent) setLoading(false);
     }
   }
 
-  useEffect(() => { loadCategories(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { loadCategories(); }, []); // eslint-disable-line react-hooks/set-state-in-effect
 
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -414,22 +347,22 @@ export default function CategoriasAdminPage() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    showToast("loading", modal === "create" ? "Criando categoria…" : "Salvando alterações…");
+    const toastId = toast.loading(modal === "create" ? "Criando categoria…" : "Salvando alterações…");
     try {
       const payload: Pick<ProductCategoryInput, "name" | "sortOrder" | "color" | "icon"> = {
         name: form.name, sortOrder: form.sortOrder, color: form.color, icon: form.icon,
       };
       if (modal === "create") {
         await categoryApi.createCategory(payload);
-        showToast("success", "Categoria criada com sucesso.");
+        toast.success("Categoria criada com sucesso.", { id: toastId });
       } else if (editing) {
         await categoryApi.updateCategory(editing.id, payload);
-        showToast("success", "Categoria atualizada.");
+        toast.success("Categoria atualizada.", { id: toastId });
       }
       closeModal();
       await loadCategories(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao salvar categoria.");
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar categoria.", { id: toastId });
     } finally {
       setSubmitting(false);
     }
@@ -437,13 +370,13 @@ export default function CategoriasAdminPage() {
 
   async function handleActivate(cat: ProductCategoryWithCount) {
     setActionLoading(cat.id);
-    showToast("loading", "Ativando categoria…");
+    const toastId = toast.loading("Ativando categoria…");
     try {
       await categoryApi.activateCategory(cat.id);
-      showToast("success", `"${cat.name}" ativada com sucesso.`);
+      toast.success(`"${cat.name}" ativada com sucesso.`, { id: toastId });
       await loadCategories(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao ativar categoria.");
+      toast.error(err instanceof Error ? err.message : "Erro ao ativar categoria.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -454,13 +387,13 @@ export default function CategoriasAdminPage() {
     const cat = confirmDeactivate;
     setConfirmDeactivate(null);
     setActionLoading(cat.id);
-    showToast("loading", "Desativando categoria…");
+    const toastId = toast.loading("Desativando categoria…");
     try {
       await categoryApi.deactivateCategory(cat.id);
-      showToast("success", `"${cat.name}" desativada.`);
+      toast.success(`"${cat.name}" desativada.`, { id: toastId });
       await loadCategories(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao desativar categoria.");
+      toast.error(err instanceof Error ? err.message : "Erro ao desativar categoria.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -515,15 +448,27 @@ export default function CategoriasAdminPage() {
         />
       )}
 
-      {confirmDeactivate && (
-        <ConfirmModal
+      {confirmDeactivate && confirmDeactivate.productCount > 0 && (
+        <BlockedDeactivateDialog
           category={confirmDeactivate}
+          onClose={() => setConfirmDeactivate(null)}
+        />
+      )}
+
+      {confirmDeactivate && confirmDeactivate.productCount === 0 && (
+        <ConfirmDialog
+          title="Desativar categoria?"
+          description={
+            <>
+              A categoria <strong className="text-chocolate">{'"'}{confirmDeactivate.name}{'"'}</strong> ficará invisível no catálogo.
+            </>
+          }
+          cancelLabel="Cancelar"
+          confirmLabel="Desativar"
           onConfirm={handleDeactivateConfirm}
           onCancel={() => setConfirmDeactivate(null)}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

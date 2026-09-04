@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import { Field } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ResponsiveGrid } from "@/components/admin/shared/ResponsiveGrid";
@@ -73,7 +72,6 @@ export default function EmbalagensAdminPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -91,16 +89,7 @@ export default function EmbalagensAdminPage() {
   const [confirmDeactivate, setConfirmDeactivate] = useState<Packaging | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLoadedOnce = useRef(false);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   // Dados de apoio (categorias e fornecedores ativos) — carregados uma única vez,
   // usados nos filtros e no formulário. Mesmo padrão de produtos/page.tsx.
@@ -114,7 +103,7 @@ export default function EmbalagensAdminPage() {
         setCategories(categoryRows);
         setSuppliers(supplierRows.items);
       } catch {
-        showToast("error", "Erro ao carregar categorias e fornecedores de apoio.");
+        toast.error("Erro ao carregar categorias e fornecedores de apoio.");
       }
     })();
   }, []);
@@ -163,7 +152,7 @@ export default function EmbalagensAdminPage() {
       hasLoadedOnce.current = true;
     } catch (err) {
       if (silent) {
-        showToast("error", "Erro ao atualizar lista de embalagens.");
+        toast.error("Erro ao atualizar lista de embalagens.");
       } else {
         setError(err instanceof Error ? err.message : "Erro ao carregar embalagens.");
       }
@@ -262,7 +251,7 @@ export default function EmbalagensAdminPage() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    showToast("loading", "Criando embalagem…");
+    const toastId = toast.loading("Criando embalagem…");
     try {
       const input: PackagingInput = {
         name: form.name.trim(),
@@ -273,17 +262,17 @@ export default function EmbalagensAdminPage() {
         supplierId: form.supplierId === "" ? null : form.supplierId,
       };
       await packagingApi.createPackaging(input);
-      showToast("success", "Embalagem criada com sucesso.");
+      toast.success("Embalagem criada com sucesso.", { id: toastId });
       closeModal();
       await Promise.all([loadPackagings(true), loadStats()]);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else if (err instanceof ApiRequestError && err.code === "DUPLICATE_NAME") {
         setFormErrors({ name: err.message });
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao criar embalagem.");
+        toast.error(err instanceof Error ? err.message : "Erro ao criar embalagem.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -294,13 +283,13 @@ export default function EmbalagensAdminPage() {
 
   async function handleActivate(packaging: Packaging) {
     setActionLoading(packaging.id);
-    showToast("loading", "Ativando embalagem…");
+    const toastId = toast.loading("Ativando embalagem…");
     try {
       await packagingApi.activatePackaging(packaging.id);
-      showToast("success", `"${packaging.name}" ativada com sucesso.`);
+      toast.success(`"${packaging.name}" ativada com sucesso.`, { id: toastId });
       await Promise.all([loadPackagings(true), loadStats()]);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao ativar embalagem.");
+      toast.error(err instanceof Error ? err.message : "Erro ao ativar embalagem.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -311,13 +300,13 @@ export default function EmbalagensAdminPage() {
     const packaging = confirmDeactivate;
     setConfirmDeactivate(null);
     setActionLoading(packaging.id);
-    showToast("loading", "Desativando embalagem…");
+    const toastId = toast.loading("Desativando embalagem…");
     try {
       await packagingApi.deactivatePackaging(packaging.id);
-      showToast("success", `"${packaging.name}" desativada.`);
+      toast.success(`"${packaging.name}" desativada.`, { id: toastId });
       await Promise.all([loadPackagings(true), loadStats()]);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao desativar embalagem.");
+      toast.error(err instanceof Error ? err.message : "Erro ao desativar embalagem.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -617,8 +606,6 @@ export default function EmbalagensAdminPage() {
           onConfirm={handleDeactivateConfirm}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

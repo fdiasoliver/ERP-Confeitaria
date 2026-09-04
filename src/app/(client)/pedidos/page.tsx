@@ -81,7 +81,7 @@ export default function PedidosPage() {
         {customer && isLoading && (
           <div className="space-y-3">
             {[1, 2].map((n) => (
-              <div key={n} className="shadow-card h-32 animate-pulse rounded-2xl bg-white" />
+              <div key={n} className="shadow-card h-32 animate-pulse rounded-2xl bg-card" />
             ))}
           </div>
         )}
@@ -103,7 +103,7 @@ export default function PedidosPage() {
             {orders.map((order) => (
               <article
                 key={order.id}
-                className="shadow-card rounded-2xl bg-white p-4"
+                className="shadow-card rounded-2xl bg-card p-4"
               >
                 <div className="mb-2 flex items-start justify-between">
                   <div>

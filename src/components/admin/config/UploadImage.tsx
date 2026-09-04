@@ -3,6 +3,8 @@
 
 import { useState, useRef } from "react";
 import { uploadAsset, type AssetType } from "@/lib/storage/StorageService";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface UploadImageProps {
   label: string;
@@ -66,20 +68,26 @@ export function UploadImage({
         />
         <label
           htmlFor={`upload-${type}`}
-          className={`inline-block cursor-pointer rounded-lg border border-chocolate px-3 py-2 text-sm font-medium text-chocolate transition hover:bg-sand ${disabled || uploading ? "cursor-not-allowed opacity-50" : ""}`}
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "cursor-pointer",
+            (disabled || uploading) && "pointer-events-none cursor-not-allowed opacity-50",
+          )}
         >
           {uploading ? "Enviando…" : value ? "Trocar imagem" : "Escolher imagem"}
         </label>
 
         {value && (
-          <button
+          <Button
             type="button"
+            variant="link"
+            size="sm"
             onClick={() => onUpload(null)}
-            className="ml-2 text-xs text-muted underline"
+            className="ml-2 h-auto p-0 text-xs text-muted"
             disabled={disabled}
           >
             Remover
-          </button>
+          </Button>
         )}
 
         <p className="mt-1 text-xs text-muted">{hint}</p>

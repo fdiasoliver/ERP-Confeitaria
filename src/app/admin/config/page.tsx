@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { HeaderMinimal } from "@/components/layout/Header";
+import { toast } from "sonner";
 import { validateStoreConfig } from "@/lib/validators/storeConfig";
 import { rawDigits } from "@/lib/formatters/cep";
 import { lookupCEP, CepNotFoundError } from "@/lib/address/ViaCepService";
@@ -14,7 +15,6 @@ import { PixSection } from "@/components/admin/config/PixSection";
 import { PricingSection } from "@/components/admin/config/PricingSection";
 import { ActionBar } from "@/components/admin/config/ActionBar";
 import { LoadingSkeleton } from "@/components/admin/config/LoadingSkeleton";
-import { ValidationSummary, type ToastState } from "@/components/admin/config/ValidationSummary";
 import { EMPTY_INPUT, configToInput } from "@/app/admin/config/configHelpers";
 
 export default function ConfigPage() {
@@ -23,21 +23,7 @@ export default function ConfigPage() {
   const [ibgeCode, setIbgeCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [toast, setToast] = useState<ToastState | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string, autoDismissMs?: number) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (autoDismissMs)
-      toastTimer.current = setTimeout(() => setToast(null), autoDismissMs);
-  }
-
-  useEffect(
-    () => () => { if (toastTimer.current) clearTimeout(toastTimer.current); },
-    [],
-  );
 
   useEffect(() => {
     fetch("/api/config")
@@ -46,7 +32,7 @@ export default function ConfigPage() {
         setForm(configToInput(data));
         setIbgeCode(data.ibgeCode);
       })
-      .catch(() => showToast("error", "Erro ao carregar configurações."))
+      .catch(() => toast.error("Erro ao carregar configurações."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -92,11 +78,11 @@ export default function ConfigPage() {
       const map: Record<string, string> = {};
       errors.forEach((err: ValidationError) => { map[err.field] = err.message; });
       setFieldErrors(map);
-      showToast("error", "Corrija os campos destacados antes de salvar.", 5000);
+      toast.error("Corrija os campos destacados antes de salvar.");
       return;
     }
     setSubmitting(true);
-    showToast("loading", "Salvando configurações…");
+    const toastId = toast.loading("Salvando configurações…");
     const payload: StoreConfigInput = {
       ...form,
       cnpj: form.cnpj ? rawDigits(form.cnpj) : null,
@@ -115,13 +101,13 @@ export default function ConfigPage() {
         const map: Record<string, string> = {};
         (data.errors as ValidationError[]).forEach((err) => { map[err.field] = err.message; });
         setFieldErrors(map);
-        showToast("error", "Corrija os campos destacados.", 5000);
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else {
-        showToast("error", data.error ?? "Erro ao salvar.", 5000);
+        toast.error(data.error ?? "Erro ao salvar.", { id: toastId });
       }
       return;
     }
-    showToast("success", "Configurações salvas.", 3000);
+    toast.success("Configurações salvas.", { id: toastId });
   }
 
   if (loading) return <LoadingSkeleton />;
@@ -176,7 +162,6 @@ export default function ConfigPage() {
         </div>
         <ActionBar submitting={submitting} />
       </form>
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

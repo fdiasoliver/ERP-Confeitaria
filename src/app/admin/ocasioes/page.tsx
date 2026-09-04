@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { StatusBadge } from "@/components/admin/shared/StatusBadge";
+import { EntityForm } from "@/components/admin/shared/EntityForm";
+import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
+import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
 import type { OccasionTag, OccasionTagInput, ValidationError } from "@/lib/types";
 import * as occasionApi from "@/lib/api/occasionTagApi";
 import { ApiRequestError } from "@/lib/api/occasionTagApi";
@@ -29,16 +32,6 @@ function Field({ label, required, error, htmlFor, children }: {
       {children}
       {error && <p className="mt-1 text-xs text-rose">{error}</p>}
     </div>
-  );
-}
-
-function StatusBadge({ isActive }: { isActive: boolean }) {
-  return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-      isActive ? "bg-sage/10 text-sage" : "bg-sand text-muted"
-    }`}>
-      {isActive ? "Ativa" : "Inativa"}
-    </span>
   );
 }
 
@@ -100,7 +93,7 @@ function OccasionCard({ occasion, actionLoading, onEdit, onActivate, onDeactivat
   onDeactivate: () => void;
 }) {
   return (
-    <div className="shadow-card rounded-2xl bg-white p-4">
+    <Card className="shadow-card gap-0 rounded-2xl p-4">
       <div className="mb-3 flex items-start gap-3">
         <span
           className="mt-0.5 h-8 w-8 shrink-0 rounded-lg border border-sand"
@@ -110,7 +103,7 @@ function OccasionCard({ occasion, actionLoading, onEdit, onActivate, onDeactivat
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate font-semibold text-chocolate">{occasion.name}</p>
-            <StatusBadge isActive={occasion.isActive} />
+            <StatusBadge isActive={occasion.isActive} activeLabel="Ativa" inactiveLabel="Inativa" />
           </div>
         </div>
       </div>
@@ -158,7 +151,7 @@ function OccasionCard({ occasion, actionLoading, onEdit, onActivate, onDeactivat
           </button>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -173,19 +166,13 @@ function OccasionModal({ mode, form, errors, submitting, isActive, onClose, onCh
   onSubmit: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-end bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    <EntityForm
+      title={mode === "create" ? "Nova ocasião" : "Editar ocasião"}
+      submitting={submitting}
+      submitLabel={mode === "create" ? "Criar" : "Salvar"}
+      onClose={onClose}
+      onSubmit={onSubmit}
     >
-      <div className="w-full rounded-t-3xl bg-white pb-8 pt-5 px-5">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-chocolate">
-            {mode === "create" ? "Nova ocasião" : "Editar ocasião"}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="text-muted text-xl">✕</button>
-        </div>
-
-        <div className="space-y-4">
           <Field label="Nome" required htmlFor="occ-name" error={errors.name}>
             <input
               id="occ-name"
@@ -256,69 +243,14 @@ function OccasionModal({ mode, form, errors, submitting, isActive, onClose, onCh
           {mode === "edit" && isActive !== null && (
             <Field label="Ativo">
               <div className="flex items-center justify-between rounded-xl border border-sand bg-sand/30 px-4 py-3">
-                <StatusBadge isActive={isActive} />
+                <StatusBadge isActive={isActive} activeLabel="Ativa" inactiveLabel="Inativa" />
                 <p className="text-xs text-muted">
                   Use os botões Ativar/Desativar na listagem para alterar o status.
                 </p>
               </div>
             </Field>
           )}
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 rounded-xl border border-sand py-3 text-sm font-semibold text-chocolate disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={submitting}
-            className="flex-1 rounded-xl bg-chocolate py-3 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {submitting ? "Salvando…" : mode === "create" ? "Criar" : "Salvar"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ConfirmModal({ occasion, onConfirm, onCancel }: {
-  occasion: OccasionTag;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-5">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6">
-        <p className="font-display mb-2 font-semibold text-chocolate">Desativar ocasião?</p>
-        <p className="mb-4 text-sm text-muted">
-          A ocasião <strong className="text-chocolate">{'"'}{occasion.name}{'"'}</strong> deixará de aparecer nos filtros da vitrine.
-          Se houver produtos vinculados, a desativação será bloqueada.
-        </p>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 rounded-xl border border-sand py-2.5 text-sm font-semibold text-chocolate"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="flex-1 rounded-xl bg-rose py-2.5 text-sm font-semibold text-white"
-          >
-            Desativar
-          </button>
-        </div>
-      </div>
-    </div>
+    </EntityForm>
   );
 }
 
@@ -328,7 +260,6 @@ export default function OcasioesAdminPage() {
   const [occasions, setOccasions] = useState<OccasionTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<OccasionTag | null>(null);
@@ -337,15 +268,6 @@ export default function OcasioesAdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState<OccasionTag | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadOccasions(silent = false) {
     if (!silent) {
@@ -359,14 +281,14 @@ export default function OcasioesAdminPage() {
       if (!silent) {
         setError(err instanceof Error ? err.message : "Erro ao carregar ocasiões.");
       } else {
-        showToast("error", "Erro ao atualizar lista de ocasiões.");
+        toast.error("Erro ao atualizar lista de ocasiões.");
       }
     } finally {
       if (!silent) setLoading(false);
     }
   }
 
-  useEffect(() => { loadOccasions(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { loadOccasions(); }, []); // eslint-disable-line react-hooks/set-state-in-effect
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -422,25 +344,25 @@ export default function OcasioesAdminPage() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    showToast("loading", modal === "create" ? "Criando ocasião…" : "Salvando alterações…");
+    const toastId = toast.loading(modal === "create" ? "Criando ocasião…" : "Salvando alterações…");
     try {
       const payload: Pick<OccasionTagInput, "name" | "sortOrder" | "color" | "icon"> = {
         name: form.name, sortOrder: form.sortOrder, color: form.color, icon: form.icon,
       };
       if (modal === "create") {
         await occasionApi.createOccasion(payload);
-        showToast("success", "Ocasião criada com sucesso.");
+        toast.success("Ocasião criada com sucesso.", { id: toastId });
       } else if (editing) {
         await occasionApi.updateOccasion(editing.id, payload);
-        showToast("success", "Ocasião atualizada.");
+        toast.success("Ocasião atualizada.", { id: toastId });
       }
       closeModal();
       await loadOccasions(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar ocasião.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar ocasião.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -449,13 +371,13 @@ export default function OcasioesAdminPage() {
 
   async function handleActivate(occ: OccasionTag) {
     setActionLoading(occ.id);
-    showToast("loading", "Ativando ocasião…");
+    const toastId = toast.loading("Ativando ocasião…");
     try {
       await occasionApi.activateOccasion(occ.id);
-      showToast("success", `"${occ.name}" ativada com sucesso.`);
+      toast.success(`"${occ.name}" ativada com sucesso.`, { id: toastId });
       await loadOccasions(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao ativar ocasião.");
+      toast.error(err instanceof Error ? err.message : "Erro ao ativar ocasião.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -466,13 +388,13 @@ export default function OcasioesAdminPage() {
     const occ = confirmDeactivate;
     setConfirmDeactivate(null);
     setActionLoading(occ.id);
-    showToast("loading", "Desativando ocasião…");
+    const toastId = toast.loading("Desativando ocasião…");
     try {
       await occasionApi.deactivateOccasion(occ.id);
-      showToast("success", `"${occ.name}" desativada.`);
+      toast.success(`"${occ.name}" desativada.`, { id: toastId });
       await loadOccasions(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao desativar ocasião.");
+      toast.error(err instanceof Error ? err.message : "Erro ao desativar ocasião.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -542,14 +464,20 @@ export default function OcasioesAdminPage() {
       )}
 
       {confirmDeactivate && (
-        <ConfirmModal
-          occasion={confirmDeactivate}
+        <ConfirmDialog
+          title="Desativar ocasião?"
+          description={
+            <>
+              A ocasião <strong className="text-chocolate">{'"'}{confirmDeactivate.name}{'"'}</strong> deixará de aparecer nos filtros da vitrine.
+              Se houver produtos vinculados, a desativação será bloqueada.
+            </>
+          }
+          cancelLabel="Cancelar"
+          confirmLabel="Desativar"
           onConfirm={handleDeactivateConfirm}
           onCancel={() => setConfirmDeactivate(null)}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

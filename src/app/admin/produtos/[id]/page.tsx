@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import { Field } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
@@ -158,7 +157,6 @@ export default function ProdutoDetailPage({ params }: { params: Promise<{ id: st
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState<AddPackagingForm>(EMPTY_ADD_FORM);
@@ -172,15 +170,6 @@ export default function ProdutoDetailPage({ params }: { params: Promise<{ id: st
 
   const [submitting, setSubmitting] = useState(false);
   const [linkActionLoading, setLinkActionLoading] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadAll(silent = false) {
     if (!silent) {
@@ -200,7 +189,7 @@ export default function ProdutoDetailPage({ params }: { params: Promise<{ id: st
       if (!silent) {
         setError(err instanceof Error ? err.message : "Erro ao carregar produto.");
       } else {
-        showToast("error", "Erro ao atualizar produto.");
+        toast.error("Erro ao atualizar produto.");
       }
     } finally {
       if (!silent) setLoading(false);
@@ -246,20 +235,20 @@ export default function ProdutoDetailPage({ params }: { params: Promise<{ id: st
   async function handleAddSubmit() {
     if (!validateAddForm()) return;
     setSubmitting(true);
-    showToast("loading", "Adicionando embalagem…");
+    const toastId = toast.loading("Adicionando embalagem…");
     try {
       await productPackagingApi.addProductPackaging(id, {
         packagingId: addForm.packagingId,
         quantity: parseInt(addForm.quantity, 10),
       });
-      showToast("success", "Embalagem adicionada.");
+      toast.success("Embalagem adicionada.", { id: toastId });
       setAddOpen(false);
       await loadAll(true);
     } catch (err) {
       if (err instanceof PPApiRequestError && (err.code === "INACTIVE_PACKAGING" || err.code === "DUPLICATE_PACKAGING")) {
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao adicionar embalagem.");
+        toast.error(err instanceof Error ? err.message : "Erro ao adicionar embalagem.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -282,14 +271,14 @@ export default function ProdutoDetailPage({ params }: { params: Promise<{ id: st
       return;
     }
     setSubmitting(true);
-    showToast("loading", "Salvando quantidade…");
+    const toastId = toast.loading("Salvando quantidade…");
     try {
       await productPackagingApi.updateProductPackaging(id, editingLink.id, { quantity: qty });
-      showToast("success", "Quantidade atualizada.");
+      toast.success("Quantidade atualizada.", { id: toastId });
       setEditingLink(null);
       await loadAll(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao salvar quantidade.");
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar quantidade.", { id: toastId });
     } finally {
       setSubmitting(false);
     }
@@ -302,13 +291,13 @@ export default function ProdutoDetailPage({ params }: { params: Promise<{ id: st
     const link = removingLink;
     setRemovingLink(null);
     setLinkActionLoading(link.id);
-    showToast("loading", "Removendo embalagem…");
+    const toastId = toast.loading("Removendo embalagem…");
     try {
       await productPackagingApi.removeProductPackaging(id, link.id);
-      showToast("success", "Embalagem removida.");
+      toast.success("Embalagem removida.", { id: toastId });
       await loadAll(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao remover embalagem.");
+      toast.error(err instanceof Error ? err.message : "Erro ao remover embalagem.", { id: toastId });
     } finally {
       setLinkActionLoading(null);
     }
@@ -465,8 +454,6 @@ export default function ProdutoDetailPage({ params }: { params: Promise<{ id: st
           onConfirm={handleRemoveConfirm}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

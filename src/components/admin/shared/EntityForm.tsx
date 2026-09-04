@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { Dialog as DialogPrimitive } from "radix-ui";
+import { XIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /**
  * Modal de criação/edição de entidade — bottom sheet em mobile, centralizado em
- * desktop (DESIGN_SYSTEM.md #7). Trap de foco e fechamento por Escape/overlay
- * implementados aqui uma única vez, para todos os módulos que o adotarem.
+ * desktop (DESIGN_SYSTEM.md #7). Radix Dialog (via shadcn/ui, ADR-025) fornece
+ * trap de foco, fechamento por Escape/overlay e aria-* de graça — a alternância
+ * bottom-sheet↔dialog é resolvida aqui com Tailwind responsivo, já que nenhuma
+ * primitiva shadcn cobre os dois modos sozinha (Sprint DS.5.2).
  */
 export function EntityForm({
   title,
@@ -24,87 +29,63 @@ export function EntityForm({
   onSubmit: () => void;
   children: React.ReactNode;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const fieldsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const firstField = fieldsRef.current?.querySelector<HTMLElement>("input, select, textarea");
-    firstField?.focus();
-
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
-      if (e.key === "Tab" && containerRef.current) {
-        const focusable = containerRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 md:items-center"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    <DialogPrimitive.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
     >
-      <div
-        ref={containerRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="entity-form-title"
-        className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-white px-5 pb-8 pt-5 md:max-w-lg md:rounded-2xl"
-      >
-        <div className="mb-5 flex items-center justify-between">
-          <h2 id="entity-form-title" className="font-display text-lg font-semibold text-chocolate">
-            {title}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar"
-            className="rounded-full p-1.5 text-xl text-muted transition-colors hover:bg-sand hover:text-chocolate focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate"
-          >
-            ✕
-          </button>
-        </div>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/40 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
+        <DialogPrimitive.Content
+          onOpenAutoFocus={(e) => {
+            const first = fieldsRef.current?.querySelector<HTMLElement>("input, select, textarea");
+            if (first) {
+              e.preventDefault();
+              first.focus();
+            }
+          }}
+          className="fixed inset-x-0 bottom-0 z-40 max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-card px-5 pb-8 pt-5 outline-none data-open:animate-in data-open:slide-in-from-bottom-10 data-closed:animate-out data-closed:slide-out-to-bottom-10 md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:data-open:slide-in-from-bottom-0 md:data-closed:slide-out-to-bottom-0"
+        >
+          <div className="mb-5 flex items-center justify-between">
+            <DialogPrimitive.Title className="font-display text-lg font-semibold text-chocolate">
+              {title}
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Close asChild>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Fechar">
+                <XIcon />
+              </Button>
+            </DialogPrimitive.Close>
+          </div>
 
-        <div ref={fieldsRef} className="space-y-4">
-          {children}
-        </div>
+          <div ref={fieldsRef} className="space-y-4">
+            {children}
+          </div>
 
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 rounded-xl border border-sand py-3 text-sm font-semibold text-chocolate transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={submitting}
-            className="flex-1 rounded-xl bg-chocolate py-3 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
-          >
-            {submitting ? "Salvando…" : submitLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+          <div className="mt-6 flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              {cancelLabel}
+            </Button>
+            <Button
+              type="button"
+              className="flex-1"
+              onClick={onSubmit}
+              disabled={submitting}
+            >
+              {submitting ? "Salvando…" : submitLabel}
+            </Button>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 :root {
   --cream: #FAF6EF;
@@ -9,6 +11,26 @@
   --sand: #E3DCCB;
   --muted: #726A5F;
   --surface-2: #F5EFE1;
+
+  /* Mapeamento shadcn/ui -> tokens do design system (ADR-025, Sprint DS.5) */
+  --background: var(--cream);
+  --foreground: var(--chocolate);
+  --card: var(--surface-2);
+  --card-foreground: var(--chocolate);
+  --popover: var(--surface-2);
+  --popover-foreground: var(--chocolate);
+  --primary: var(--chocolate);
+  --primary-foreground: var(--cream);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--chocolate);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--chocolate);
+  --destructive: var(--rose);
+  --destructive-foreground: var(--cream);
+  --border: var(--sand);
+  --input: var(--sand);
+  --ring: var(--chocolate);
+  --radius: 0.625rem;
 }
 
 @theme inline {
@@ -18,12 +40,38 @@
   --color-sage: var(--sage);
   --color-caramel: var(--caramel);
   --color-sand: var(--sand);
-  --color-muted: var(--muted);
   --color-surface-2: var(--surface-2);
   --font-display: var(--font-manrope);
   --font-sans: var(--font-manrope);
   --shadow-card: 0 4px 24px rgba(61, 43, 31, 0.08);
   --max-width-app: 480px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 body {
@@ -59,7 +107,7 @@ body {
   border: 1px solid var(--sand);
   border-radius: 10px;
   font-size: 1rem;
-  background: white;
+  background: var(--surface-2);
 }
 
 .option-card {
@@ -72,4 +120,10 @@ body {
 .option-card.selected {
   border-color: var(--rose);
   background: rgba(232, 165, 152, 0.1);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
 }

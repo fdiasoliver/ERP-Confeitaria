@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import { Field, Section } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ResponsiveGrid } from "@/components/admin/shared/ResponsiveGrid";
@@ -60,7 +59,6 @@ export default function FornecedoresAdminPage() {
   const [stats, setStats] = useState<{ total: number; active: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -77,16 +75,7 @@ export default function FornecedoresAdminPage() {
   const [confirmDeactivate, setConfirmDeactivate] = useState<Supplier | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLoadedOnce = useRef(false);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   // Debounce da pesquisa (~300ms) — evita um fetch por caractere digitado (busca é server-side).
   useEffect(() => {
@@ -132,7 +121,7 @@ export default function FornecedoresAdminPage() {
       hasLoadedOnce.current = true;
     } catch (err) {
       if (silent) {
-        showToast("error", "Erro ao atualizar lista de fornecedores.");
+        toast.error("Erro ao atualizar lista de fornecedores.");
       } else {
         setError(err instanceof Error ? err.message : "Erro ao carregar fornecedores.");
       }
@@ -232,7 +221,7 @@ export default function FornecedoresAdminPage() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    showToast("loading", modal === "create" ? "Criando fornecedor…" : "Salvando alterações…");
+    const toastId = toast.loading(modal === "create" ? "Criando fornecedor…" : "Salvando alterações…");
     try {
       const input: SupplierInput = {
         name: form.name.trim(),
@@ -244,21 +233,21 @@ export default function FornecedoresAdminPage() {
 
       if (modal === "create") {
         await supplierApi.createSupplier(input);
-        showToast("success", "Fornecedor criado com sucesso.");
+        toast.success("Fornecedor criado com sucesso.", { id: toastId });
       } else if (editing) {
         await supplierApi.updateSupplier(editing.id, input);
-        showToast("success", "Fornecedor atualizado.");
+        toast.success("Fornecedor atualizado.", { id: toastId });
       }
       closeModal();
       await Promise.all([loadSuppliers(true), loadStats()]);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else if (err instanceof ApiRequestError && err.code === "DUPLICATE_CNPJ") {
         setFormErrors({ cnpj: err.message });
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar fornecedor.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar fornecedor.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -269,13 +258,13 @@ export default function FornecedoresAdminPage() {
 
   async function handleActivate(supplier: Supplier) {
     setActionLoading(supplier.id);
-    showToast("loading", "Ativando fornecedor…");
+    const toastId = toast.loading("Ativando fornecedor…");
     try {
       await supplierApi.activateSupplier(supplier.id);
-      showToast("success", `"${supplier.name}" ativado com sucesso.`);
+      toast.success(`"${supplier.name}" ativado com sucesso.`, { id: toastId });
       await Promise.all([loadSuppliers(true), loadStats()]);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao ativar fornecedor.");
+      toast.error(err instanceof Error ? err.message : "Erro ao ativar fornecedor.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -286,13 +275,13 @@ export default function FornecedoresAdminPage() {
     const supplier = confirmDeactivate;
     setConfirmDeactivate(null);
     setActionLoading(supplier.id);
-    showToast("loading", "Desativando fornecedor…");
+    const toastId = toast.loading("Desativando fornecedor…");
     try {
       await supplierApi.deactivateSupplier(supplier.id);
-      showToast("success", `"${supplier.name}" desativado.`);
+      toast.success(`"${supplier.name}" desativado.`, { id: toastId });
       await Promise.all([loadSuppliers(true), loadStats()]);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao desativar fornecedor.");
+      toast.error(err instanceof Error ? err.message : "Erro ao desativar fornecedor.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -565,8 +554,6 @@ export default function FornecedoresAdminPage() {
           onConfirm={handleDeactivateConfirm}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

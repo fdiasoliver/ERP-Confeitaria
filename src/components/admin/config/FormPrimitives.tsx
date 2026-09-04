@@ -1,6 +1,8 @@
 "use client";
 
 import type { StoreConfigInput } from "@/lib/types";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 
 export type FormSetter = <K extends keyof StoreConfigInput>(
   key: K,
@@ -24,10 +26,10 @@ export function Field({
 }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-1 block text-sm font-medium text-chocolate">
+      <Label htmlFor={htmlFor} className="mb-1 text-sm font-medium text-chocolate">
         {label}
         {required && <span className="ml-0.5 text-rose">*</span>}
-      </label>
+      </Label>
       {children}
       {error && <p className="mt-1 text-xs text-rose">{error}</p>}
     </div>
@@ -46,9 +48,9 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="shadow-card rounded-2xl bg-white p-5">
+    <Card className="shadow-card gap-0 rounded-2xl p-5">
       <h2 className="font-display mb-4 text-base font-semibold text-chocolate">{title}</h2>
       <div className="space-y-4">{children}</div>
-    </div>
+    </Card>
   );
 }

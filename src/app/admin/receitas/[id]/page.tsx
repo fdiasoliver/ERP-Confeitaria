@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import type { ValidationError } from "@/lib/types";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
@@ -413,7 +412,6 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
   const [units, setUnits] = useState<UnitOfMeasure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<RecipeEditForm>({ name: "", description: "", yieldQuantity: "", yieldUnit: "", prepTimeMinutes: "0" });
@@ -432,15 +430,6 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
   const [submitting, setSubmitting] = useState(false);
   const [itemActionLoading, setItemActionLoading] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadAll(silent = false) {
     if (!silent) {
@@ -460,7 +449,7 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
       if (!silent) {
         setError(err instanceof Error ? err.message : "Erro ao carregar receita.");
       } else {
-        showToast("error", "Erro ao atualizar receita.");
+        toast.error("Erro ao atualizar receita.");
       }
     } finally {
       if (!silent) setLoading(false);
@@ -523,7 +512,7 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
   async function handleEditSubmit() {
     if (!validateEditForm()) return;
     setSubmitting(true);
-    showToast("loading", "Salvando alterações…");
+    const toastId = toast.loading("Salvando alterações…");
     try {
       await recipeApi.updateRecipe(id, {
         name: editForm.name,
@@ -532,14 +521,14 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
         yieldUnit: editForm.yieldUnit,
         prepTimeMinutes: editForm.prepTimeMinutes.trim() === "" ? undefined : parseFloat(editForm.prepTimeMinutes),
       });
-      showToast("success", "Receita atualizada.");
+      toast.success("Receita atualizada.", { id: toastId });
       setEditModalOpen(false);
       await loadAll(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details, setEditErrors)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar receita.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar receita.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -551,18 +540,18 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
   async function handleToggleActive() {
     if (!recipe) return;
     setStatusLoading(true);
-    showToast("loading", recipe.active ? "Desativando receita…" : "Ativando receita…");
+    const toastId = toast.loading(recipe.active ? "Desativando receita…" : "Ativando receita…");
     try {
       if (recipe.active) {
         await recipeApi.deactivateRecipe(id);
-        showToast("success", "Receita desativada.");
+        toast.success("Receita desativada.", { id: toastId });
       } else {
         await recipeApi.activateRecipe(id);
-        showToast("success", "Receita ativada.");
+        toast.success("Receita ativada.", { id: toastId });
       }
       await loadAll(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao alterar status da receita.");
+      toast.error(err instanceof Error ? err.message : "Erro ao alterar status da receita.", { id: toastId });
     } finally {
       setStatusLoading(false);
     }
@@ -596,23 +585,23 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
   async function handleAddItemSubmit() {
     if (!validateAddItemForm()) return;
     setSubmitting(true);
-    showToast("loading", "Adicionando ingrediente…");
+    const toastId = toast.loading("Adicionando ingrediente…");
     try {
       await recipeApi.addRecipeItem(id, {
         ingredientId: addItemForm.ingredientId,
         quantity: parseFloat(addItemForm.quantity),
         unitId: addItemForm.unitId,
       });
-      showToast("success", "Ingrediente adicionado. Custo atualizado.");
+      toast.success("Ingrediente adicionado. Custo atualizado.", { id: toastId });
       setAddItemOpen(false);
       await loadAll(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details, setAddItemErrors)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else if (err instanceof ApiRequestError && (err.code === "INACTIVE_INGREDIENT" || err.code === "INCOMPATIBLE_UNIT" || err.code === "DUPLICATE_INGREDIENT")) {
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao adicionar ingrediente.");
+        toast.error(err instanceof Error ? err.message : "Erro ao adicionar ingrediente.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -646,22 +635,22 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
   async function handleEditItemSubmit() {
     if (!editingItem || !validateEditItemForm()) return;
     setSubmitting(true);
-    showToast("loading", "Salvando item…");
+    const toastId = toast.loading("Salvando item…");
     try {
       await recipeApi.updateRecipeItem(id, editingItem.id, {
         quantity: parseFloat(editItemForm.quantity),
         unitId: editItemForm.unitId,
       });
-      showToast("success", "Item atualizado. Custo recalculado.");
+      toast.success("Item atualizado. Custo recalculado.", { id: toastId });
       setEditingItem(null);
       await loadAll(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details, setEditItemErrors)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else if (err instanceof ApiRequestError && err.code === "INCOMPATIBLE_UNIT") {
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar item.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar item.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -675,16 +664,16 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
     const item = removingItem;
     setRemovingItem(null);
     setItemActionLoading(item.id);
-    showToast("loading", "Removendo ingrediente…");
+    const toastId = toast.loading("Removendo ingrediente…");
     try {
       await recipeApi.removeRecipeItem(id, item.id);
-      showToast("success", "Ingrediente removido. Custo recalculado.");
+      toast.success("Ingrediente removido. Custo recalculado.", { id: toastId });
       await loadAll(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "LAST_ITEM") {
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao remover ingrediente.");
+        toast.error(err instanceof Error ? err.message : "Erro ao remover ingrediente.", { id: toastId });
       }
     } finally {
       setItemActionLoading(null);
@@ -835,8 +824,6 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
           onCancel={() => setRemovingItem(null)}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

@@ -4,6 +4,48 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Sprint DS.5] — 2026-08-27/28 — Redesign completo com shadcn/ui
+
+**Tipo:** Sprint Oficial — quinta sprint sob o prefixo `DS.x` (ADR-018), primeira a trocar a camada de componentes em si (não só paleta/tokens/layout como `DS.1`–`DS.4`). Planejada em modo de planejamento dedicado (pesquisa do código real + agente de design de implementação), aprovada pelo Product Owner via `ExitPlanMode`, implementada em 7 microtarefas (`DS.5.1`–`DS.5.7`), cada uma validada (`tsc`/`lint`/`build`/visual real) antes da próxima.
+
+### Planejamento
+
+Pedido do Product Owner: insatisfação recorrente com o design desde o início do projeto, mesmo após 4 rounds de redesign (`DS.1`–`DS.4`). Diagnóstico: Tailwind CSS não era o limitador — o projeto nunca teve uma camada de componentes testada (focus trap, diálogos acessíveis, variantes consistentes), tudo escrito à mão. Decisão do Product Owner: adotar shadcn/ui (Radix + Tailwind, código copiado para o repo) em redesign completo, não gradual, cobrindo admin e cliente. Em paralelo, decisão de hospedagem (Vercel + Supabase + Hostgator só DNS) registrada como Sprint de infraestrutura separada (`I.4`, ainda não iniciada — depende de acesso à conta Vercel do Product Owner). Decisões de escopo fechadas antes da implementação: toasts via `sonner`; fundos "white" literais consolidados em `surface-2`/`cream` (sem 9º token); `sage`/`caramel` continuam como utilitário Tailwind solto, sem slot semântico `--success`/`--warning`; arquivos com múltiplas exportações (`Header.tsx`, `CartDrawer.tsx`, `ProductCard.tsx`) permanecem mesclados; Storybook fora de escopo.
+
+### Implementação
+
+**DS.5.1 (Fundação):** `npx shadcn@latest init -d --base radix` — 9 primitivas geradas (`button`, `input`, `label`, `dialog`, `alert-dialog`, `sheet`, `badge`, `card`, `sonner`). `src/app/globals.css` reescrito à mão mapeando os 8 tokens já aprovados para as variáveis semânticas do shadcn (`--background`→cream, `--primary`→chocolate, `--destructive`→rose, `--card`/`--popover`/`--secondary`/`--accent`→surface-2 etc.) — sem rodar o wizard automático de tema, que geraria uma paleta neutra incompatível. ADR-025 registrada em `CLAUDE.md`, revertendo a proibição anterior a bibliotecas de componentes externas. `package.json` ganhou `postinstall: prisma generate` (necessário para builds na Vercel). **Dois achados reais do próprio `shadcn init`, corrigidos antes de validar:** sobrescreveu `src/lib/utils.ts` inteiro, apagando `getMinDeliveryDate` (usada no checkout) — restaurada; adicionou uma fonte Geist não solicitada em `layout.tsx`, contra a decisão de fonte única (Manrope) da Sprint `DS.3` — revertida. **Ajuste de mapeamento:** o slot semântico `--muted` do shadcn colidia com o token `--muted` já existente (usado como cor de texto em dezenas de lugares via `text-muted`) — mantido apontando para o valor original (`#726A5F`) para não regredir nada já implementado.
+
+**DS.5.2 (Primitivas compartilhadas do admin):** `EntityForm` → `Dialog` (Radix), com alternância bottom-sheet (mobile) ↔ centralizado (desktop) escrita à mão em Tailwind responsivo, já que nenhuma primitiva shadcn cobre os dois modos sozinha. `ConfirmDialog` → `AlertDialog`, com `preventDefault()` no botão de confirmação para não disparar o fechamento automático do Radix em paralelo com o callback `onConfirm`. `StatusBadge` → `Badge`. `EntityCard` → `Card`. **Achado corrigido durante a validação real:** a variante `destructive` padrão do shadcn é sutil (`bg-destructive/10`) — abaixo do padrão do app, que sempre usa CTAs sólidos para ações importantes; `button.tsx` ajustado para `destructive` sólido por padrão, preservando a versão sutil como `destructive-subtle`. Validado ao vivo em `/admin/fornecedores` (criar, editar em mobile e desktop, badge, confirmar desativação).
+
+**DS.5.3 (Propagação para demais páginas admin):** achado real — `categorias` e `ocasioes` eram páginas legadas (anteriores ao padrão de componentes compartilhados) com `StatusBadge`/`EntityCard`/`EntityForm`/`ConfirmDialog`-equivalentes duplicados localmente. Migradas para os componentes compartilhados (com `activeLabel`/`inactiveLabel` customizados para concordância de gênero em português); `categorias` tinha uma regra de negócio extra (bloquear desativação com produtos vinculados) resolvida com um componente local pequeno (`BlockedDeactivateDialog`) sobre `AlertDialog` direto. As outras 11 páginas que já consumiam os componentes compartilhados herdaram o redesenho automaticamente, sem edição.
+
+**DS.5.4 (Módulo Configuração):** `FormPrimitives.tsx` — `Field` passou a usar `Label` do shadcn, `Section` passou a usar `Card` (API pública inalterada, nenhum dos 5 componentes de seção consumidores mudou). `ActionBar`/`UploadImage` migrados para `Button`. `LoadingSkeleton` — `bg-white` → `bg-surface-2`. Escopo intencionalmente não estendido aos `<input>`/`<select>` brutos dos 5 componentes de seção (`AddressSection` etc.) — trocar o `<select>` nativo por `Select` do Radix mudaria comportamento de interação real para ganho visual mínimo.
+
+**DS.5.5 (Layout/carrinho):** `CartDrawer` migrado para as primitivas Radix Dialog (mesmo motor do `Sheet`), mesma alternância responsiva do `EntityForm` — ganha trap de foco e fechamento por `Escape`/overlay que a implementação anterior não tinha. `CartFab` baseado em `Button`. Toast do carrinho migrado para `sonner`: `CartContext` perdeu o estado interno de toast, chamando `toast()` do sonner diretamente; `<Toaster />` adicionado uma vez em `src/app/layout.tsx`.
+
+**DS.5.5b (ValidationSummary → sonner, 17 páginas admin):** escopo adicional aprovado pelo Product Owner durante a sprint. Migração de `showToast`/`toastTimer`/`ToastState` local (17 páginas) para `sonner`, com padrão `const id = toast.loading(msg)` → `toast.success/error(msg, { id })` linkando o mesmo toast em vez de empilhar um novo. Referência implementada manualmente em `categorias/page.tsx`; as demais 16 páginas migradas por 2 agentes `ai-frontend-engineer` em paralelo (8 arquivos cada), seguindo a referência. `ValidationSummary.tsx` removido (código morto, sem consumidores) na `DS.5.7`.
+
+**DS.5.6 (Vitrine + páginas cliente):** `ProductCard`/`ProductHero`/`VitrineSidebar` — botões de quantidade e CTAs migrados para `Button`; `bg-white` → `bg-card`. **Achado adicional corrigido:** `pedidos/page.tsx` tinha uma mensagem de erro com `bg-red-50`/`text-red-700` fora do sistema de tokens — mesma classe de achado já resolvido em `DS.3` para `STATUS_CLASS` da mesma página. **Erro cometido e corrigido na mesma sessão:** ao "corrigir" essa mesma classe de cor crua em `checkout`/`login`/`pedidos`, não foi checado o `CHANGELOG.md` primeiro — as Sprints `DS.1` e `DS.3` já haviam decidido explicitamente **manter** `bg-red-50`/`text-red-700` nessas 3 mensagens de erro específicas (semânticas de sistema, fora da identidade de marca); revertido para o valor original assim que o histórico foi checado.
+
+**DS.5.7 (Documentação e encerramento):** `ValidationSummary.tsx` removido. `DESIGN_SYSTEM.md` atualizado (tokens, Modais, Drawer, Toasts, Botões, componentes compartilhados) registrando a implementação shadcn/ui em cada seção afetada, sem duplicar o registro já feito em `CLAUDE.md` (ADR-025). `UX_GUIDELINES.md` não alterado — nenhum princípio de UX/comportamento mudou, só a implementação interna.
+
+### Validação
+
+| Comando | Resultado |
+|---|---|
+| `npx tsc --noEmit` (após cada microtarefa) | 0 erros |
+| `npm run lint` (após cada microtarefa) | 0 erros (8 avisos cosméticos pré-existentes de "unused eslint-disable directive", mesmo padrão já visto antes da sprint) |
+| `npm run build` (após cada microtarefa) | Build de produção completo, 0 erros |
+
+**Validação funcional (navegador real, Claude Preview):** login admin real, criar/editar/ativar/desativar em `fornecedores`/`categorias`/`ocasioes`/`receitas`, responsivo mobile (390px) e desktop (1280px) no `EntityForm`/`CartDrawer` (bottom sheet ↔ dialog/painel), submissão real do formulário de Configuração, fluxo completo do carrinho (adicionar → toast → drawer → checkout), toast `loading`→`success` atualizando no mesmo elemento em `/admin/receitas`. 0 erros de console nos cenários testados.
+
+### Pendência
+
+Sprint `I.4` (Vercel + Supabase + Hostgator) planejada mas não iniciada — depende de acesso à conta Vercel do Product Owner (`vercel login` interativo) e da connection string atual do Supabase.
+
+---
+
 ## [Sprint DS.4] — 2026-08-11 — Área cliente responsiva (Vitrine + Checkout/Pedidos/Login)
 
 **Tipo:** Sprint Oficial — quarta sprint sob o prefixo `DS.x` (ADR-018). Diferente de `DS.1`–`DS.3` (cor/tipografia/estilo visual), esta sprint tratou especificamente de layout e responsividade: a área cliente não aproveitava a largura da tela em telas maiores, ao contrário do admin (`DS.2`). Planejada via `ai-solution-architect`, com múltiplas decisões do Product Owner divergindo da recomendação original (registradas na ADR-024, `CLAUDE.md`). Implementada em 5 fases (DS.4.1–DS.4.5), cada uma validada (`tsc`/`lint`/`build`/visual real) antes da próxima.

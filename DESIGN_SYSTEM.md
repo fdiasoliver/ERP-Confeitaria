@@ -29,6 +29,8 @@ Todo texto de interface deve estar em **português do Brasil (pt-BR)**.
 
 **Redesign "Ateliê Contemporâneo" (03/08/2026):** os 6 valores hex acima foram atualizados nesta data, decisão do Product Owner após comparação visual de 3 direções de paleta (contraste WCAG verificado na mesma sessão). Os **nomes** dos tokens (`cream`, `chocolate`, `rose`, `sage`, `sand`, `muted`) não mudaram — apenas os valores hex em `src/app/globals.css`. Qualquer código ou documentação que referencie os tokens pelo nome continua válido sem alteração.
 
+**Adoção do shadcn/ui (Sprint `DS.5`, ADR-025):** os 8 tokens acima continuam sendo a única fonte de cor do projeto — nenhum valor novo foi introduzido. O que mudou foi a camada de componentes: `src/app/globals.css` ganhou um mapeamento desses 8 tokens para as variáveis semânticas que o shadcn/ui espera (`--background`→`cream`, `--foreground`→`chocolate`, `--primary`→`chocolate`, `--destructive`→`rose`, `--card`/`--popover`/`--secondary`/`--accent`→`surface-2`, `--muted-foreground`→`muted`, `--border`/`--input`→`sand`). Fundos antes `bg-white` literal (fora dos 8 tokens nomeados) foram consolidados em `bg-card` (→ `surface-2`) em toda a base — decisão explícita do Product Owner, não introduz um 9º token. **Exceção deliberada, não tocada nesta sprint:** `bg-red-50`/`text-red-700` nas mensagens de erro de `checkout`/`login`/`pedidos` continuam como cores semânticas cruas, fora do sistema de tokens — decisão já tomada e reafirmada nas Sprints `DS.1` e `DS.3` (ver `CHANGELOG.md`).
+
 **Redesign de front-end mais amplo — Sprint `DS.2` (04/08/2026):** nova direção "A × C", escolhida pelo Product Owner por comparação visual de 3 direções + 1 combinação (Artifact, mesmo processo de DS.1). Os 6 valores hex acima foram atualizados novamente, mais o token novo `surface-2`. Contraste WCAG verificado antes de aplicar — `rose` e `sage` originais da direção aprovada (`#E63946`/`#6B8E4E`) não passavam em 4,5:1 contra `cream` (4,21:1 e 3,48:1); ajustados para `#C42E3C`/`#4F7530` (5,13:1/4,97:1), mesma família de cor (cereja/pistache), mais escuros. Ao contrário de `DS.1`, esta sprint também muda layout/componentes (produto-herói na Vitrine, sidebar de navegação no admin, tratamento fotográfico de produto) — não é só troca de token. Novos: `ProductHero` (`src/components/vitrine/ProductCard.tsx`) — primeiro produto com `featured: true` em destaque, acima do grid de `ProductCard` (que não repete esse produto); `getProductGradientClass()` (`src/lib/utils.ts`) — gradiente determinístico por `product.id` (5 combinações), substitui o gradiente único fixo usado antes em todo `imageEmoji` (`KI-06` segue aberta — isto não é foto real, é um tratamento melhor que o emoji cru). Ver `CHANGELOG.md`, Sprint DS.2.
 
 **Redesenho a partir de modelo de referência real — Sprint `DS.3` (10/08/2026):** Product Owner forneceu um arquivo HTML de referência ("Modelo 1" — painel de Estoque & Financeiro, visual SaaS/back-office) e pediu aplicação a todo o app (admin + cliente final), substituindo a direção `DS.2`. Fonte única `Manrope` (ver Tipografia acima); token novo `--caramel`; correção de sobreposição de significado do token `rose` (achado real, não previsto no plano original — encontrado em 4 lugares: item ativo da Sidebar, coluna "Em produção" do Kanban, badge "Destaque" de produto, e confirmado correto nos demais ~30 usos de `rose` do projeto, que já eram negativo/erro/destrutivo). `getProductGradientClass()` removido (código morto) — `ProductCard`/`ProductHero` passaram de foto com gradiente para ícone flat sobre `surface-2`, com borda `sand` no lugar de `shadow-card`, mesma linguagem visual do admin. `src/app/pedidos/page.tsx` `STATUS_CLASS` corrigido de Tailwind cru (`amber`/`blue`/`red`) para tokens do design system — dívida técnica pré-existente resolvida de graça dentro do escopo desta sprint. Componentes novos sem tela consumidora real ainda (decisão explícita do Product Owner de construir mesmo assim): `BarChart`, `StockItem`/`StockTag` (`src/components/admin/shared/`); `StatCard` ganhou props opcionais `trend`/`note` (badge de variação ↑/↓, sem fonte de dado real hoje). Ver `CHANGELOG.md`, Sprint DS.3.
@@ -59,6 +61,8 @@ Todo texto de interface deve estar em **português do Brasil (pt-BR)**.
 | `.option-card` | Card de seleção (entrega, pagamento) |
 | `.option-card.selected` | Estado selecionado do option-card |
 | `.scrollbar-none` | Oculta scrollbar horizontal (chips, carrosséis) |
+
+**shadcn/ui (Sprint `DS.5`, ADR-025):** camada de componentes oficial do projeto desde esta sprint, coexistindo com essas classes utilitárias — não as substitui. Componentes gerados em `src/components/ui/` (`button`, `input`, `label`, `dialog`, `alert-dialog`, `sheet`, `badge`, `card`, `sonner`) são código copiado para o repositório (não pacote opaco), estilizados via os 8 tokens de cor já existentes — nenhuma cor nova. Ver `CLAUDE.md` ADR-025 para o registro completo da decisão.
 
 ---
 
@@ -117,6 +121,9 @@ Secundário:  border-2 border-chocolate text-chocolate rounded-xl py-4 px-6 font
 Ghost:       text-rose font-semibold underline-offset-2 hover:underline
 Destrutivo:  bg-red-600 text-white rounded-xl py-4 px-6 font-semibold
 ```
+
+### Implementação (Sprint `DS.5`, ADR-025)
+As variações acima passaram a ser implementadas pelo componente `Button` do shadcn/ui (`src/components/ui/button.tsx`, variantes `default`/`outline`/`ghost`/`destructive`/`link`) nos pontos já migrados (carrinho, vitrine, `EntityForm`/`ConfirmDialog` e suas ações, módulo Configuração). A variante `destructive` foi ajustada de sutil (padrão shadcn, `bg-destructive/10`) para sólida (`bg-destructive`), para preservar a ênfase visual que este documento já pedia (`bg-red-600`/`bg-rose` sólido) — a versão sutil do shadcn continua disponível como `variant="destructive-subtle"` para casos que precisem dela. Botões de ação ainda não migrados (ex.: Editar/Ativar/Desativar em várias listagens) continuam com classes Tailwind manuais equivalentes — migração mecânica, sem mudança visual, fica para uma sprint futura.
 
 ---
 
@@ -469,12 +476,14 @@ Exibir conteúdo ou solicitar confirmação ao usuário sem sair da tela atual.
 ```
 Overlay (fixed inset-0 bg-black/50 z-50)
   └── Container (flex items-center justify-center p-4)
-       └── Modal (bg-white rounded-2xl shadow-xl max-w-md w-full p-6)
+       └── Modal (bg-card rounded-2xl shadow-xl max-w-md w-full p-6)
             ├── Título (font-display text-xl font-semibold)
             ├── Botão fechar ✕ (absolute top-4 right-4)
             ├── Conteúdo
             └── Rodapé com ações (flex gap-3 justify-end)
 ```
+
+**Implementação (Sprint `DS.5`, ADR-025):** `EntityForm` (formulário) e `ConfirmDialog` (confirmação) — componente 21 — são construídos sobre as primitivas `Dialog`/`AlertDialog` do Radix (via shadcn/ui), não mais divs escritas à mão. Trap de foco, fechamento por `Escape` e clique no overlay agora vêm do Radix, não de um `useEffect` com `keydown` manual como antes da DS.5.
 
 ### Boas práticas
 - Modal de confirmação: botão destrutivo à direita (posição de ação principal)
@@ -523,6 +532,7 @@ Exibir conteúdo deslizante a partir de uma borda da tela, sem bloquear completa
 - CartFab: botão flutuante que abre o drawer, `position: fixed`; canto inferior central em mobile, `right-6` fixo em `md:`+
 - **Variante desktop (Sprint DS.4):** em `md:`+ (768px), o drawer deixa de ser bottom sheet e passa a ser um painel ancorado à direita, altura cheia (`md:inset-y-0 md:right-0 md:h-full md:w-96`) — mesmo conteúdo/comportamento, só a posição/dimensão mudam
 - Renderizado pelo `ClientShell` (não por cada página) — disponível em Vitrine, Pedidos e Login; `CartFab` oculto apenas em `/checkout` (carrinho já exibido inline nessa tela)
+- **Implementação (Sprint `DS.5`, ADR-025):** migrado das primitivas Radix Dialog (mesmo motor do `Sheet` do shadcn/ui) — ganha trap de foco e fechamento por `Escape`/overlay que a implementação anterior não tinha. `CartFab` e os controles de quantidade agora usam o componente `Button` do shadcn.
 
 ### Boas práticas
 - Drawer não deve exigir scroll na área fora do drawer
@@ -776,17 +786,11 @@ Notificar o usuário sobre o resultado de ações breves, sem interromper o flux
 - Máximo de 3 toasts simultâneos (empilhados)
 - Toasts de erro não têm auto-dismiss — exigem fechamento manual
 
-### Implementação atual
-O `Toast` está implementado em `src/components/layout/CartDrawer.tsx` com auto-dismiss de 2s para confirmação de adição ao carrinho.
+### Implementação atual (Sprint `DS.5`, ADR-025)
+Toda notificação do sistema — carrinho (cliente) e `ValidationSummary`/`ToastState` (admin, usado em 17 páginas) — foi migrada para a biblioteca `sonner`. Um único `<Toaster />` global vive em `src/app/layout.tsx` (cobre admin e cliente); não há mais um componente `Toast` bespoke nem estado local de toast por página. Padrão para operações assíncronas (criar/editar/ativar/desativar): `const id = toast.loading("Salvando…")` no início, seguido de `toast.success(msg, { id })` ou `toast.error(msg, { id })` no fim — o mesmo toast é atualizado no lugar, em vez de empilhar um novo. `src/components/admin/config/ValidationSummary.tsx` foi removido (código morto, sem consumidores).
 
 ### Estrutura
-```
-Toast (fixed bottom-6 left-1/2 -translate-x-1/2 z-50)
-  └── Container (bg-chocolate text-white rounded-xl px-4 py-3 shadow-lg flex items-center gap-2)
-       ├── Ícone (✅ / ⚠️ / ❌)
-       ├── Mensagem
-       └── Botão fechar (opcional, para toast sem auto-dismiss)
-```
+Gerenciada inteiramente pelo `sonner` (`src/components/ui/sonner.tsx`) — não há mais um componente de toast escrito à mão para documentar a estrutura interna.
 
 ### Boas práticas
 - Mensagem curta: máximo 1 linha (~60 caracteres)
@@ -1275,6 +1279,7 @@ Eliminar a duplicação identificada na Sprint 2.E.6 (`MODULE_2E_UX_REVIEW.md`) 
 - **Propriedades:** `isActive: boolean`, `activeLabel?`, `inactiveLabel?` (defaults "Ativo"/"Inativo").
 - **Caso de uso:** qualquer entidade com campo `active`.
 - **Restrição:** só para status binário ativo/inativo — status de pedido (múltiplos valores) continua usando o mapa de cores do componente 11 (Badges), não este. Classificação (Sprint G.8): **Reutilização Condicional** — pré-requisito é a entidade ter um campo booleano de status; não depende de layout/container da página (migrado com sucesso em `receitas/[id]/page.tsx`, que permanece em `max-w-app`).
+- **Implementação (Sprint `DS.5`, ADR-025):** construído sobre `Badge` do shadcn/ui (`variant="outline"` + classes de cor `sage`/`sand` originais preservadas).
 
 ### `LoadingState`
 - **Responsabilidade:** placeholder de carregamento em grid, com `aria-busy`.
@@ -1303,18 +1308,21 @@ Eliminar a duplicação identificada na Sprint 2.E.6 (`MODULE_2E_UX_REVIEW.md`) 
 - **Propriedades:** `title`, `description` (`ReactNode`), `cancelLabel`, `confirmLabel`, `destructive?` (default `true`), `busy?`, `onCancel`, `onConfirm`.
 - **Caso de uso:** qualquer confirmação de ação (desativar, excluir). Resolve o achado 1.3 da Sprint 2.E.6 (confirmação inconsistente entre módulos) para quem adotar o componente.
 - **Restrição:** só 2 botões (cancelar/confirmar), conforme `UX_GUIDELINES.md` Seção 6 ("Máximo de 2 ações no rodapé").
+- **Implementação (Sprint `DS.5`, ADR-025):** construído sobre `AlertDialog` do shadcn/ui — mesma API pública, internals trocados. A variante `destructive` do `Button` subjacente foi ajustada de sutil (`bg-destructive/10`, padrão shadcn) para sólida (`bg-destructive`), para manter a ênfase visual que o app já usava em ações destrutivas; a versão sutil original continua disponível como `variant="destructive-subtle"`.
 
 ### `EntityCard`
 - **Responsabilidade:** shell visual de card de listagem — cabeçalho (título + badges), conteúdo livre, rodapé de ações.
 - **Propriedades:** `title: string`, `badges?: ReactNode`, `children?: ReactNode` (linhas de informação), `actions: ReactNode` (botões).
 - **Caso de uso:** qualquer item de listagem de Cadastro Mestre.
 - **Restrição:** não inclui os botões de ação prontos (ex.: Editar/Desativar) — cada página monta os próprios botões e passa via `actions`, porque o conjunto de ações varia por módulo (Produtos tem Excluir, Unidades não). Classificação (Sprint G.8): **Dependente do Modelo de Interface** — distinta de "Dependente de Evolução de Layout" (caso do `LoadingState` acima): o bloqueio não é o container/grid da página, é o item da listagem ser um card empilhado (título acima, ações abaixo); listagens em linha horizontal (nome à esquerda, ações à direita — ex.: `CategoryRow`, `ConversionCard`, `ItemCard`) exigem mudar o modelo de apresentação do item antes de adotar `EntityCard`, independentemente da largura do container (ver `MODULE_G8_CLOSURE.md`).
+- **Implementação (Sprint `DS.5`, ADR-025):** construído sobre `Card` do shadcn/ui.
 
 ### `EntityForm`
 - **Responsabilidade:** shell de modal de criação/edição — bottom sheet em mobile (`< 768px`), centralizado em desktop (`≥ 768px`, `max-w-lg`), conforme `DESIGN_SYSTEM.md` #7. Trap de foco, fechamento por `Escape`/clique no overlay, foco automático no primeiro campo.
 - **Propriedades:** `title`, `submitting`, `submitLabel`, `cancelLabel?` (default "Cancelar"), `onClose`, `onSubmit`, `children` (campos do formulário).
 - **Caso de uso:** qualquer criação/edição em modal (não substitui formulários de página própria — `UX_GUIDELINES.md` Seção 2, formulários maiores que 1-3 campos "merecem página própria"; `EntityForm` é para o caso modal).
 - **Restrição:** usa `max-w-lg` (levemente maior que o `max-w-md` documentado no componente 7), para acomodar formulários agrupados em `Section` sem ficar apertado — desvio pequeno e documentado, não uma nova convenção livre.
+- **Implementação (Sprint `DS.5`, ADR-025):** construído diretamente sobre as primitivas Radix `Dialog` (via `radix-ui`, mesmo motor do `Sheet` do shadcn/ui) — a alternância bottom-sheet↔dialog é resolvida com Tailwind responsivo escrito à mão, já que nenhuma primitiva shadcn cobre os dois modos sozinha. Ganha trap de foco, `Escape` e clique-fora do Radix, que a implementação anterior (hand-rolled) não tinha de forma completa.
 
 ### Reaproveitados sem alteração de responsabilidade (não recriados)
 - **`Field`/`Section`** (`src/components/admin/config/FormPrimitives.tsx`) — já existiam; `Field` ganhou suporte a `htmlFor` (extensão retrocompatível) para acessibilidade de label/input.

@@ -4,8 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import type { ValidationError, ProductCategoryWithCount } from "@/lib/types";
 import { formatCurrency } from "@/lib/formatters/currency";
 import * as productApi from "@/lib/api/productApi";
@@ -147,7 +146,6 @@ function ProdutosAdminPageContent() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -165,16 +163,7 @@ function ProdutosAdminPageContent() {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLoadedOnce = useRef(false);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   // Dados de apoio (categorias e receitas ativas) — carregados uma única vez,
   // usados no filtro de categoria e no formulário de vínculo de receitas.
@@ -188,7 +177,7 @@ function ProdutosAdminPageContent() {
         setCategories(categoryRows);
         setRecipes(recipeRows);
       } catch {
-        showToast("error", "Erro ao carregar categorias e receitas de apoio.");
+        toast.error("Erro ao carregar categorias e receitas de apoio.");
       }
     })();
   }, []);
@@ -205,7 +194,7 @@ function ProdutosAdminPageContent() {
         const product = await productApi.getProduct(editId);
         openEdit(product);
       } catch {
-        showToast("error", "Produto não encontrado.");
+        toast.error("Produto não encontrado.");
       } finally {
         router.replace("/admin/produtos");
       }
@@ -243,7 +232,7 @@ function ProdutosAdminPageContent() {
       hasLoadedOnce.current = true;
     } catch (err) {
       if (silent) {
-        showToast("error", "Erro ao atualizar lista de produtos.");
+        toast.error("Erro ao atualizar lista de produtos.");
       } else {
         setError(err instanceof Error ? err.message : "Erro ao carregar produtos.");
       }
@@ -378,7 +367,7 @@ function ProdutosAdminPageContent() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    showToast("loading", modal === "create" ? "Criando produto…" : "Salvando alterações…");
+    const toastId = toast.loading(modal === "create" ? "Criando produto…" : "Salvando alterações…");
     try {
       const input: ProductInput = {
         name: form.name.trim(),
@@ -393,20 +382,20 @@ function ProdutosAdminPageContent() {
 
       if (modal === "create") {
         await productApi.createProduct(input);
-        showToast("success", "Produto criado com sucesso.");
+        toast.success("Produto criado com sucesso.", { id: toastId });
       } else if (editing) {
         await productApi.updateProduct(editing.id, input);
-        showToast("success", "Produto atualizado.");
+        toast.success("Produto atualizado.", { id: toastId });
       }
       closeModal();
       await loadProducts();
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else if (err instanceof ApiRequestError && err.code === "INACTIVE_CATEGORY") {
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar produto.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar produto.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -417,13 +406,13 @@ function ProdutosAdminPageContent() {
 
   async function handleActivate(product: Product) {
     setActionLoading(product.id);
-    showToast("loading", "Ativando produto…");
+    const toastId = toast.loading("Ativando produto…");
     try {
       await productApi.activateProduct(product.id);
-      showToast("success", `"${product.name}" ativado com sucesso.`);
+      toast.success(`"${product.name}" ativado com sucesso.`, { id: toastId });
       await loadProducts();
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao ativar produto.");
+      toast.error(err instanceof Error ? err.message : "Erro ao ativar produto.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -434,21 +423,21 @@ function ProdutosAdminPageContent() {
     const { type, product } = confirmAction;
     setConfirmAction(null);
     setActionLoading(product.id);
-    showToast("loading", type === "deactivate" ? "Desativando produto…" : "Excluindo produto…");
+    const toastId = toast.loading(type === "deactivate" ? "Desativando produto…" : "Excluindo produto…");
     try {
       if (type === "deactivate") {
         await productApi.deactivateProduct(product.id);
-        showToast("success", `"${product.name}" desativado.`);
+        toast.success(`"${product.name}" desativado.`, { id: toastId });
       } else {
         await productApi.deleteProduct(product.id);
-        showToast("success", `"${product.name}" excluído.`);
+        toast.success(`"${product.name}" excluído.`, { id: toastId });
       }
       await loadProducts();
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "PRODUCT_IN_USE") {
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao processar a ação.");
+        toast.error(err instanceof Error ? err.message : "Erro ao processar a ação.", { id: toastId });
       }
     } finally {
       setActionLoading(null);
@@ -908,8 +897,6 @@ function ProdutosAdminPageContent() {
           onConfirm={handleConfirmAction}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

@@ -7,7 +7,7 @@ export function Header() {
   const { itemCount } = useCart();
 
   return (
-    <header className="sticky top-0 z-10 flex items-center justify-between border-b border-sand bg-white px-5 py-4">
+    <header className="sticky top-0 z-10 flex items-center justify-between border-b border-sand bg-card px-5 py-4">
       <Link href="/" className="font-display text-xl font-semibold text-chocolate">
         Doce Menina
       </Link>
@@ -51,7 +51,7 @@ function CartButton({ count }: { count: number }) {
 
 export function HeaderMinimal({ title }: { title: string }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-sand bg-white px-5 py-4">
+    <header className="sticky top-0 z-10 border-b border-sand bg-card px-5 py-4">
       <div className="flex items-center gap-3">
         <Link href="/" className="text-muted text-sm hover:text-chocolate">
           ←

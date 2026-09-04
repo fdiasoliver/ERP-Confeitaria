@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { resolveOccasionIcon } from "@/lib/icons";
+import { Button } from "@/components/ui/button";
 
 interface SidebarOccasion {
   id: string;
@@ -27,7 +28,7 @@ export function VitrineSidebar({ occasions, selected, onSelect }: VitrineSidebar
 
   return (
     <aside
-      className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sand bg-white transition-[width] duration-200 md:flex ${
+      className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sand bg-card transition-[width] duration-200 md:flex ${
         collapsed ? "w-16" : "w-60"
       }`}
     >
@@ -35,14 +36,15 @@ export function VitrineSidebar({ occasions, selected, onSelect }: VitrineSidebar
         {!collapsed && (
           <span className="font-display text-lg font-semibold text-chocolate">Categorias</span>
         )}
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-sm"
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? "Expandir menu de categorias" : "Recolher menu de categorias"}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2"
         >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </button>
+        </Button>
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">

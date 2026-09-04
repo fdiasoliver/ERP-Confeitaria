@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import { Field } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ResponsiveGrid } from "@/components/admin/shared/ResponsiveGrid";
@@ -62,7 +61,6 @@ export default function ReceitasAdminPage() {
   const [units, setUnits] = useState<UnitOfMeasure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [modalOpen, setModalOpen] = useState(false);
@@ -71,15 +69,6 @@ export default function ReceitasAdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState<Recipe | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadAll(silent = false) {
     if (!silent) {
@@ -99,14 +88,14 @@ export default function ReceitasAdminPage() {
       if (!silent) {
         setError(err instanceof Error ? err.message : "Erro ao carregar receitas.");
       } else {
-        showToast("error", "Erro ao atualizar lista de receitas.");
+        toast.error("Erro ao atualizar lista de receitas.");
       }
     } finally {
       if (!silent) setLoading(false);
     }
   }
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/set-state-in-effect
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -201,7 +190,7 @@ export default function ReceitasAdminPage() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    showToast("loading", "Criando receita…");
+    const toastId = toast.loading("Criando receita…");
     try {
       await recipeApi.createRecipe({
         name: form.name,
@@ -215,16 +204,16 @@ export default function ReceitasAdminPage() {
           unitId: item.unitId,
         })),
       });
-      showToast("success", "Receita criada com sucesso.");
+      toast.success("Receita criada com sucesso.", { id: toastId });
       closeModal();
       await loadAll(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else if (err instanceof ApiRequestError && (err.code === "INACTIVE_INGREDIENT" || err.code === "INCOMPATIBLE_UNIT" || err.code === "DUPLICATE_NAME")) {
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao criar receita.");
+        toast.error(err instanceof Error ? err.message : "Erro ao criar receita.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -233,13 +222,13 @@ export default function ReceitasAdminPage() {
 
   async function handleActivate(recipe: Recipe) {
     setActionLoading(recipe.id);
-    showToast("loading", "Ativando receita…");
+    const toastId = toast.loading("Ativando receita…");
     try {
       await recipeApi.activateRecipe(recipe.id);
-      showToast("success", `"${recipe.name}" ativada com sucesso.`);
+      toast.success(`"${recipe.name}" ativada com sucesso.`, { id: toastId });
       await loadAll(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao ativar receita.");
+      toast.error(err instanceof Error ? err.message : "Erro ao ativar receita.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -250,13 +239,13 @@ export default function ReceitasAdminPage() {
     const recipe = confirmDeactivate;
     setConfirmDeactivate(null);
     setActionLoading(recipe.id);
-    showToast("loading", "Desativando receita…");
+    const toastId = toast.loading("Desativando receita…");
     try {
       await recipeApi.deactivateRecipe(recipe.id);
-      showToast("success", `"${recipe.name}" desativada.`);
+      toast.success(`"${recipe.name}" desativada.`, { id: toastId });
       await loadAll(true);
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : "Erro ao desativar receita.");
+      toast.error(err instanceof Error ? err.message : "Erro ao desativar receita.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -552,8 +541,6 @@ export default function ReceitasAdminPage() {
           onConfirm={handleDeactivateConfirm}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

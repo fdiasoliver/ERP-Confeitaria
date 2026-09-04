@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
-import { ValidationSummary } from "@/components/admin/config/ValidationSummary";
-import type { ToastState } from "@/components/admin/config/ValidationSummary";
+import { toast } from "sonner";
 import { Field } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ResponsiveGrid } from "@/components/admin/shared/ResponsiveGrid";
@@ -31,7 +30,6 @@ export default function PackagingCategoriasAdminPage() {
   const [categories, setCategories] = useState<PackagingCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<PackagingCategory | null>(null);
@@ -40,15 +38,6 @@ export default function PackagingCategoriasAdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<PackagingCategory | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function showToast(type: ToastState["type"], message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast({ type, message });
-    if (type !== "loading") toastTimer.current = setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   async function loadCategories(silent = false) {
     if (!silent) {
@@ -61,14 +50,14 @@ export default function PackagingCategoriasAdminPage() {
       if (!silent) {
         setError(err instanceof Error ? err.message : "Erro ao carregar categorias.");
       } else {
-        showToast("error", "Erro ao atualizar lista de categorias.");
+        toast.error("Erro ao atualizar lista de categorias.");
       }
     } finally {
       if (!silent) setLoading(false);
     }
   }
 
-  useEffect(() => { loadCategories(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { loadCategories(); }, []); // eslint-disable-line react-hooks/set-state-in-effect
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -119,22 +108,22 @@ export default function PackagingCategoriasAdminPage() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    showToast("loading", modal === "create" ? "Criando categoria…" : "Salvando alterações…");
+    const toastId = toast.loading(modal === "create" ? "Criando categoria…" : "Salvando alterações…");
     try {
       if (modal === "create") {
         await categoryApi.createPackagingCategory({ name: form.name });
-        showToast("success", "Categoria criada com sucesso.");
+        toast.success("Categoria criada com sucesso.", { id: toastId });
       } else if (editing) {
         await categoryApi.updatePackagingCategory(editing.id, { name: form.name });
-        showToast("success", "Categoria atualizada.");
+        toast.success("Categoria atualizada.", { id: toastId });
       }
       closeModal();
       await loadCategories(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
-        showToast("error", "Corrija os campos destacados.");
+        toast.error("Corrija os campos destacados.", { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao salvar categoria.");
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar categoria.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -146,16 +135,16 @@ export default function PackagingCategoriasAdminPage() {
     const category = confirmDelete;
     setConfirmDelete(null);
     setActionLoading(category.id);
-    showToast("loading", "Excluindo categoria…");
+    const toastId = toast.loading("Excluindo categoria…");
     try {
       await categoryApi.deletePackagingCategory(category.id);
-      showToast("success", "Categoria excluída.");
+      toast.success("Categoria excluída.", { id: toastId });
       await loadCategories(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "CATEGORY_HAS_PACKAGINGS") {
-        showToast("error", err.message);
+        toast.error(err.message, { id: toastId });
       } else {
-        showToast("error", err instanceof Error ? err.message : "Erro ao excluir categoria.");
+        toast.error(err instanceof Error ? err.message : "Erro ao excluir categoria.", { id: toastId });
       }
     } finally {
       setActionLoading(null);
@@ -278,8 +267,6 @@ export default function PackagingCategoriasAdminPage() {
           onConfirm={handleDeleteConfirm}
         />
       )}
-
-      <ValidationSummary toast={toast} onDismiss={() => setToast(null)} />
     </PageContainer>
   );
 }

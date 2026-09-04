@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { Providers } from "@/components/Providers";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 // Fonte única (Sprint DS.3) — substitui Fraunces (display) + DM Sans (corpo).
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="pt-BR" className={`${manrope.variable} h-full`}>
       <body className="min-h-full antialiased">
         <Providers>{children}</Providers>
+        <Toaster position="bottom-center" richColors />
       </body>
     </html>
   );

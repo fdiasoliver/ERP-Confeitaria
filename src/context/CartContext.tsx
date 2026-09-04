@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { toast as sonnerToast } from "sonner";
 import type { CartItem, Product } from "@/lib/types";
 
 interface CartContextValue {
@@ -20,20 +21,12 @@ interface CartContextValue {
   updateObservation: (productId: string, observation: string) => void;
   clearCart: () => void;
   loadFromOrder: (items: CartItem[]) => void;
-  toast: string | null;
-  clearToast: () => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [toast, setToast] = useState<string | null>(null);
-
-  const showToast = (message: string) => {
-    setToast(message);
-    setTimeout(() => setToast(null), 2000);
-  };
 
   const addItem = useCallback((product: Product) => {
     setItems((prev) => {
@@ -47,7 +40,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, { productId: product.id, product, quantity: 1 }];
     });
-    showToast(`${product.name} adicionado`);
+    sonnerToast(`${product.name} adicionado`);
   }, []);
 
   const removeItem = useCallback((productId: string) => {
@@ -76,7 +69,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const loadFromOrder = useCallback((cartItems: CartItem[]) => {
     setItems(cartItems);
-    showToast("Pedido carregado no carrinho");
+    sonnerToast("Pedido carregado no carrinho");
   }, []);
 
   const itemCount = useMemo(
@@ -104,8 +97,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateObservation,
       clearCart,
       loadFromOrder,
-      toast,
-      clearToast: () => setToast(null),
     }),
     [
       items,
@@ -117,7 +108,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateObservation,
       clearCart,
       loadFromOrder,
-      toast,
     ]
   );
 
