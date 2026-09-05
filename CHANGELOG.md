@@ -31,9 +31,17 @@ Registro cronológico de todas as sprints e mudanças significativas.
 | Smoke test HTTP real (`/`, `/api/config`, `/api/products`, `/admin/login`) | 200 em todos, dado real do banco confirmado |
 | Redeploy automático via push em `main` | Confirmado — novo deploy disparado e promovido sem intervenção manual |
 
+### Supabase Storage (continuação da mesma sessão)
+
+**Conta Supabase:** mesmo padrão do achado do Vercel — o CLI já estava autenticado com uma conta de terceiro (projetos "Kastro Park Ponto"/"db-test", nenhum correspondente ao projeto real do Doce Menina) — `supabase logout` executado, Product Owner então autenticou com a conta correta (`fdias.oliver@gmail.com's Project`, ref `vqootzdtkgcbltrlfgzq`, confirmado batendo com o `DATABASE_URL` já em uso). `supabase link --project-ref vqootzdtkgcbltrlfgzq` executado.
+
+**Bucket:** `store-assets` criado público via Storage API (`POST /storage/v1/bucket`), conforme já documentado em `.env.example`. `service_role key` obtida via `supabase projects api-keys` — comando bloqueado pelo classificador de modo automático da sessão de IA por lidar com credencial sensível; Product Owner rodou o comando no próprio terminal e colou o valor diretamente nesta conversa (não foi persistido em nenhum arquivo do projeto).
+
+**Variáveis de ambiente (Produção):** `SUPABASE_URL` (`https://vqootzdtkgcbltrlfgzq.supabase.co`) e `SUPABASE_SERVICE_ROLE_KEY` adicionadas ao projeto Vercel. Novo `vercel deploy --prod` disparado manualmente para aplicar as novas variáveis (mudança de env var não redeploya sozinha). Smoke test real: site e `/api/config` seguem 200; `/api/admin/upload` responde 405 a GET (rota existe, só aceita POST — comportamento esperado, upload real não testado por exigir sessão de admin autenticada).
+
 ### Pendência
 
-Credenciais de Supabase Storage (`SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`, upload de imagens em produção), PIX e Google Maps ainda não configuradas em produção — mesmo gap já registrado desde a Sprint I.2, fora do escopo desta sessão. Encerramento formal do módulo (`MODULE_I4_CLOSURE.md`) ainda não feito.
+PIX e Google Maps ainda não configurados em produção — mesmo gap já registrado desde a Sprint I.2, fora do escopo desta sessão. Encerramento formal do módulo (`MODULE_I4_CLOSURE.md`) ainda não feito.
 
 ---
 
