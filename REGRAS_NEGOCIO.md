@@ -408,6 +408,7 @@ Exemplo: receita usa 250 g de chocolate; ingrediente comprado em kg → 250 g ×
   - `CEPEA` — importado de tabela CEPEA
   - `NOTA_FISCAL` — registrado a partir de nota fiscal de compra
 - O preço histórico é usado para auditoria e análise de variação de custo
+- **Importador de NFC-e (Módulo 5.E):** `/admin/ingredientes/importar-nota` consulta o portal público da SEFAZ-SP a partir do link completo do QR Code do cupom (a chave de acesso de 44 dígitos sozinha não é suficiente — o portal exige o hash de validação, que só existe no QR Code impresso). Cobre exclusivamente notas emitidas por contribuintes de São Paulo (`cUF=35`); outros estados ficam fora de escopo desta primeira versão. O admin confirma manualmente a qual `Ingredient` cada item da nota corresponde (a descrição do item na nota raramente bate com o nome cadastrado) antes de gravar — nunca é automático. Uma mesma nota não pode gerar duas linhas de `IngredientPriceHistory` para o mesmo ingrediente (`nfceAccessKey` único por `ingredientId`), mas pode gerar uma linha por item para ingredientes diferentes.
 
 ## 7.3 Estoque
 

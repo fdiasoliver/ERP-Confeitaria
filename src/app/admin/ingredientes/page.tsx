@@ -250,9 +250,14 @@ export default function IngredientesAdminPage() {
       <HeaderMinimal title="Ingredientes" />
 
       <div className="space-y-4 p-5">
-        <Link href="/admin/ingredientes/categorias" className="text-sm font-medium text-chocolate underline">
-          Categorias de ingrediente →
-        </Link>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link href="/admin/ingredientes/categorias" className="text-sm font-medium text-chocolate underline">
+            Categorias de ingrediente →
+          </Link>
+          <Link href="/admin/ingredientes/importar-nota" className="text-sm font-medium text-chocolate underline">
+            Importar nota fiscal →
+          </Link>
+        </div>
 
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted">

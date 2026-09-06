@@ -278,15 +278,17 @@ model Ingredient {
 }
 
 model IngredientPriceHistory {
-  id           String      @id @default(cuid())
-  ingredientId String
-  ingredient   Ingredient  @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
-  price        Decimal     @db.Decimal(12, 4)
-  source       PriceSource @default(MANUAL)
-  notes        String?
-  recordedAt   DateTime    @default(now())
+  id            String      @id @default(cuid())
+  ingredientId  String
+  ingredient    Ingredient  @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  price         Decimal     @db.Decimal(12, 4)
+  source        PriceSource @default(MANUAL)
+  notes         String?
+  nfceAccessKey String?     // Chave de acesso (44 dígitos) da NFC-e de origem (Módulo 5.E)
+  recordedAt    DateTime    @default(now())
 
   @@index([ingredientId, recordedAt])
+  @@unique([ingredientId, nfceAccessKey]) // Uma nota pode gerar várias linhas (1 por item/ingrediente), mas não duas vezes para o mesmo ingrediente
 }
 
 // ─── Receitas ────────────────────────────────────────────────────────────────

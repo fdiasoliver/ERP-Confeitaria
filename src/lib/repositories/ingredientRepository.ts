@@ -78,8 +78,14 @@ export async function addPriceHistoryEntry(data: {
   price: number;
   source: PriceSource;
   notes?: string;
+  nfceAccessKey?: string;
 }): Promise<IngredientPriceHistory> {
   return prisma.ingredientPriceHistory.create({ data });
+}
+
+/** Todas as linhas (de qualquer ingrediente) já importadas a partir dessa nota — usado no preview para avisar quais itens já foram importados antes. */
+export async function findPriceHistoryEntriesByNfceAccessKey(nfceAccessKey: string): Promise<IngredientPriceHistory[]> {
+  return prisma.ingredientPriceHistory.findMany({ where: { nfceAccessKey } });
 }
 
 export async function listPriceHistory(ingredientId: string): Promise<IngredientPriceHistory[]> {

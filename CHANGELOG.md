@@ -4,6 +4,36 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo 5.E] — 2026-09-05/06 — Importador de NFC-e (preço de insumos)
+
+**Tipo:** redefinição de escopo do Módulo 5.E — originalmente proposto como sincronização automática CONAB/CEASA (`PLAN.md`), abandonado após pesquisa real confirmar que nenhuma das duas fontes tem API pública (CONAB só disponibiliza planilhas para download; CEAGESP retornou 403 a acesso automatizado). Substituído por um importador de NFC-e (nota fiscal de compra real), sugestão feita pelo Product Owner a partir de pesquisa própria, avaliada e redesenhada para reaproveitar o schema já existente (`Ingredient`/`IngredientPriceHistory`/`Supplier`, Módulos 2.E/2.G) em vez das tabelas SQL soltas propostas originalmente (que violariam a ADR-005 — todo modelo persistente via Prisma com `cuid()`).
+
+### Pesquisa
+
+Testado ao vivo contra o portal da SEFAZ-SP com uma nota fiscal real: a busca manual por chave de acesso exige reCAPTCHA (inviável para automação); a busca via QR Code só retorna a nota quando o payload inclui o hash de validação (5º campo, separado por `|`) — **não derivável a partir dos 44 dígitos da chave sozinhos**, existe apenas no QR Code impresso no cupom. Confirmado por tentativa real: variações do payload sem o hash retornam "QR-Code inválido" ou "Formato não suportado"; com o hash correto, uma única requisição HTTP GET (sem sessão, sem cookies, sem captcha) retorna a nota completa em HTML semântico (classes CSS previsíveis: `.txtTit`, `.RCod`, `.Rqtd`, `.RUN`, `.RvlUnit`, `.valor`). Por isso o importador exige o **link completo do QR Code**, não a chave digitada manualmente.
+
+### Implementação
+
+**Schema:** `IngredientPriceHistory.nfceAccessKey` (nova, nullable) — **achado corrigido durante a implementação:** a primeira versão marcou o campo `@unique` globalmente, o que impediria importar mais de um item da mesma nota (uma nota tem vários itens, cada um vira uma linha). Corrigido para `@@unique([ingredientId, nfceAccessKey])` antes de escrever o Service — mesma nota pode gerar uma linha por ingrediente, nunca duas linhas para o mesmo ingrediente+nota.
+
+**Client:** `src/lib/clients/nfceClient.ts` (ADR-023) — extrai o payload do link colado, valida formato (44 dígitos + dígito verificador mod-11 + `cUF=35`) e a presença do hash antes de fazer qualquer requisição, consulta o portal via `fetch`, parseia com `cheerio` (nova dependência). Testado contra nota real (Leroy Merlin, 6 itens) — todos os campos (descrição, código, quantidade, unidade, valores, emitente, data) conferidos byte a byte contra o HTML original.
+
+**Service:** `src/lib/nfceImportService.ts` — `previewNfceImport` (não grava nada; sugere ingrediente por correspondência simples de nome, sinaliza itens já importados dessa mesma nota) e `importNfceItems` (grava uma linha de `IngredientPriceHistory` por item mapeado, `source: NOTA_FISCAL`; trata violação de unicidade (`P2002`) e ingrediente inexistente (`P2003`/`P2025`) com mensagem específica por item, sem derrubar os demais itens do lote).
+
+**API:** `POST /api/admin/nfce/preview`, `POST /api/admin/nfce/import` — `requireProductionChain()` (mesmo papel de `/admin/ingredientes`).
+
+**Frontend:** `/admin/ingredientes/importar-nota` — campo para colar o link do QR Code, preview com um card por item (descrição, quantidade, valores, `<select>` nativo para vincular a um `Ingredient` já cadastrado — nenhuma correspondência é automática, o admin sempre confirma), aviso quando o ingrediente selecionado já recebeu preço dessa mesma nota, erro por item quando a importação falha. Link de acesso adicionado em `/admin/ingredientes`.
+
+### Validação
+
+Funcional real via Playwright, contra o portal de produção da SEFAZ-SP e o banco real (não simulado): login admin real → colar link do QR Code de uma nota real → consulta retornando os 6 itens corretos → vincular 1 item a um ingrediente já cadastrado → importar → confirmado por query direta no banco (`IngredientPriceHistory` com `source: NOTA_FISCAL`, `nfceAccessKey` e `price` corretos) → segunda tentativa do mesmo ingrediente+nota bloqueada pela constraint, mensagem de erro correta exibida. Dado de teste removido do banco após validação. `tsc`/`lint`: 0 erros.
+
+### Pendência
+
+Cobre exclusivamente notas emitidas em São Paulo (`cUF=35`) — outros estados ficam de fora desta primeira versão, mesma decisão de escopo já registrada no planejamento. Sugestão de ingrediente por nome é best-effort (substring simples) — o admin sempre confirma manualmente.
+
+---
+
 ## [Sprint I.4] — 2026-09-04 — Deploy em produção (Vercel + Supabase + Hostgator)
 
 **Tipo:** Sprint Oficial de Infraestrutura, prefixo `I.x` (`PROJECT_GOVERNANCE.md` Seção 4.4) — pendência registrada ao final da Sprint DS.5. Em andamento; sem encerramento formal (`MODULE_I4_CLOSURE.md`) ainda.
