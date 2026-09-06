@@ -171,6 +171,7 @@ Antes de implementar os respectivos módulos, as seguintes decisões arquitetura
 |--------|---------|------|
 | **Embalagens** | Entidade própria `Packaging` (Opção B) — **não** usar `IngredientCategory "Embalagem"`. Embalagens têm cadastro, estoque, fornecedores e custos independentes. Impacto: novos modelos `Packaging` e `PackagingItem`/`ProductPackaging` no schema. | 30/06/2026 |
 | **[ADR-014] Embalagens — vínculo com Product, não Recipe** | `Packaging` relaciona-se a `Product` via `ProductPackaging` (mirror de `ProductRecipe`), **não** a `Recipe`. Supera a frase acima ("Recipe referenciará RecipeIngredient e PackagingItem em linhas separadas"), que nunca foi implementada — o Módulo 2.I (Receitas) já foi encerrado sem essa relação. Detalhamento completo em `MODULE_2H_PLANNING.md` Seções 0, 1.5, 2. Ver `CLAUDE.md`, tabela "Decisões arquiteturais tomadas". | 20/07/2026 |
+| **[ADR-026] Achado registrado — ambiente de produção real diverge da ADR-010** | ADR-010 (`PROJECT_GOVERNANCE.md` Seção 8.8/11.1) declara VPS Linux como ambiente oficial de produção; a Sprint I.4 (04–06/09/2026) implementou e validou produção real na Vercel. Achado registrado, não resolvido unilateralmente — decisão de reconciliação pendente do Product Owner. Detalhe completo em `CLAUDE.md`, tabela "Decisões arquiteturais tomadas". | 06/09/2026 |
 
 ---
 
