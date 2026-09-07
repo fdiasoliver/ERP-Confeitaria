@@ -5,7 +5,7 @@ import type { StoreConfigInput } from "@/lib/types";
 
 type PricingFields = Pick<
   StoreConfigInput,
-  "laborCostPerHour" | "fixedCostMonthly" | "monthlyProductionUnits" | "targetMarginPercent"
+  "laborCostPerHour" | "fixedCostMonthly" | "monthlyProductionUnits" | "monthlyProductionMinutes" | "targetMarginPercent"
 >;
 
 interface PricingSectionProps {
@@ -71,6 +71,28 @@ export function PricingSection({
           step={1}
           disabled={disabled}
         />
+      </Field>
+
+      <Field
+        label="Capacidade produtiva mensal (minutos)"
+        required
+        error={fieldErrors.monthlyProductionMinutes}
+      >
+        <input
+          type="number"
+          className={inputClass("monthlyProductionMinutes", fieldErrors)}
+          value={form.monthlyProductionMinutes}
+          onChange={(e) =>
+            onFieldChange("monthlyProductionMinutes", parseInt(e.target.value) || 1)
+          }
+          min={1}
+          step={1}
+          disabled={disabled}
+        />
+        <p className="mt-1 text-xs text-muted">
+          Total de minutos de preparo disponíveis por mês — usado para ratear o custo fixo proporcionalmente ao
+          tempo de cada produto.
+        </p>
       </Field>
 
       <Field label="Margem de lucro alvo (%)" required error={fieldErrors.targetMarginPercent}>

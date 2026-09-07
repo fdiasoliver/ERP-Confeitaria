@@ -1,4 +1,4 @@
-import type { ValidationError } from "@/lib/types";
+import type { ValidationError, StoreConfig } from "@/lib/types";
 import {
   findAllProducts,
   findProductById,
@@ -16,6 +16,8 @@ import {
 } from "@/lib/repositories/productRepository";
 import { findCategoryById } from "@/lib/repositories/productCategoryRepository";
 import { getRecipeById } from "@/lib/recipeService";
+import { getPackagingById } from "@/lib/packagingService";
+import { getStoreConfig } from "@/lib/storeConfigService";
 import {
   validateProductCreate,
   validateProductUpdate,
@@ -73,6 +75,13 @@ export interface ProductRecipeDTO {
   unitCost: number;
 }
 
+export interface ProductPackagingDTO {
+  packagingId: string;
+  packagingName: string;
+  quantity: number;
+  unitCost: number;
+}
+
 export interface ProductDTO {
   id: string;
   name: string;
@@ -81,12 +90,24 @@ export interface ProductDTO {
   categoryName: string;
   imageUrl: string | null;
   basePrice: number;
+  /** Custo dos ingredientes + embalagens (Módulo P3.1 — antes só ingredientes, Regra 11 do 2.H resolvida aqui). */
   costPrice: number;
   margin: number;
+  /** Soma de Recipe.prepTimeMinutes × quantidade, por Recipe vinculada (Módulo P3.1). */
+  prepTimeMinutes: number;
+  /** (prepTimeMinutes / 60) × StoreConfig.laborCostPerHour (Módulo P3.1). */
+  laborCost: number;
+  /** prepTimeMinutes × (StoreConfig.fixedCostMonthly / StoreConfig.monthlyProductionMinutes) — rateio proporcional ao tempo de preparo, REGRAS_NEGOCIO.md Seção 9.2 (Módulo P3.1). */
+  fixedCostShare: number;
+  /** costPrice + laborCost + fixedCostShare (Módulo P3.1). */
+  totalCost: number;
+  /** totalCost ÷ (1 − StoreConfig.targetMarginPercent/100) — nunca persistido, sempre recalculado (Módulo P3.1). */
+  suggestedPrice: number;
   leadTimeDays: number;
   active: boolean;
   featured: boolean;
   recipes: ProductRecipeDTO[];
+  packagings: ProductPackagingDTO[];
   createdAt: string;
   updatedAt: string;
 }
@@ -99,23 +120,32 @@ export interface PagedProductsDTO {
 }
 
 /**
- * Custo calculado a partir do `unitCost` já computado por cada Recipe vinculada
- * (RecipeDTO.unitCost, `recipeService.getRecipeById`). Nunca armazenado — sempre
- * recalculado, mesmo princípio já usado em `recipeService.calculateCost`. Reaproveita
- * o Service de Receitas (não a Repository) porque o cálculo envolve conversão de
- * unidade não trivial já implementada e testada ali — ver Observação Técnica no
- * relatório da Sprint 2.J.1 sobre acoplamento Service→Service.
+ * Custo e tempo de preparo calculados a partir das Recipes/Packagings vinculadas
+ * — `unitCost` de cada Recipe (RecipeDTO.unitCost, `recipeService.getRecipeById`,
+ * já resolve conversão de unidade) e `unitCost` de cada Packaging
+ * (`packagingService.getPackagingById`). Nunca armazenado — sempre recalculado.
+ * Reaproveita os Services (não as Repositories) pelo mesmo motivo já registrado
+ * na Sprint 2.J.1 sobre acoplamento Service→Service.
  */
-async function calculateCostPrice(
+async function calculateProductCosting(
   recipes: { recipeId: string; quantity: number }[],
-): Promise<{ costPrice: number; items: ProductRecipeDTO[] }> {
-  let costPrice = 0;
-  const items: ProductRecipeDTO[] = [];
+  packagings: { packagingId: string; quantity: number }[],
+): Promise<{
+  ingredientCost: number;
+  recipeItems: ProductRecipeDTO[];
+  packagingCost: number;
+  packagingItems: ProductPackagingDTO[];
+  prepTimeMinutes: number;
+}> {
+  let ingredientCost = 0;
+  let prepTimeMinutes = 0;
+  const recipeItems: ProductRecipeDTO[] = [];
 
   for (const link of recipes) {
     const recipe = await getRecipeById(link.recipeId);
-    costPrice += recipe.unitCost * link.quantity;
-    items.push({
+    ingredientCost += recipe.unitCost * link.quantity;
+    prepTimeMinutes += recipe.prepTimeMinutes * link.quantity;
+    recipeItems.push({
       recipeId: link.recipeId,
       recipeName: recipe.name,
       quantity: link.quantity,
@@ -123,18 +153,43 @@ async function calculateCostPrice(
     });
   }
 
-  return { costPrice, items };
+  let packagingCost = 0;
+  const packagingItems: ProductPackagingDTO[] = [];
+
+  for (const link of packagings) {
+    const packaging = await getPackagingById(link.packagingId);
+    packagingCost += packaging.unitCost * link.quantity;
+    packagingItems.push({
+      packagingId: link.packagingId,
+      packagingName: packaging.name,
+      quantity: link.quantity,
+      unitCost: packaging.unitCost,
+    });
+  }
+
+  return { ingredientCost, recipeItems, packagingCost, packagingItems, prepTimeMinutes };
 }
 
-async function mapToDTO(product: ProductWithRelations): Promise<ProductDTO> {
+async function mapToDTO(product: ProductWithRelations, storeConfig: StoreConfig): Promise<ProductDTO> {
   const category = await findCategoryById(product.categoryId);
   const basePrice = product.basePrice.toNumber();
 
-  const { costPrice, items } = await calculateCostPrice(
-    product.recipes.map((r) => ({ recipeId: r.recipeId, quantity: r.quantity.toNumber() })),
-  );
+  const { ingredientCost, recipeItems, packagingCost, packagingItems, prepTimeMinutes } =
+    await calculateProductCosting(
+      product.recipes.map((r) => ({ recipeId: r.recipeId, quantity: r.quantity.toNumber() })),
+      product.packagings.map((p) => ({ packagingId: p.packagingId, quantity: p.quantity })),
+    );
 
+  const costPrice = ingredientCost + packagingCost;
   const margin = basePrice > 0 ? (basePrice - costPrice) / basePrice : 0;
+
+  const laborCost = (prepTimeMinutes / 60) * storeConfig.laborCostPerHour;
+  const fixedCostPerMinute =
+    storeConfig.monthlyProductionMinutes > 0 ? storeConfig.fixedCostMonthly / storeConfig.monthlyProductionMinutes : 0;
+  const fixedCostShare = prepTimeMinutes * fixedCostPerMinute;
+  const totalCost = costPrice + laborCost + fixedCostShare;
+  const marginFraction = storeConfig.targetMarginPercent / 100;
+  const suggestedPrice = marginFraction < 1 ? totalCost / (1 - marginFraction) : totalCost;
 
   return {
     id: product.id,
@@ -146,10 +201,16 @@ async function mapToDTO(product: ProductWithRelations): Promise<ProductDTO> {
     basePrice,
     costPrice,
     margin,
+    prepTimeMinutes,
+    laborCost,
+    fixedCostShare,
+    totalCost,
+    suggestedPrice,
     leadTimeDays: product.leadTimeDays,
     active: product.active,
     featured: product.featured,
-    recipes: items,
+    recipes: recipeItems,
+    packagings: packagingItems,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
@@ -177,24 +238,24 @@ async function assertRecipesUsable(recipes: ProductRecipeInput[] | undefined): P
 // ─── Operações de leitura ─────────────────────────────────────────────────────
 
 export async function listProducts(): Promise<ProductDTO[]> {
-  const products = await findAllProducts();
-  return Promise.all(products.map(mapToDTO));
+  const [products, storeConfig] = await Promise.all([findAllProducts(), getStoreConfig()]);
+  return Promise.all(products.map((p) => mapToDTO(p, storeConfig)));
 }
 
 export async function getProductById(id: string): Promise<ProductDTO> {
-  const product = await findProductById(id);
+  const [product, storeConfig] = await Promise.all([findProductById(id), getStoreConfig()]);
   if (!product) throw new ProductNotFoundError(id);
-  return mapToDTO(product);
+  return mapToDTO(product, storeConfig);
 }
 
 export async function searchProducts(query: string): Promise<ProductDTO[]> {
-  const products = await searchProductsInRepo(query);
-  return Promise.all(products.map(mapToDTO));
+  const [products, storeConfig] = await Promise.all([searchProductsInRepo(query), getStoreConfig()]);
+  return Promise.all(products.map((p) => mapToDTO(p, storeConfig)));
 }
 
 export async function listProductsPaged(params: ListProductsParams = {}): Promise<PagedProductsDTO> {
-  const result = await listProductsPagedInRepo(params);
-  const items = await Promise.all(result.items.map(mapToDTO));
+  const [result, storeConfig] = await Promise.all([listProductsPagedInRepo(params), getStoreConfig()]);
+  const items = await Promise.all(result.items.map((p) => mapToDTO(p, storeConfig)));
   return { items, total: result.total, page: result.page, pageSize: result.pageSize };
 }
 
@@ -224,7 +285,7 @@ export async function createProduct(input: ProductInput): Promise<ProductDTO> {
     recipes: input.recipes?.map((r) => ({ recipeId: r.recipeId, quantity: r.quantity })),
   });
 
-  return mapToDTO(created);
+  return mapToDTO(created, await getStoreConfig());
 }
 
 // ─── Atualização ──────────────────────────────────────────────────────────────
@@ -253,7 +314,7 @@ export async function updateProduct(
     recipes: input.recipes?.map((r) => ({ recipeId: r.recipeId, quantity: r.quantity })),
   });
 
-  return mapToDTO(updated);
+  return mapToDTO(updated, await getStoreConfig());
 }
 
 // ─── Ciclo de vida ────────────────────────────────────────────────────────────
@@ -262,14 +323,14 @@ export async function activateProduct(id: string): Promise<ProductDTO> {
   const existing = await findProductById(id);
   if (!existing) throw new ProductNotFoundError(id);
   const updated = await activateProductInRepo(id);
-  return mapToDTO(updated);
+  return mapToDTO(updated, await getStoreConfig());
 }
 
 export async function deactivateProduct(id: string): Promise<ProductDTO> {
   const existing = await findProductById(id);
   if (!existing) throw new ProductNotFoundError(id);
   const updated = await deactivateProductInRepo(id);
-  return mapToDTO(updated);
+  return mapToDTO(updated, await getStoreConfig());
 }
 
 // ─── Exclusão protegida ───────────────────────────────────────────────────────

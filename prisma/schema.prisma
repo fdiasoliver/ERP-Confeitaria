@@ -108,6 +108,7 @@ model StoreConfig {
   laborCostPerHour       Decimal @default(35) @db.Decimal(10, 2)
   fixedCostMonthly       Decimal @default(0) @db.Decimal(12, 2)
   monthlyProductionUnits Int     @default(200)
+  monthlyProductionMinutes Int   @default(6000) // capacidade produtiva mensal em minutos — base do rateio de custo fixo por tempo de preparo (Módulo P3.1)
   targetMarginPercent    Decimal @default(50) @db.Decimal(5, 2)
 
   createdAt DateTime @default(now())

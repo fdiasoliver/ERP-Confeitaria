@@ -173,6 +173,7 @@ export interface StoreConfig {
   laborCostPerHour: number;
   fixedCostMonthly: number;
   monthlyProductionUnits: number;
+  monthlyProductionMinutes: number;
   targetMarginPercent: number;
   // Identidade visual — armazenados em ThemeConfig, expostos aqui pela camada de serviço
   logoUrl: string | null;
@@ -202,6 +203,7 @@ export type StoreConfigInput = {
   laborCostPerHour: number;
   fixedCostMonthly: number;
   monthlyProductionUnits: number;
+  monthlyProductionMinutes: number;
   targetMarginPercent: number;
   logoUrl: string | null;
   faviconUrl: string | null;

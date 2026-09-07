@@ -59,6 +59,7 @@ function mapToStoreConfig(
     laborCostPerHour: Number(raw.laborCostPerHour),
     fixedCostMonthly: Number(raw.fixedCostMonthly),
     monthlyProductionUnits: raw.monthlyProductionUnits,
+    monthlyProductionMinutes: raw.monthlyProductionMinutes,
     targetMarginPercent: Number(raw.targetMarginPercent),
     logoUrl,
     faviconUrl,
@@ -118,6 +119,7 @@ export async function upsertStoreConfig(input: StoreConfigInput): Promise<StoreC
       laborCostPerHour: storeFields.laborCostPerHour,
       fixedCostMonthly: storeFields.fixedCostMonthly,
       monthlyProductionUnits: storeFields.monthlyProductionUnits,
+      monthlyProductionMinutes: storeFields.monthlyProductionMinutes,
       targetMarginPercent: storeFields.targetMarginPercent,
     });
   } else {
@@ -141,6 +143,7 @@ export async function upsertStoreConfig(input: StoreConfigInput): Promise<StoreC
       laborCostPerHour: storeFields.laborCostPerHour,
       fixedCostMonthly: storeFields.fixedCostMonthly,
       monthlyProductionUnits: storeFields.monthlyProductionUnits,
+      monthlyProductionMinutes: storeFields.monthlyProductionMinutes,
       targetMarginPercent: storeFields.targetMarginPercent,
     });
   }

@@ -5,6 +5,13 @@ export interface ProductRecipe {
   unitCost: number;
 }
 
+export interface ProductPackagingLink {
+  packagingId: string;
+  packagingName: string;
+  quantity: number;
+  unitCost: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -15,10 +22,16 @@ export interface Product {
   basePrice: number;
   costPrice: number;
   margin: number;
+  prepTimeMinutes: number;
+  laborCost: number;
+  fixedCostShare: number;
+  totalCost: number;
+  suggestedPrice: number;
   leadTimeDays: number;
   active: boolean;
   featured: boolean;
   recipes: ProductRecipe[];
+  packagings: ProductPackagingLink[];
   createdAt: string;
   updatedAt: string;
 }

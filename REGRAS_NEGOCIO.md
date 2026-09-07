@@ -453,16 +453,19 @@ Exemplo: receita usa 250 g de chocolate; ingrediente comprado em kg → 250 g ×
 
 # 9. Precificação
 
+**Implementado no Módulo P3.1 (07/09/2026)** — as seções abaixo eram, até então, apenas planejamento (`StoreConfig` com os campos parados, nenhum cálculo real). Ver `CHANGELOG.md`, Módulo P3.1, para o registro completo da implementação.
+
 ## 9.1 Fórmula de precificação
 
 ```
-Preço de venda =
+Custo total =
   Custo dos ingredientes (das receitas vinculadas)
-  + Custo das embalagens (A definir)
+  + Custo das embalagens
   + Custo de mão de obra
   + Rateio de custos fixos
-  + Taxas (cartão, plataforma)   (A definir)
-  ÷ (1 − margem desejada)
+  (+ Taxas de cartão/plataforma — A definir, fora do escopo do P3.1)
+
+Preço sugerido = Custo total ÷ (1 − margem desejada)
 ```
 
 ## 9.2 Componentes detalhados
@@ -472,46 +475,53 @@ Preço de venda =
 Σ (quantidade_usada × preço_atual) para cada ingrediente de cada receita
 ```
 
-### Custo de mão de obra
-```
-tempo_de_preparo_minutos ÷ 60 × laborCostPerHour (StoreConfig)
-```
-- `laborCostPerHour` padrão: R$ 35,00/hora
-- Tempo de decoração e descanso não estão no schema atual — **A definir**
-
-### Rateio de custos fixos
-```
-fixedCostMonthly ÷ monthlyProductionUnits
-```
-- `fixedCostMonthly` padrão: R$ 0,00 (deve ser configurado pelo ADMIN)
-- `monthlyProductionUnits` padrão: 200 unidades/mês
-
 ### Custo das embalagens
 ```
 Σ (quantidade × unitCost) para cada embalagem vinculada ao produto (ProductPackaging)
 ```
-Definido na Sprint 2.H.0 (`MODULE_2H_PLANNING.md`, ADR-014) — entra somado diretamente no `costPrice` do produto, no mesmo nível do custo das receitas. Aguardando implementação (Sprints 2.H.1–2.H.7); entidade `Packaging` ainda não existe no schema.
+**Resolvida a pendência "Regra 11" do Módulo 2.H no P3.1:** `Product.costPrice` agora soma receitas **e** embalagens — antes só somava receitas. Decisão explícita do Product Owner, dentro do escopo natural desta mudança (já mexia exatamente nessa área do cálculo).
+
+### Custo de mão de obra
+```
+tempo_de_preparo_total ÷ 60 × laborCostPerHour (StoreConfig)
+```
+- `tempo_de_preparo_total` = Σ (Recipe.prepTimeMinutes × quantidade vinculada) de cada Receita do Produto (`ProductRecipe.quantity`) — decisão explícita do Product Owner: soma dos tempos de todas as receitas vinculadas (assume preparo sequencial), não só a receita principal
+- `laborCostPerHour` padrão: R$ 35,00/hora
+- Tempo de decoração e descanso não estão no schema atual — **A definir** (mesma limitação já registrada, não resolvida pelo P3.1)
+
+### Rateio de custos fixos — **proporcional ao tempo de preparo**
+```
+custoFixoPorMinuto = fixedCostMonthly ÷ monthlyProductionMinutes
+custoFixoRateado   = tempo_de_preparo_total × custoFixoPorMinuto
+```
+**Substitui a fórmula original documentada nesta seção** (`fixedCostMonthly ÷ monthlyProductionUnits`, rateio uniforme por unidade, independente do tempo/complexidade do produto) — **decisão explícita do Product Owner** no planejamento do P3.1: um produto que demora mais absorve mais custo fixo, em vez de todo produto dividir a mesma fatia. Exigiu um campo novo em `StoreConfig`: `monthlyProductionMinutes` (capacidade produtiva mensal em minutos) — `monthlyProductionUnits` (unidades/mês) continua existindo no schema, sem uso neste cálculo.
+- `fixedCostMonthly` padrão: R$ 0,00 (deve ser configurado pelo ADMIN)
+- `monthlyProductionMinutes` padrão: 6.000 min/mês (100 horas) — configurável em `/admin/config`
 
 ### Taxas de plataforma / cartão
-**A definir.** Não existe configuração de taxas no schema atual.
+**A definir.** Não existe configuração de taxas no schema atual — fora do escopo do P3.1.
 
 ### Margem desejada
 ```
 targetMarginPercent (StoreConfig), padrão: 50%
 ```
 
-Exemplo:
+Exemplo real (validado com dado de produção, `Bolo Chocolate 25cm`):
 ```
-Custo total = R$ 40,00
+Custo ingredientes + embalagem = R$ 21,03
+Tempo de preparo = 40 min → custo mão de obra = R$ 23,33 (40÷60 × R$35/h)
+Rateio de custo fixo = R$ 0,00 (fixedCostMonthly ainda não configurado nesta loja)
+Custo total = R$ 44,36
 Margem = 50%
-Preço sugerido = R$ 40,00 ÷ (1 − 0,50) = R$ 80,00
+Preço sugerido = R$ 44,36 ÷ (1 − 0,50) = R$ 88,73
 ```
 
 ## 9.3 Preço praticado vs. preço calculado
 
 - `basePrice` (campo no `Product`) = preço de venda praticado, definido pelo ADMIN
-- `costPrice` (campo no `Product`) = custo calculado automaticamente pelo sistema
-- O sistema deve exibir os dois para comparação, sinalizando quando `basePrice < costPrice`
+- `costPrice` (campo no `Product`) = custo de ingredientes + embalagens, calculado automaticamente
+- `suggestedPrice` = preço sugerido pela fórmula completa (Seção 9.1) — **nunca persistido**, sempre recalculado na leitura (muda a qualquer momento que `StoreConfig` ou custo de insumo/embalagem mudar)
+- `/admin/produtos/[id]` exibe os dois preços e o breakdown completo (ingrediente+embalagem, mão de obra, rateio, custo total, sugerido), sinalizando quando `basePrice` está abaixo do sugerido
 
 ## 9.4 Regras
 

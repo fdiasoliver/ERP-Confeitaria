@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 const withRelations = {
   category: true,
   recipes: true,
+  packagings: true,
 } satisfies Prisma.ProductInclude;
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{ include: typeof withRelations }>;

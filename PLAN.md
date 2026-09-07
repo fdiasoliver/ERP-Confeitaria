@@ -10,7 +10,7 @@
 |-------|-----------|--------|
 | **ÉPICO 1** | Fundação: front-end, infraestrutura, arquitetura, documentação, módulo Configuração | ✅ Encerrado 30/06/2026 — ver [EPICO_1.md](EPICO_1.md) |
 | **ÉPICO 2** | Cadastros mestres + Fundação produtiva completa: 12 módulos (2.A–2.L) — correções, catálogo, cadeia produtiva (unidades, fornecedores, produtos, ingredientes, embalagens, receitas, produtos fase 2), dashboard, clientes | ✅ **Encerrado 02/08/2026** — 12/12 módulos concluídos e revalidados, ver `MODULE_2L_CLOSURE.md` (último) e `CHANGELOG.md`. Próximo épico a definir pelo Product Owner |
-| **ÉPICO 3** | Inteligência Operacional: Precificação automática avançada (P3.1), Dashboard Executivo — DRE + fluxo de caixa, Relatórios financeiros | Planejado |
+| **ÉPICO 3** | Inteligência Operacional: Precificação automática avançada (P3.1), Dashboard Executivo — DRE + fluxo de caixa, Relatórios financeiros | 🟡 **Em andamento — iniciado 07/09/2026.** Módulo P3.1 (Precificação automática) ✅ concluído — ver abaixo |
 | **ÉPICO 4** | Expansão Operacional: Calendário de Produção, Usuários/Roles, Módulo Tema, Cálculo de distância, PWA | Planejado |
 | **ÉPICO 5** | Integrações Externas: OTP WhatsApp, Notificações, PIX, Google Maps, CONAB/CEASA | 🟡 **Em andamento — iniciado 05/08/2026.** Escolhido pelo Product Owner por resolver o único problema Crítico ainda aberto (`KI-03`). Planejamento arquitetural inicial concluído (5 sub-domínios mapeados, quebra em módulos `5.A`–`5.E` proposta). Módulo `5.B` (WhatsApp OTP + Notificações) ✅ concluído — ver abaixo |
 | **ÉPICO 6** | Experiência do Cliente: Detalhe de pedido, Fotos de referência, PWA | Planejado |
@@ -525,7 +525,9 @@ Estes módulos agregam valor estratégico após o sistema estar operacional.
 
 **Objetivo:** Calcular o preço sugerido de venda com base em custo de receita + custos fixos + margem.
 
-**Entregas:**
+✅ **Concluído — 07/09/2026** — ver `CHANGELOG.md` e `REGRAS_NEGOCIO.md` Seção 9. Entregue com duas mudanças de escopo decididas explicitamente pelo Product Owner no planejamento: (1) rateio de custo fixo **proporcional ao tempo de preparo** de cada produto, não uniforme por unidade como originalmente descrito nesta seção — exigiu campo novo `StoreConfig.monthlyProductionMinutes`; (2) custo de embalagem passou a compor `costPrice`, resolvendo de vez a pendência "Regra 11" aberta desde o Módulo 2.H. `costPrice`/`suggestedPrice`/breakdown completo exibidos em `/admin/produtos/[id]`. Validado com dado de produção real (Playwright indisponível na sessão — validação via API real com sessão admin + banco real).
+
+**Entregas originais (para referência histórica — ver acima o que mudou):**
 - Custo de produção = soma dos ingredientes da receita no preço atual
 - Custo total = custo de produção + rateio de custo fixo + custo de mão de obra
 - Preço sugerido = custo total ÷ (1 - margem%)

@@ -342,18 +342,48 @@ export default function ProdutoDetailPage({ params }: { params: Promise<{ id: st
           <div className="mb-4 grid grid-cols-3 gap-2 text-center">
             <div className="rounded-lg bg-sand/60 px-2 py-2">
               <p className="text-base font-semibold leading-none text-chocolate">{formatCurrency(product.basePrice)}</p>
-              <p className="mt-1 text-[10px] text-muted">Preço</p>
+              <p className="mt-1 text-[10px] text-muted">Preço praticado</p>
             </div>
             <div className="rounded-lg bg-sand/60 px-2 py-2">
               <p className="text-base font-semibold leading-none text-chocolate">{formatCurrency(product.costPrice)}</p>
-              <p className="mt-1 text-[10px] text-muted">Custo *</p>
+              <p className="mt-1 text-[10px] text-muted">Custo (ingred. + embal.)</p>
             </div>
             <div className="rounded-lg bg-sand/60 px-2 py-2">
               <p className="text-base font-semibold leading-none text-chocolate">{(product.margin * 100).toFixed(0)}%</p>
-              <p className="mt-1 text-[10px] text-muted">Margem *</p>
+              <p className="mt-1 text-[10px] text-muted">Margem real</p>
             </div>
           </div>
-          <p className="mb-4 text-[11px] text-muted">* Custo ainda não inclui o valor das embalagens — isso será somado em uma atualização futura.</p>
+
+          <div className="mb-4 rounded-xl border border-sand p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Preço sugerido (P3.1)</p>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted">Custo ingredientes + embalagem</span>
+                <span>{formatCurrency(product.costPrice)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Mão de obra ({product.prepTimeMinutes} min)</span>
+                <span>{formatCurrency(product.laborCost)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Rateio de custo fixo</span>
+                <span>{formatCurrency(product.fixedCostShare)}</span>
+              </div>
+              <div className="flex justify-between border-t border-sand pt-1 font-semibold text-chocolate">
+                <span>Custo total</span>
+                <span>{formatCurrency(product.totalCost)}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-chocolate">
+                <span>Preço sugerido</span>
+                <span>{formatCurrency(product.suggestedPrice)}</span>
+              </div>
+            </div>
+            {product.basePrice < product.suggestedPrice && (
+              <p className="mt-2 text-xs text-rose">
+                Preço praticado está {formatCurrency(product.suggestedPrice - product.basePrice)} abaixo do sugerido.
+              </p>
+            )}
+          </div>
 
           <button
             type="button"

@@ -4,6 +4,36 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo P3.1] — 2026-09-07 — Precificação automática (primeiro módulo do Épico 3)
+
+**Tipo:** Primeiro módulo do Épico 3 (Inteligência Operacional). Schema já vinha preparado desde antes (`StoreConfig.laborCostPerHour`/`fixedCostMonthly`/`monthlyProductionUnits`/`targetMarginPercent`, `Recipe.prepTimeMinutes`, todos já coletando dado real) — faltava só a lógica de cálculo, nunca implementada.
+
+### Decisões explícitas do Product Owner (planejamento)
+
+- **Tempo de preparo de um Produto com várias Receitas:** soma dos tempos de todas as receitas vinculadas (`Σ Recipe.prepTimeMinutes × ProductRecipe.quantity`), assume preparo sequencial — não só a receita principal.
+- **Rateio de custo fixo proporcional ao tempo de preparo** — substitui a fórmula uniforme por unidade já documentada em `REGRAS_NEGOCIO.md` Seção 9 (`fixedCostMonthly ÷ monthlyProductionUnits`). Produto mais demorado absorve mais custo fixo. Exigiu campo novo `StoreConfig.monthlyProductionMinutes` (capacidade produtiva mensal em minutos) — `monthlyProductionUnits` continua no schema, sem uso neste cálculo.
+- **Custo de embalagem passa a compor `costPrice`** — resolve a pendência "Regra 11" aberta desde o Módulo 2.H (20/07/2026): antes `Product.costPrice` só somava receitas.
+
+### Implementação
+
+**Schema:** `StoreConfig.monthlyProductionMinutes Int @default(6000)`.
+
+**`productService.ts`:** `calculateCostPrice` renomeado/estendido para `calculateProductCosting` — soma ingredientes (já existia) **e** embalagens (novo, via `packagingService.getPackagingById`, mesmo padrão de reuso Service→Service já usado para receitas) e agrega o tempo total de preparo. `ProductDTO` ganha `prepTimeMinutes`, `laborCost`, `fixedCostShare`, `totalCost`, `suggestedPrice` (nunca persistidos — sempre recalculados na leitura) e `packagings`. **Achado corrigido durante a implementação:** a primeira versão chamava `getStoreConfig()` dentro de `mapToDTO`, que é mapeado por item numa listagem — geraria N consultas idênticas ao banco para N produtos. Corrigido para buscar o `StoreConfig` uma vez por operação (`listProducts`/`getProductById`/etc.) e passar como parâmetro.
+
+**API:** nenhuma mudança em `route.ts` — os handlers já só repassam o retorno do Service, os campos novos chegaram de graça.
+
+**Frontend:** `/admin/produtos/[id]` ganha um card "Preço sugerido (P3.1)" com o breakdown completo (ingrediente+embalagem, mão de obra, rateio, custo total, sugerido), removida a nota antiga "custo não inclui embalagem" (resolvida). `/admin/config` (`PricingSection.tsx`) ganha o campo `Capacidade produtiva mensal (minutos)`.
+
+### Validação
+
+Funcional real, banco de produção real (não simulado): cálculo verificado contra produto real (`Bolo Chocolate 25cm`) via chamada direta ao Service — custo R$21,03 + mão de obra R$23,33 (40min×R$35/h) + rateio R$0 (`fixedCostMonthly` ainda zerado) = custo total R$44,36 → sugerido R$88,73 (margem 50%), matemática conferida à mão. Repetido via API real com sessão admin real (`/api/admin/products`, mesmos números). `PATCH /api/config` testado ao vivo: `fixedCostMonthly` alterado para R$6.000 com `monthlyProductionMinutes=6000` (R$1/min) — rateio do mesmo produto recalculado corretamente para R$40 (40min×R$1/min), sugerido R$168,73. Configuração restaurada ao valor original após o teste. `tsc`/`lint`/`build`: 0 erros.
+
+### Pendência
+
+Taxas de cartão/plataforma continuam **A definir** (fora do escopo do P3.1, mesma lacuna já registrada). Tempo de decoração/descanso não capturado separadamente de `prepTimeMinutes` — mesma limitação pré-existente, não resolvida aqui.
+
+---
+
 ## [Módulo 5.A] — 2026-09-07 — Google Maps (distância real de entrega)
 
 **Tipo:** Módulo do Épico 5 (Integrações Externas), substitui o `distanceKm: 1.8` hardcoded no checkout — que era só texto decorativo, nunca calculado de verdade e nunca validado contra `StoreConfig.freeDeliveryRadiusKm` (cliente podia escolher "Entrega grátis" morando a qualquer distância).

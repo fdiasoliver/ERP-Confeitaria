@@ -58,6 +58,11 @@ export function validateStoreConfig(input: StoreConfigInput): ValidationError[] 
     errors.push({ field: "monthlyProductionUnits", code: "MIN_VALUE", message: "Produção mensal deve ser pelo menos 1 unidade." });
   }
 
+  // monthlyProductionMinutes — mínimo 1
+  if (!Number.isInteger(input.monthlyProductionMinutes) || input.monthlyProductionMinutes < 1) {
+    errors.push({ field: "monthlyProductionMinutes", code: "MIN_VALUE", message: "Capacidade produtiva mensal deve ser pelo menos 1 minuto." });
+  }
+
   // targetMarginPercent — 0 a 100
   if (input.targetMarginPercent < 0) {
     errors.push({ field: "targetMarginPercent", code: "MIN_VALUE", message: "Margem não pode ser negativa." });
