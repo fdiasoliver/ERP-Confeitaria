@@ -615,8 +615,8 @@ Toda mudança de status é registrada em `OrderStatusHistory` com data/hora e no
 | `ENTREGA_GRATIS` | Confeitaria | Até `freeDeliveryRadiusKm` (padrão: 3 km); confeitaria custeia |
 | `ENTREGA_APP` | Cliente | Via Uber Entregas ou 99; taxa calculada pelo app; pago pelo cliente |
 
-- A distância é verificada via Google Maps Distance Matrix API (integração futura)
-- O campo `deliveryDistanceKm` no pedido armazena a distância calculada
+- **Distância real (Módulo 5.A, implementado):** a distância entre o endereço da loja (`StoreConfig`) e o endereço de entrega é calculada via **Routes API do Google** (`computeRouteMatrix`) — não a Distance Matrix API "clássica", que está em modo legado segundo a própria documentação do Google. Checagem em tempo real no checkout (aviso ao cliente se o endereço estiver fora do raio) **e** recálculo obrigatório no servidor antes de gravar o pedido (`POST /api/orders` nunca confia na elegibilidade de `ENTREGA_GRATIS` enviada pelo cliente) — pedido fora do raio é rejeitado, não apenas avisado.
+- O campo `deliveryDistanceKm` no pedido armazena a distância real calculada (só para `ENTREGA_GRATIS` — `ENTREGA_APP` não grava, taxa é estimativa paga direto ao aplicativo, fora do controle da loja)
 - **Horário de coleta/entrega (`deliveryTimeSlot`):** existe no schema mas regras de faixa horária são **A definir**
 
 ## 12.3 Formas de pagamento

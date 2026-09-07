@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { checkFreeDeliveryEligibility, DistanceCalculationFailedError } from "@/lib/deliveryService";
 import type { DeliveryType, PaymentMethod } from "@/lib/types";
 
 interface CreateOrderBody {
@@ -72,6 +73,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "customerPhone e items são obrigatórios" }, { status: 400 });
   }
 
+  // Recalcula a distância/elegibilidade de entrega grátis no servidor — nunca confia
+  // no que o cliente enviou (Módulo 5.A). Fora da transação: é uma chamada HTTP
+  // externa (Google Maps), não deve segurar uma transação de banco aberta.
+  let deliveryDistanceKm: number | null = null;
+  if (orderData.deliveryType === "ENTREGA_GRATIS" && deliveryAddress) {
+    try {
+      const eligibility = await checkFreeDeliveryEligibility(deliveryAddress);
+      if (!eligibility.isWithinFreeRadius) {
+        return NextResponse.json(
+          {
+            error: `Este endereço está a ${eligibility.distanceKm.toFixed(1)} km, fora do raio de entrega grátis (${eligibility.freeDeliveryRadiusKm} km). Escolha outra forma de entrega.`,
+          },
+          { status: 422 },
+        );
+      }
+      deliveryDistanceKm = eligibility.distanceKm;
+    } catch (err) {
+      if (err instanceof DistanceCalculationFailedError) {
+        return NextResponse.json({ error: err.message }, { status: 422 });
+      }
+      throw err;
+    }
+  }
+
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const customer = await tx.customer.upsert({
@@ -100,7 +125,8 @@ export async function POST(request: NextRequest) {
           addressId: resolvedAddressId,
           receiverName: orderData.receiverName ?? customer.name,
           receiverPhone: orderData.receiverPhone ?? null,
-          deliveryFee: orderData.deliveryFee,
+          deliveryFee: orderData.deliveryType === "ENTREGA_GRATIS" ? 0 : orderData.deliveryFee,
+          deliveryDistanceKm,
           subtotal: orderData.subtotal,
           total: orderData.total,
           paymentMethod: orderData.paymentMethod,

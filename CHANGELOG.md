@@ -4,6 +4,36 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo 5.A] — 2026-09-07 — Google Maps (distância real de entrega)
+
+**Tipo:** Módulo do Épico 5 (Integrações Externas), substitui o `distanceKm: 1.8` hardcoded no checkout — que era só texto decorativo, nunca calculado de verdade e nunca validado contra `StoreConfig.freeDeliveryRadiusKm` (cliente podia escolher "Entrega grátis" morando a qualquer distância).
+
+### Pesquisa
+
+Confirmado na documentação oficial do Google: a **Distance Matrix API está em modo legado** — a própria documentação recomenda a **Routes API** (`computeRouteMatrix`) para implementações novas. Usada a Routes API. Detalhes verificados (não assumidos): aceita endereço em texto puro via `waypoint.address` (não precisa geocodificar antes); exige header `X-Goog-FieldMask`, que **precisa incluir `status`** (pegadinha documentada — sem isso, toda resposta aparenta "OK" mesmo quando não é); resposta é uma sequência em stream de objetos JSON (parser escrito para aceitar tanto array quanto objeto único).
+
+### Implementação
+
+**Client:** `src/lib/clients/googleMapsClient.ts` (ADR-023) — `computeDeliveryDistanceKm(origem, destino)`.
+
+**Service:** `src/lib/deliveryService.ts` — monta o endereço de origem a partir do `StoreConfig`, calcula distância real, decide elegibilidade contra `freeDeliveryRadiusKm`.
+
+**API:** `POST /api/delivery/distance` (novo, público) para checagem em tempo real no checkout. `POST /api/orders` **editado** — recalcula a distância/elegibilidade no servidor antes de gravar (fora da transação Prisma, por ser chamada HTTP externa); pedido com `ENTREGA_GRATIS` fora do raio é **rejeitado** (HTTP 422), não apenas re-precificado — nunca confia no que o cliente enviou. `deliveryFee` forçado a `0` para `ENTREGA_GRATIS` independente do valor enviado pelo cliente.
+
+**Frontend:** `checkout/page.tsx` — checagem debounced (600ms) quando "Entrega grátis" está selecionada e o endereço está completo; mostra distância real, avisa quando fora do raio (mesma classe semântica `bg-red-50`/`text-red-700` já usada nas outras mensagens de erro desta página) e **bloqueia o botão "Confirmar pedido"** nesse caso. Erros de cálculo (ex.: API fora do ar) não bloqueiam o botão — o servidor é a rede de segurança final.
+
+**Decisões de escopo, confirmadas com o Product Owner antes de implementar:** aviso em tempo real (não só validação silenciosa no submit); sem chave do Google ainda — implementação completa, mesmo padrão do Módulo 5.B, teste ponta-a-ponta real pendente da chave.
+
+### Validação
+
+Funcional real via Playwright (login OTP real, pedido real no carrinho): endereço preenchido com "Entrega grátis" selecionada → aviso inline correto ("Google Maps não configurado") sem travar a página → submit bloqueado no servidor com a mesma mensagem, **nenhum pedido criado** (confirmado por query direta no banco) → trocado para "Retirada na loja" → pedido confirmado normalmente, sem regressão. Dado de teste (customer/OTP) removido após validação. `tsc`/`lint`/`build`: 0 erros.
+
+### Pendência
+
+Teste ponta-a-ponta real (distância calculada de verdade) depende do Product Owner criar um projeto no Google Cloud com faturamento ativo e a Routes API habilitada.
+
+---
+
 ## [Módulo 5.E] — 2026-09-05/06 — Importador de NFC-e (preço de insumos)
 
 **Tipo:** redefinição de escopo do Módulo 5.E — originalmente proposto como sincronização automática CONAB/CEASA (`PLAN.md`), abandonado após pesquisa real confirmar que nenhuma das duas fontes tem API pública (CONAB só disponibiliza planilhas para download; CEAGESP retornou 403 a acesso automatizado). Substituído por um importador de NFC-e (nota fiscal de compra real), sugestão feita pelo Product Owner a partir de pesquisa própria, avaliada e redesenhada para reaproveitar o schema já existente (`Ingredient`/`IngredientPriceHistory`/`Supplier`, Módulos 2.E/2.G) em vez das tabelas SQL soltas propostas originalmente (que violariam a ADR-005 — todo modelo persistente via Prisma com `cuid()`).

@@ -9,18 +9,25 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { formatCurrency } from "@/lib/mock-data";
 import { getMinDeliveryDate } from "@/lib/utils";
 import { createOrder } from "@/services/orderService";
+import { checkDeliveryDistance } from "@/lib/api/deliveryApi";
 import type { DeliveryType, PaymentMethod } from "@/lib/types";
 import { DELIVERY_LABELS, PAYMENT_LABELS } from "@/lib/types";
 
 const DELIVERY_OPTIONS: {
   type: DeliveryType;
   fee: number;
-  distanceKm?: number;
 }[] = [
   { type: "RETIRADA", fee: 0 },
-  { type: "ENTREGA_GRATIS", fee: 0, distanceKm: 1.8 },
+  { type: "ENTREGA_GRATIS", fee: 0 },
   { type: "ENTREGA_APP", fee: 18 },
 ];
+
+interface DistanceCheckState {
+  status: "idle" | "checking" | "ok" | "out-of-range" | "error";
+  distanceKm?: number;
+  freeDeliveryRadiusKm?: number;
+  error?: string;
+}
 
 export default function CheckoutPage() {
   const { status: sessionStatus } = useSession();
@@ -41,6 +48,7 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<number | null>(null);
+  const [distanceCheck, setDistanceCheck] = useState<DistanceCheckState>({ status: "idle" });
 
   // Preenche os dados do destinatário a partir da sessão ao carregar (apenas uma vez)
   const initializedFromSession = useRef(false);
@@ -62,19 +70,66 @@ export default function CheckoutPage() {
   const total = subtotal + deliveryFee;
 
   const deliveryDescription = useMemo(() => {
-    const opt = DELIVERY_OPTIONS.find((d) => d.type === deliveryType);
     const base = DELIVERY_LABELS[deliveryType].description;
-    if (deliveryType === "ENTREGA_GRATIS" && opt?.distanceKm) {
-      return `${base} · ${opt.distanceKm} km`;
+    if (deliveryType === "ENTREGA_GRATIS") {
+      if (distanceCheck.status === "checking") return `${base} · calculando distância…`;
+      if (distanceCheck.status === "ok" && distanceCheck.distanceKm !== undefined) {
+        return `${base} · ${distanceCheck.distanceKm.toFixed(1)} km`;
+      }
+      if (distanceCheck.status === "out-of-range" && distanceCheck.distanceKm !== undefined) {
+        return `Fora do raio grátis · ${distanceCheck.distanceKm.toFixed(1)} km`;
+      }
+      return base;
     }
     if (deliveryType === "ENTREGA_APP") {
       return `Taxa estimada ${formatCurrency(deliveryFee)} · pago pelo cliente`;
     }
     return base;
-  }, [deliveryType, deliveryFee]);
+  }, [deliveryType, deliveryFee, distanceCheck]);
+
+  // Checagem de distância real (Google Maps) em tempo real, com debounce — só
+  // roda quando "Entrega grátis" está selecionada e o endereço está completo.
+  useEffect(() => {
+    if (deliveryType !== "ENTREGA_GRATIS") {
+      setDistanceCheck({ status: "idle" }); // eslint-disable-line react-hooks/set-state-in-effect
+      return;
+    }
+    if (!street.trim() || !addressNumber.trim() || !neighborhood.trim() || !zipCode.trim()) {
+      setDistanceCheck({ status: "idle" });
+      return;
+    }
+
+    setDistanceCheck({ status: "checking" });
+    const timer = setTimeout(async () => {
+      try {
+        const result = await checkDeliveryDistance({
+          street,
+          number: addressNumber,
+          complement: complement || undefined,
+          neighborhood,
+          zipCode,
+          city: "São Paulo",
+          state: "SP",
+        });
+        setDistanceCheck({
+          status: result.isWithinFreeRadius ? "ok" : "out-of-range",
+          distanceKm: result.distanceKm,
+          freeDeliveryRadiusKm: result.freeDeliveryRadiusKm,
+        });
+      } catch (e) {
+        setDistanceCheck({
+          status: "error",
+          error: e instanceof Error ? e.message : "Não foi possível calcular a distância agora.",
+        });
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [deliveryType, street, addressNumber, neighborhood, zipCode, complement]);
 
   const handleConfirm = async () => {
     if (isSubmitting || !customer) return;
+    if (deliveryType === "ENTREGA_GRATIS" && distanceCheck.status === "out-of-range") return;
 
     // KI-09: Validação de campos obrigatórios de endereço
     if (deliveryType !== "RETIRADA") {
@@ -279,6 +334,17 @@ export default function CheckoutPage() {
               />
             </Field>
 
+            {deliveryType === "ENTREGA_GRATIS" && distanceCheck.status === "out-of-range" && (
+              <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                Este endereço está a {distanceCheck.distanceKm?.toFixed(1)} km, fora do raio de entrega grátis (
+                {distanceCheck.freeDeliveryRadiusKm} km). Escolha &quot;Entrega via app&quot; ou &quot;Retirada no
+                local&quot;.
+              </p>
+            )}
+            {deliveryType === "ENTREGA_GRATIS" && distanceCheck.status === "error" && (
+              <p className="mb-4 text-sm text-muted">{distanceCheck.error}</p>
+            )}
+
             <Field label="Complemento (opcional)">
               <input
                 type="text"
@@ -380,7 +446,9 @@ export default function CheckoutPage() {
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={isSubmitting || !customer}
+          disabled={
+            isSubmitting || !customer || (deliveryType === "ENTREGA_GRATIS" && distanceCheck.status === "out-of-range")
+          }
           className="mt-5 w-full rounded-xl bg-chocolate py-4 font-semibold text-white disabled:opacity-60"
         >
           {isSubmitting
