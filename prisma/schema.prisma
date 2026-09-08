@@ -5,9 +5,19 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// DATABASE_URL: Transaction Pooler do Supabase (porta 6543, ?pgbouncer=true) —
+// usado pela aplicação em runtime (Vercel serverless). DIRECT_URL: Session
+// Pooler (porta 5432) — usado só por `prisma migrate`/`db push`, que exigem
+// conexão com estado de sessão (DDL não funciona em modo transação do
+// pooler). Sprint de infraestrutura (08/09/2026): produção estava com
+// DATABASE_URL apontando para o Session Pooler (porta 5432) também em
+// runtime — pool_size:15 do modo sessão esgotava com a concorrência normal
+// de funções serverless, causando "FATAL: max clients reached in session
+// mode" em toda rota da API. Ver CHANGELOG.md.
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
