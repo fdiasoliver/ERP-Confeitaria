@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ViewMode } from "@/components/admin/shared/ViewToggle";
+import type { ViewMode } from "@/components/shared/ViewToggle";
 
 const STORAGE_PREFIX = "admin-view:";
 

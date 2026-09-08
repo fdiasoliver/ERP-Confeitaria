@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HeaderMinimal } from "@/components/layout/Header";
+import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
+import { ViewToggle } from "@/components/shared/ViewToggle";
+import { useViewMode } from "@/hooks/useViewMode";
 import { useCart } from "@/context/CartContext";
 import { formatCurrency } from "@/lib/mock-data";
 import { formatDate } from "@/lib/formatters/date";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useUserOrders } from "@/hooks/useUserOrders";
-import type { CartItem } from "@/lib/types";
+import type { CartItem, Order } from "@/lib/types";
 import { STATUS_LABELS } from "@/lib/types";
 
 // Cores do design system (Sprint DS.3) — corrige uso anterior de Tailwind cru
@@ -29,6 +32,7 @@ export default function PedidosPage() {
   const router = useRouter();
   const customer = useCurrentUser();
   const { orders, isLoading, error } = useUserOrders(customer?.phone ?? null);
+  const [view, setView] = useViewMode("pedidos");
 
   const handleRepeat = (orderId: string, customize = false) => {
     const order = orders.find((o) => o.id === orderId);
@@ -58,6 +62,65 @@ export default function PedidosPage() {
     router.push(customize ? "/checkout" : "/");
   };
 
+  // Mesmas ações nas duas visões — mesmo padrão dos toggles do admin (Sprint DS.6).
+  function renderActions(order: Order, variant: "card" | "row") {
+    const base =
+      variant === "card"
+        ? "flex-1 rounded-lg py-2.5 text-sm font-semibold"
+        : "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold";
+    return (
+      <>
+        <button type="button" className={`${base} border border-sand`}>
+          Ver detalhes
+        </button>
+        <button
+          type="button"
+          onClick={() => handleRepeat(order.id, order.status === "ENTREGUE")}
+          className={`${base} bg-rose text-white`}
+        >
+          {order.status === "ENTREGUE" ? "Pedir e personalizar" : "Pedir novamente"}
+        </button>
+      </>
+    );
+  }
+
+  const columns: EntityColumn<Order>[] = [
+    {
+      key: "orderNumber",
+      header: "Pedido",
+      render: (o) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-chocolate">#{o.orderNumber}</span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STATUS_CLASS[o.status] ?? "bg-sand"}`}
+          >
+            {STATUS_LABELS[o.status]}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "delivery",
+      header: "Entrega",
+      className: "hidden md:table-cell",
+      render: (o) => <span className="text-muted">{formatDate(o.deliveryDate)}</span>,
+    },
+    {
+      key: "items",
+      header: "Itens",
+      className: "hidden lg:table-cell",
+      render: (o) => (
+        <span className="text-muted">{o.items.length} item{o.items.length !== 1 ? "s" : ""}</span>
+      ),
+    },
+    {
+      key: "total",
+      header: "Total",
+      className: "text-right",
+      render: (o) => <span className="font-semibold text-chocolate">{formatCurrency(o.total)}</span>,
+    },
+  ];
+
   return (
     <div className="mx-auto min-h-screen max-w-app bg-cream pb-8 lg:max-w-5xl">
       <HeaderMinimal title="Meus Pedidos" />
@@ -73,9 +136,14 @@ export default function PedidosPage() {
         )}
 
         {customer && (
-          <p className="text-muted mb-4 text-sm">
-            Olá, {customer.name}! · {customer.phone}
-          </p>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="text-muted text-sm">
+              Olá, {customer.name}! · {customer.phone}
+            </p>
+            {!isLoading && !error && orders.length > 0 && (
+              <ViewToggle value={view} onChange={setView} />
+            )}
+          </div>
         )}
 
         {customer && isLoading && (
@@ -98,7 +166,7 @@ export default function PedidosPage() {
           </div>
         )}
 
-        {customer && !isLoading && !error && orders.length > 0 && (
+        {customer && !isLoading && !error && orders.length > 0 && view === "grid" && (
           <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
             {orders.map((order) => (
               <article
@@ -129,24 +197,18 @@ export default function PedidosPage() {
 
                 <p className="mt-2 font-semibold">{formatCurrency(order.total)}</p>
 
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    className="flex-1 rounded-lg border border-sand py-2.5 text-sm font-semibold"
-                  >
-                    Ver detalhes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRepeat(order.id, order.status === "ENTREGUE")}
-                    className="flex-1 rounded-lg bg-rose py-2.5 text-sm font-semibold text-white"
-                  >
-                    {order.status === "ENTREGUE" ? "Pedir e personalizar" : "Pedir novamente"}
-                  </button>
-                </div>
+                <div className="mt-3 flex gap-2">{renderActions(order, "card")}</div>
               </article>
             ))}
           </div>
+        )}
+        {customer && !isLoading && !error && orders.length > 0 && view === "list" && (
+          <EntityTable
+            items={orders}
+            columns={columns}
+            getKey={(o) => o.id}
+            renderActions={(o) => renderActions(o, "row")}
+          />
         )}
 
         <Link

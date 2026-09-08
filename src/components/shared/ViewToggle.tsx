@@ -9,6 +9,9 @@ const OPTIONS: { value: ViewMode; label: string; icon: typeof LayoutGrid }[] = [
   { value: "list", label: "Lista", icon: List },
 ];
 
+// Cross-domain (admin + área do cliente) — vive em components/shared, não em
+// components/admin/, desde que a Sprint DS.6 passou a usar este toggle também
+// em /pedidos.
 export function ViewToggle({ value, onChange }: {
   value: ViewMode;
   onChange: (mode: ViewMode) => void;

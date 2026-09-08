@@ -9,10 +9,10 @@ export interface EntityColumn<T> {
   className?: string;
 }
 
-/** Visão de lista (tabela) das telas de cadastro — alternativa à visão de cards
- * (EntityCard + ResponsiveGrid), escolhida pelo usuário via ViewToggle.
- * As colunas são definidas por cada página, porque cada entidade expõe campos
- * diferentes; só a estrutura da tabela é compartilhada. */
+/** Visão de lista (tabela) — alternativa a um grid de cards, escolhida pelo
+ * usuário via ViewToggle. Cross-domain (admin + área do cliente, desde a
+ * Sprint DS.6). As colunas são definidas por cada página, porque cada
+ * entidade expõe campos diferentes; só a estrutura da tabela é compartilhada. */
 export function EntityTable<T>({ items, columns, getKey, renderActions }: {
   items: T[];
   columns: EntityColumn<T>[];
