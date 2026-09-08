@@ -24,7 +24,10 @@ import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { FilterChips } from "@/components/admin/shared/FilterChips";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
+import { EntityTable, type EntityColumn } from "@/components/admin/shared/EntityTable";
+import { ViewToggle } from "@/components/admin/shared/ViewToggle";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
+import { useViewMode } from "@/hooks/useViewMode";
 
 // ── Local types ────────────────────────────────────────────────────────────────
 
@@ -153,6 +156,7 @@ function ProdutosAdminPageContent() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<string>("name-asc");
   const [page, setPage] = useState(1);
+  const [view, setView] = useViewMode("produtos");
 
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -444,6 +448,104 @@ function ProdutosAdminPageContent() {
     }
   }
 
+  // Mesmas ações nas duas visões — só a forma muda entre card (largura toda) e
+  // linha de tabela (compacta), mesmo padrão de admin/ingredientes/page.tsx.
+  function renderActions(product: Product, variant: "card" | "row") {
+    const base =
+      variant === "card"
+        ? "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-semibold"
+        : "flex shrink-0 items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold";
+    const neutral = "border border-sand transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50";
+    const busy = actionLoading === product.id;
+    return (
+      <>
+        <button type="button" onClick={() => openEdit(product)} className={`${base} ${neutral} text-chocolate`}>
+          Editar
+        </button>
+        {product.active ? (
+          <button
+            type="button"
+            onClick={() => setConfirmAction({ type: "deactivate", product })}
+            disabled={busy}
+            aria-label={`Desativar produto ${product.name}`}
+            className={`${base} ${neutral} text-muted`}
+          >
+            {busy ? "…" : "Desativar"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => handleActivate(product)}
+            disabled={busy}
+            aria-label={`Ativar produto ${product.name}`}
+            className={`${base} bg-sage/10 text-sage transition-colors hover:bg-sage/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-50`}
+          >
+            {busy ? "…" : "Ativar"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setConfirmAction({ type: "delete", product })}
+          disabled={busy}
+          aria-label={`Excluir produto ${product.name}`}
+          className={`${variant === "card" ? "flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm" : "flex shrink-0 items-center rounded-lg px-3 py-1.5 text-xs"} border border-rose/40 font-semibold text-rose transition-colors hover:bg-rose/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose disabled:opacity-50`}
+        >
+          Excluir
+        </button>
+      </>
+    );
+  }
+
+  const columns: EntityColumn<Product>[] = [
+    {
+      key: "name",
+      header: "Nome",
+      render: (p) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sand">
+            {p.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover" />
+            ) : (
+              <IconPackage className="text-muted" width={16} height={16} />
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-chocolate">{p.name}</span>
+            <StatusBadge isActive={p.active} />
+            {p.featured && (
+              <span className="rounded-full bg-caramel/10 px-2 py-0.5 text-xs font-semibold text-caramel">Destaque</span>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "category",
+      header: "Categoria",
+      className: "hidden md:table-cell",
+      render: (p) => <span className="text-muted">{p.categoryName}</span>,
+    },
+    {
+      key: "price",
+      header: "Preço",
+      className: "text-right",
+      render: (p) => <span className="font-semibold text-chocolate">{formatCurrency(p.basePrice)}</span>,
+    },
+    {
+      key: "cost",
+      header: "Custo",
+      className: "hidden text-right lg:table-cell",
+      render: (p) => <span className="text-muted">{formatCurrency(p.costPrice)}</span>,
+    },
+    {
+      key: "margin",
+      header: "Margem",
+      className: "hidden text-right sm:table-cell",
+      render: (p) => <span className="text-chocolate">{(p.margin * 100).toFixed(0)}%</span>,
+    },
+  ];
+
   return (
     <PageContainer>
       <HeaderMinimal title="Produtos" />
@@ -453,14 +555,17 @@ function ProdutosAdminPageContent() {
           <p className="text-sm text-muted">
             {loading ? "Carregando…" : `${total} produto${total !== 1 ? "s" : ""}`}
           </p>
-          <button
-            type="button"
-            onClick={openCreate}
-            disabled={!canCreate}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
-          >
-            <IconPlus /> Novo
-          </button>
+          <div className="flex items-center gap-2">
+            <ViewToggle value={view} onChange={setView} />
+            <button
+              type="button"
+              onClick={openCreate}
+              disabled={!canCreate}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
+            >
+              <IconPlus /> Novo
+            </button>
+          </div>
         </div>
 
         {!error && (
@@ -537,92 +642,62 @@ function ProdutosAdminPageContent() {
         )}
         {!loading && !error && products.length > 0 && (
           <>
-            <ResponsiveGrid cols={3}>
-              {products.map((product) => (
-                <EntityCard
-                  key={product.id}
-                  href={`/admin/produtos/${product.id}`}
-                  title={product.name}
-                  badges={
-                    <>
-                      <StatusBadge isActive={product.active} />
-                      {product.featured && (
-                        <span className="rounded-full bg-caramel/10 px-2 py-0.5 text-xs font-semibold text-caramel">Destaque</span>
-                      )}
-                    </>
-                  }
-                  actions={
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(product)}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-sand py-2 text-sm font-semibold text-chocolate transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate"
-                      >
-                        Editar
-                      </button>
-                      {product.active ? (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmAction({ type: "deactivate", product })}
-                          disabled={actionLoading === product.id}
-                          aria-label={`Desativar produto ${product.name}`}
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-sand py-2 text-sm font-semibold text-muted transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
-                        >
-                          {actionLoading === product.id ? "…" : "Desativar"}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleActivate(product)}
-                          disabled={actionLoading === product.id}
-                          aria-label={`Ativar produto ${product.name}`}
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-sage/10 py-2 text-sm font-semibold text-sage transition-colors hover:bg-sage/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-50"
-                        >
-                          {actionLoading === product.id ? "…" : "Ativar"}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setConfirmAction({ type: "delete", product })}
-                        disabled={actionLoading === product.id}
-                        aria-label={`Excluir produto ${product.name}`}
-                        className="flex items-center gap-1.5 rounded-xl border border-rose/40 px-3 py-2 text-sm font-semibold text-rose transition-colors hover:bg-rose/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose disabled:opacity-50"
-                      >
-                        Excluir
-                      </button>
-                    </>
-                  }
-                >
-                  <div className="flex gap-3">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-sand">
-                      {product.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <IconPackage className="text-muted" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="mb-2 truncate text-xs text-muted">{product.categoryName}</p>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="rounded-lg bg-sand/60 px-2 py-1.5">
-                          <p className="text-sm font-semibold leading-none text-chocolate">{formatCurrency(product.basePrice)}</p>
-                          <p className="mt-0.5 text-[10px] text-muted">Preço</p>
-                        </div>
-                        <div className="rounded-lg bg-sand/60 px-2 py-1.5">
-                          <p className="text-sm font-semibold leading-none text-chocolate">{formatCurrency(product.costPrice)}</p>
-                          <p className="mt-0.5 text-[10px] text-muted">Custo</p>
-                        </div>
-                        <div className="rounded-lg bg-sand/60 px-2 py-1.5">
-                          <p className="text-sm font-semibold leading-none text-chocolate">{(product.margin * 100).toFixed(0)}%</p>
-                          <p className="mt-0.5 text-[10px] text-muted">Margem</p>
+            {view === "grid" && (
+              <ResponsiveGrid cols={3}>
+                {products.map((product) => (
+                  <EntityCard
+                    key={product.id}
+                    href={`/admin/produtos/${product.id}`}
+                    title={product.name}
+                    badges={
+                      <>
+                        <StatusBadge isActive={product.active} />
+                        {product.featured && (
+                          <span className="rounded-full bg-caramel/10 px-2 py-0.5 text-xs font-semibold text-caramel">Destaque</span>
+                        )}
+                      </>
+                    }
+                    actions={renderActions(product, "card")}
+                  >
+                    <div className="flex gap-3">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-sand">
+                        {product.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <IconPackage className="text-muted" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-2 truncate text-xs text-muted">{product.categoryName}</p>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="rounded-lg bg-sand/60 px-2 py-1.5">
+                            <p className="text-sm font-semibold leading-none text-chocolate">{formatCurrency(product.basePrice)}</p>
+                            <p className="mt-0.5 text-[10px] text-muted">Preço</p>
+                          </div>
+                          <div className="rounded-lg bg-sand/60 px-2 py-1.5">
+                            <p className="text-sm font-semibold leading-none text-chocolate">{formatCurrency(product.costPrice)}</p>
+                            <p className="mt-0.5 text-[10px] text-muted">Custo</p>
+                          </div>
+                          <div className="rounded-lg bg-sand/60 px-2 py-1.5">
+                            <p className="text-sm font-semibold leading-none text-chocolate">{(product.margin * 100).toFixed(0)}%</p>
+                            <p className="mt-0.5 text-[10px] text-muted">Margem</p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </EntityCard>
-              ))}
-            </ResponsiveGrid>
+                  </EntityCard>
+                ))}
+              </ResponsiveGrid>
+            )}
+            {view === "list" && (
+              <EntityTable
+                items={products}
+                columns={columns}
+                getKey={(p) => p.id}
+                renderActions={(p) => renderActions(p, "row")}
+              />
+            )}
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between pt-1">

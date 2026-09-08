@@ -12,8 +12,11 @@ import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
+import { EntityTable, type EntityColumn } from "@/components/admin/shared/EntityTable";
+import { ViewToggle } from "@/components/admin/shared/ViewToggle";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
+import { useViewMode } from "@/hooks/useViewMode";
 import type { ValidationError } from "@/lib/types";
 import * as categoryApi from "@/lib/api/packagingCategoryApi";
 import { ApiRequestError, type PackagingCategory } from "@/lib/api/packagingCategoryApi";
@@ -31,6 +34,7 @@ export default function PackagingCategoriasAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [view, setView] = useViewMode("embalagens-categorias");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<PackagingCategory | null>(null);
   const [form, setForm] = useState<CategoryForm>(EMPTY_FORM);
@@ -151,6 +155,45 @@ export default function PackagingCategoriasAdminPage() {
     }
   }
 
+  // Mesmas ações nas duas visões — mesmo padrão de admin/ingredientes/page.tsx.
+  function renderActions(category: PackagingCategory, variant: "card" | "row") {
+    const base =
+      variant === "card"
+        ? "flex-1 rounded-xl py-2 text-sm font-semibold"
+        : "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold";
+    const busy = actionLoading === category.id;
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => openEdit(category)}
+          disabled={busy}
+          aria-label={`Editar categoria ${category.name}`}
+          className={`${base} border border-sand text-chocolate disabled:opacity-50`}
+        >
+          Editar
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(category)}
+          disabled={busy}
+          aria-label={`Excluir categoria ${category.name}`}
+          className={`${base} border border-sand text-rose disabled:opacity-50`}
+        >
+          {busy ? "…" : "Excluir"}
+        </button>
+      </>
+    );
+  }
+
+  const columns: EntityColumn<PackagingCategory>[] = [
+    {
+      key: "name",
+      header: "Nome",
+      render: (c) => <span className="font-semibold text-chocolate">{c.name}</span>,
+    },
+  ];
+
   return (
     <PageContainer>
       <HeaderMinimal title="Categorias de Embalagem" />
@@ -164,13 +207,16 @@ export default function PackagingCategoriasAdminPage() {
           <p className="text-sm text-muted">
             {loading ? "Carregando…" : `${filtered.length} categoria${filtered.length !== 1 ? "s" : ""}`}
           </p>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white"
-          >
-            + Nova
-          </button>
+          <div className="flex items-center gap-2">
+            <ViewToggle value={view} onChange={setView} />
+            <button
+              type="button"
+              onClick={openCreate}
+              className="rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white"
+            >
+              + Nova
+            </button>
+          </div>
         </div>
 
         {!loading && !error && (
@@ -196,37 +242,20 @@ export default function PackagingCategoriasAdminPage() {
             onAction={search.trim() === "" ? openCreate : undefined}
           />
         )}
-        {!loading && !error && filtered.length > 0 && (
+        {!loading && !error && filtered.length > 0 && view === "grid" && (
           <ResponsiveGrid cols={2}>
             {filtered.map((category) => (
-              <EntityCard
-                key={category.id}
-                title={category.name}
-                actions={
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => openEdit(category)}
-                      disabled={actionLoading === category.id}
-                      aria-label={`Editar categoria ${category.name}`}
-                      className="flex-1 rounded-xl border border-sand py-2 text-sm font-semibold text-chocolate disabled:opacity-50"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDelete(category)}
-                      disabled={actionLoading === category.id}
-                      aria-label={`Excluir categoria ${category.name}`}
-                      className="flex-1 rounded-xl border border-sand py-2 text-sm font-semibold text-rose disabled:opacity-50"
-                    >
-                      {actionLoading === category.id ? "…" : "Excluir"}
-                    </button>
-                  </>
-                }
-              />
+              <EntityCard key={category.id} title={category.name} actions={renderActions(category, "card")} />
             ))}
           </ResponsiveGrid>
+        )}
+        {!loading && !error && filtered.length > 0 && view === "list" && (
+          <EntityTable
+            items={filtered}
+            columns={columns}
+            getKey={(c) => c.id}
+            renderActions={(c) => renderActions(c, "row")}
+          />
         )}
       </div>
 

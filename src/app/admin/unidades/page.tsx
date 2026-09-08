@@ -15,7 +15,10 @@ import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { FilterChips } from "@/components/admin/shared/FilterChips";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
+import { EntityTable, type EntityColumn } from "@/components/admin/shared/EntityTable";
+import { ViewToggle } from "@/components/admin/shared/ViewToggle";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
+import { useViewMode } from "@/hooks/useViewMode";
 import type { ValidationError } from "@/lib/types";
 import * as unitApi from "@/lib/api/unitApi";
 import { ApiRequestError, type UnitOfMeasure, type UnitType } from "@/lib/api/unitApi";
@@ -43,6 +46,7 @@ export default function UnidadesAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [view, setView] = useViewMode("unidades");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [modal, setModal] = useState<ModalMode | null>(null);
@@ -200,6 +204,81 @@ export default function UnidadesAdminPage() {
     }
   }
 
+  // Mesmas ações nas duas visões — mesmo padrão de admin/ingredientes/page.tsx.
+  function renderActions(unit: UnitOfMeasure, variant: "card" | "row") {
+    const base =
+      variant === "card"
+        ? "flex-1 rounded-xl py-2 text-sm font-semibold"
+        : "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold";
+    const neutral = "border border-sand transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50";
+    const busy = actionLoading === unit.id;
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => openEdit(unit)}
+          disabled={busy}
+          aria-label={`Editar unidade ${unit.name}`}
+          className={`${base} ${neutral} text-chocolate`}
+        >
+          Editar
+        </button>
+        {unit.isActive ? (
+          <button
+            type="button"
+            onClick={() => setConfirmDeactivate(unit)}
+            disabled={busy}
+            aria-label={`Desativar unidade ${unit.name}`}
+            className={`${base} ${neutral} text-muted`}
+          >
+            {busy ? "…" : "Desativar"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => handleActivate(unit)}
+            disabled={busy}
+            aria-label={`Ativar unidade ${unit.name}`}
+            className={`${base} bg-sage/10 text-sage transition-colors hover:bg-sage/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-50`}
+          >
+            {busy ? "…" : "Ativar"}
+          </button>
+        )}
+      </>
+    );
+  }
+
+  const columns: EntityColumn<UnitOfMeasure>[] = [
+    {
+      key: "name",
+      header: "Nome",
+      render: (u) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-chocolate">{u.name}</span>
+          <StatusBadge isActive={u.isActive} activeLabel="Ativa" inactiveLabel="Inativa" />
+        </div>
+      ),
+    },
+    {
+      key: "type",
+      header: "Tipo",
+      className: "hidden md:table-cell",
+      render: (u) => <span className="text-muted">{UNIT_TYPE_LABELS[u.type]}</span>,
+    },
+    {
+      key: "abbreviation",
+      header: "Sigla",
+      className: "text-right",
+      render: (u) => <span className="font-semibold text-chocolate">{u.abbreviation}</span>,
+    },
+    {
+      key: "sortOrder",
+      header: "Ordem",
+      className: "hidden text-right sm:table-cell",
+      render: (u) => <span className="text-muted">{u.sortOrder}</span>,
+    },
+  ];
+
   return (
     <PageContainer>
       <HeaderMinimal title="Unidades" />
@@ -213,13 +292,16 @@ export default function UnidadesAdminPage() {
           <p className="text-sm text-muted">
             {loading ? "Carregando…" : `${filtered.length} unidade${filtered.length !== 1 ? "s" : ""}`}
           </p>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate"
-          >
-            + Nova
-          </button>
+          <div className="flex items-center gap-2">
+            <ViewToggle value={view} onChange={setView} />
+            <button
+              type="button"
+              onClick={openCreate}
+              className="rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate"
+            >
+              + Nova
+            </button>
+          </div>
         </div>
 
         {!loading && !error && (
@@ -268,47 +350,14 @@ export default function UnidadesAdminPage() {
             onAction={hasActiveFilter ? undefined : openCreate}
           />
         )}
-        {!loading && !error && filtered.length > 0 && (
+        {!loading && !error && filtered.length > 0 && view === "grid" && (
           <ResponsiveGrid cols={3}>
             {filtered.map((unit) => (
               <EntityCard
                 key={unit.id}
                 title={unit.name}
                 badges={<StatusBadge isActive={unit.isActive} activeLabel="Ativa" inactiveLabel="Inativa" />}
-                actions={
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => openEdit(unit)}
-                      disabled={actionLoading === unit.id}
-                      aria-label={`Editar unidade ${unit.name}`}
-                      className="flex-1 rounded-xl border border-sand py-2 text-sm font-semibold text-chocolate transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
-                    >
-                      Editar
-                    </button>
-                    {unit.isActive ? (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeactivate(unit)}
-                        disabled={actionLoading === unit.id}
-                        aria-label={`Desativar unidade ${unit.name}`}
-                        className="flex-1 rounded-xl border border-sand py-2 text-sm font-semibold text-muted transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
-                      >
-                        {actionLoading === unit.id ? "…" : "Desativar"}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleActivate(unit)}
-                        disabled={actionLoading === unit.id}
-                        aria-label={`Ativar unidade ${unit.name}`}
-                        className="flex-1 rounded-xl bg-sage/10 py-2 text-sm font-semibold text-sage transition-colors hover:bg-sage/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-50"
-                      >
-                        {actionLoading === unit.id ? "…" : "Ativar"}
-                      </button>
-                    )}
-                  </>
-                }
+                actions={renderActions(unit, "card")}
               >
                 <p className="text-xs text-muted">{UNIT_TYPE_LABELS[unit.type]}</p>
                 <div className="grid grid-cols-2 gap-2 text-center">
@@ -324,6 +373,14 @@ export default function UnidadesAdminPage() {
               </EntityCard>
             ))}
           </ResponsiveGrid>
+        )}
+        {!loading && !error && filtered.length > 0 && view === "list" && (
+          <EntityTable
+            items={filtered}
+            columns={columns}
+            getKey={(u) => u.id}
+            renderActions={(u) => renderActions(u, "row")}
+          />
         )}
       </div>
 

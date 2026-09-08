@@ -15,7 +15,10 @@ import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { FilterChips } from "@/components/admin/shared/FilterChips";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
+import { EntityTable, type EntityColumn } from "@/components/admin/shared/EntityTable";
+import { ViewToggle } from "@/components/admin/shared/ViewToggle";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
+import { useViewMode } from "@/hooks/useViewMode";
 import type { ValidationError } from "@/lib/types";
 import { maskCNPJ } from "@/lib/formatters/cnpj";
 import { maskPhone } from "@/lib/formatters/phone";
@@ -65,6 +68,7 @@ export default function FornecedoresAdminPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<string>("name-asc");
   const [page, setPage] = useState(1);
+  const [view, setView] = useViewMode("fornecedores");
 
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<Supplier | null>(null);
@@ -287,6 +291,81 @@ export default function FornecedoresAdminPage() {
     }
   }
 
+  // Mesmas ações nas duas visões — mesmo padrão de admin/ingredientes/page.tsx.
+  function renderActions(supplier: Supplier, variant: "card" | "row") {
+    const base =
+      variant === "card"
+        ? "flex-1 rounded-xl py-2 text-sm font-semibold"
+        : "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold";
+    const neutral = "border border-sand transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50";
+    const busy = actionLoading === supplier.id;
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => openEdit(supplier)}
+          disabled={busy}
+          aria-label={`Editar fornecedor ${supplier.name}`}
+          className={`${base} ${neutral} text-chocolate`}
+        >
+          Editar
+        </button>
+        {supplier.active ? (
+          <button
+            type="button"
+            onClick={() => setConfirmDeactivate(supplier)}
+            disabled={busy}
+            aria-label={`Desativar fornecedor ${supplier.name}`}
+            className={`${base} ${neutral} text-muted`}
+          >
+            {busy ? "…" : "Desativar"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => handleActivate(supplier)}
+            disabled={busy}
+            aria-label={`Ativar fornecedor ${supplier.name}`}
+            className={`${base} bg-sage/10 text-sage transition-colors hover:bg-sage/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-50`}
+          >
+            {busy ? "…" : "Ativar"}
+          </button>
+        )}
+      </>
+    );
+  }
+
+  const columns: EntityColumn<Supplier>[] = [
+    {
+      key: "name",
+      header: "Nome",
+      render: (s) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-chocolate">{s.name}</span>
+          <StatusBadge isActive={s.active} />
+        </div>
+      ),
+    },
+    {
+      key: "cnpj",
+      header: "CNPJ",
+      className: "hidden md:table-cell",
+      render: (s) => <span className="text-muted">{s.cnpj ? maskCNPJ(s.cnpj) : "—"}</span>,
+    },
+    {
+      key: "phone",
+      header: "Telefone",
+      className: "hidden lg:table-cell",
+      render: (s) => <span className="text-muted">{s.phone ? maskPhone(s.phone) : "—"}</span>,
+    },
+    {
+      key: "leadTime",
+      header: "Prazo de entrega",
+      className: "hidden text-right sm:table-cell",
+      render: (s) => <span className="text-chocolate">{s.leadTimeDays !== null ? `${s.leadTimeDays}d` : "—"}</span>,
+    },
+  ];
+
   return (
     <PageContainer>
       <HeaderMinimal title="Fornecedores" />
@@ -304,13 +383,16 @@ export default function FornecedoresAdminPage() {
           <p className="text-sm text-muted">
             {loading ? "Carregando…" : `${total} fornecedor${total !== 1 ? "es" : ""}`}
           </p>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate md:self-auto"
-          >
-            + Novo
-          </button>
+          <div className="flex items-center gap-2">
+            <ViewToggle value={view} onChange={setView} />
+            <button
+              type="button"
+              onClick={openCreate}
+              className="rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate md:self-auto"
+            >
+              + Novo
+            </button>
+          </div>
         </div>
 
         {!error && (
@@ -368,60 +450,37 @@ export default function FornecedoresAdminPage() {
         )}
         {!loading && !error && suppliers.length > 0 && (
           <>
-            <ResponsiveGrid cols={3}>
-              {suppliers.map((supplier) => (
-                <EntityCard
-                  key={supplier.id}
-                  title={supplier.name}
-                  badges={<StatusBadge isActive={supplier.active} />}
-                  actions={
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(supplier)}
-                        disabled={actionLoading === supplier.id}
-                        aria-label={`Editar fornecedor ${supplier.name}`}
-                        className="flex-1 rounded-xl border border-sand py-2 text-sm font-semibold text-chocolate transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
-                      >
-                        Editar
-                      </button>
-                      {supplier.active ? (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeactivate(supplier)}
-                          disabled={actionLoading === supplier.id}
-                          aria-label={`Desativar fornecedor ${supplier.name}`}
-                          className="flex-1 rounded-xl border border-sand py-2 text-sm font-semibold text-muted transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
-                        >
-                          {actionLoading === supplier.id ? "…" : "Desativar"}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleActivate(supplier)}
-                          disabled={actionLoading === supplier.id}
-                          aria-label={`Ativar fornecedor ${supplier.name}`}
-                          className="flex-1 rounded-xl bg-sage/10 py-2 text-sm font-semibold text-sage transition-colors hover:bg-sage/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-50"
-                        >
-                          {actionLoading === supplier.id ? "…" : "Ativar"}
-                        </button>
-                      )}
-                    </>
-                  }
-                >
-                  <p className="text-xs text-muted">
-                    {supplier.cnpj ? maskCNPJ(supplier.cnpj) : "Sem CNPJ"}
-                    {supplier.phone ? ` · ${maskPhone(supplier.phone)}` : ""}
-                  </p>
-                  {supplier.leadTimeDays !== null && (
+            {view === "grid" && (
+              <ResponsiveGrid cols={3}>
+                {suppliers.map((supplier) => (
+                  <EntityCard
+                    key={supplier.id}
+                    title={supplier.name}
+                    badges={<StatusBadge isActive={supplier.active} />}
+                    actions={renderActions(supplier, "card")}
+                  >
                     <p className="text-xs text-muted">
-                      Prazo de entrega: <span className="font-semibold text-chocolate">{supplier.leadTimeDays} dia{supplier.leadTimeDays !== 1 ? "s" : ""}</span>
+                      {supplier.cnpj ? maskCNPJ(supplier.cnpj) : "Sem CNPJ"}
+                      {supplier.phone ? ` · ${maskPhone(supplier.phone)}` : ""}
                     </p>
-                  )}
-                  {supplier.notes && <p className="text-xs text-muted">{supplier.notes}</p>}
-                </EntityCard>
-              ))}
-            </ResponsiveGrid>
+                    {supplier.leadTimeDays !== null && (
+                      <p className="text-xs text-muted">
+                        Prazo de entrega: <span className="font-semibold text-chocolate">{supplier.leadTimeDays} dia{supplier.leadTimeDays !== 1 ? "s" : ""}</span>
+                      </p>
+                    )}
+                    {supplier.notes && <p className="text-xs text-muted">{supplier.notes}</p>}
+                  </EntityCard>
+                ))}
+              </ResponsiveGrid>
+            )}
+            {view === "list" && (
+              <EntityTable
+                items={suppliers}
+                columns={columns}
+                getKey={(s) => s.id}
+                renderActions={(s) => renderActions(s, "row")}
+              />
+            )}
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between pt-1">

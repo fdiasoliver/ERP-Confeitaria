@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
         </h1>
         <p className="text-muted mb-8 text-center text-sm">Acesso exclusivo para a equipe</p>
 
-        <form onSubmit={handleSubmit} className="shadow-card rounded-2xl bg-white p-6">
+        <form onSubmit={handleSubmit} className="shadow-card rounded-2xl bg-card p-6">
           <div className="mb-4">
             <label className="mb-1.5 block text-sm font-semibold">E-mail</label>
             <input

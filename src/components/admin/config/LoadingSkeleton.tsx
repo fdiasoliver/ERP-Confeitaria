@@ -1,6 +1,7 @@
 "use client";
 
 import { HeaderMinimal } from "@/components/layout/Header";
+import { PageContainer } from "@/components/admin/shared/PageContainer";
 
 function FieldSkeleton() {
   return <div className="h-12 w-full animate-pulse rounded-[10px] bg-sand" />;
@@ -21,7 +22,7 @@ function SectionSkeleton({ fields = 2 }: { fields?: number }) {
 
 export function LoadingSkeleton() {
   return (
-    <div className="mx-auto min-h-screen max-w-5xl bg-cream pb-24">
+    <PageContainer>
       <HeaderMinimal title="Configurações" />
       <div className="space-y-4 p-5">
         <SectionSkeleton fields={2} />
@@ -31,6 +32,6 @@ export function LoadingSkeleton() {
         <SectionSkeleton fields={3} />
         <SectionSkeleton fields={4} />
       </div>
-    </div>
+    </PageContainer>
   );
 }

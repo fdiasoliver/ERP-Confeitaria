@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { Card } from "@/components/ui/card";
+import { ResolvedIcon } from "@/lib/icons";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -111,7 +112,7 @@ function CategoryCard({ category, actionLoading, onEdit, onActivate, onDeactivat
 
       <div className="mb-3 grid grid-cols-3 gap-2 text-center">
         <div className="rounded-lg bg-sand/60 px-2 py-1.5">
-          <p className="text-lg leading-none">{category.icon}</p>
+          <ResolvedIcon name={category.icon} size={18} className="mx-auto" aria-hidden="true" />
           <p className="mt-0.5 text-[10px] text-muted">Ícone</p>
         </div>
         <div className="rounded-lg bg-sand/60 px-2 py-1.5">
@@ -227,10 +228,10 @@ function CategoryModal({ mode, form, errors, submitting, onClose, onChange, onSu
           <Field label="Ícone (nome Lucide)" htmlFor="cat-icon" error={errors.icon}>
             <div className="flex gap-2">
               <div
-                className="flex h-[46px] w-12 items-center justify-center rounded-xl border border-sand bg-sand/40 text-xl"
+                className="flex h-[46px] w-12 items-center justify-center rounded-xl border border-sand bg-sand/40"
                 aria-hidden="true"
               >
-                {form.icon}
+                <ResolvedIcon name={form.icon} size={20} />
               </div>
               <input
                 id="cat-icon"

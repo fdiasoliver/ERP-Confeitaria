@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { HeaderMinimal } from "@/components/layout/Header";
+import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { toast } from "sonner";
 import { validateStoreConfig } from "@/lib/validators/storeConfig";
 import { rawDigits } from "@/lib/formatters/cep";
@@ -113,10 +114,10 @@ export default function ConfigPage() {
   if (loading) return <LoadingSkeleton />;
 
   return (
-    <div className="mx-auto min-h-screen max-w-5xl bg-cream pb-28">
+    <PageContainer>
       <HeaderMinimal title="Configurações" />
       <form onSubmit={handleSubmit} noValidate>
-        <div className="space-y-4 p-5">
+        <div className="space-y-4 p-5 pb-28">
           <BrandSection
             logoUrl={form.logoUrl}
             faviconUrl={form.faviconUrl}
@@ -162,6 +163,6 @@ export default function ConfigPage() {
         </div>
         <ActionBar submitting={submitting} />
       </form>
-    </div>
+    </PageContainer>
   );
 }

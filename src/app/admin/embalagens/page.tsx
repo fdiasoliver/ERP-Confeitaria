@@ -16,7 +16,10 @@ import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { FilterChips } from "@/components/admin/shared/FilterChips";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
+import { EntityTable, type EntityColumn } from "@/components/admin/shared/EntityTable";
+import { ViewToggle } from "@/components/admin/shared/ViewToggle";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
+import { useViewMode } from "@/hooks/useViewMode";
 import { formatCurrency } from "@/lib/formatters/currency";
 import type { ValidationError } from "@/lib/types";
 import * as packagingApi from "@/lib/api/packagingApi";
@@ -80,6 +83,7 @@ export default function EmbalagensAdminPage() {
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [sort, setSort] = useState<string>("name-asc");
   const [page, setPage] = useState(1);
+  const [view, setView] = useViewMode("embalagens");
 
   const [modal, setModal] = useState<"create" | null>(null);
   const [form, setForm] = useState<PackagingForm>(EMPTY_FORM);
@@ -312,6 +316,92 @@ export default function EmbalagensAdminPage() {
     }
   }
 
+  // Mesmas ações nas duas visões — mesmo padrão de admin/ingredientes/page.tsx.
+  function renderActions(packaging: Packaging, variant: "card" | "row") {
+    const base =
+      variant === "card"
+        ? "flex-1 rounded-xl py-2 text-sm font-semibold"
+        : "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold";
+    const neutral = "border border-sand transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50";
+    const busy = actionLoading === packaging.id;
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => openDuplicate(packaging)}
+          disabled={busy}
+          aria-label={`Duplicar embalagem ${packaging.name}`}
+          className={`${base} ${neutral} text-chocolate`}
+        >
+          Duplicar
+        </button>
+        {packaging.active ? (
+          <button
+            type="button"
+            onClick={() => setConfirmDeactivate(packaging)}
+            disabled={busy}
+            aria-label={`Desativar embalagem ${packaging.name}`}
+            className={`${base} ${neutral} text-muted`}
+          >
+            {busy ? "…" : "Desativar"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => handleActivate(packaging)}
+            disabled={busy}
+            aria-label={`Ativar embalagem ${packaging.name}`}
+            className={`${base} bg-sage/10 text-sage transition-colors hover:bg-sage/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-50`}
+          >
+            {busy ? "…" : "Ativar"}
+          </button>
+        )}
+      </>
+    );
+  }
+
+  const columns: EntityColumn<Packaging>[] = [
+    {
+      key: "name",
+      header: "Nome",
+      render: (p) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-chocolate">{p.name}</span>
+          <StatusBadge isActive={p.active} activeLabel="Ativa" inactiveLabel="Inativa" />
+          {p.isLowStock && (
+            <span className="inline-flex rounded-full bg-rose/10 px-2 py-0.5 text-xs font-semibold text-rose">
+              Estoque baixo
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "category",
+      header: "Categoria",
+      className: "hidden md:table-cell",
+      render: (p) => <span className="text-muted">{p.categoryName ?? "Sem categoria"}</span>,
+    },
+    {
+      key: "supplier",
+      header: "Fornecedor",
+      className: "hidden lg:table-cell",
+      render: (p) => <span className="text-muted">{p.supplierName ?? "—"}</span>,
+    },
+    {
+      key: "unitCost",
+      header: "Custo unitário",
+      className: "text-right",
+      render: (p) => <span className="font-semibold text-chocolate">{formatCurrency(p.unitCost)}</span>,
+    },
+    {
+      key: "stock",
+      header: "Estoque",
+      className: "hidden text-right sm:table-cell",
+      render: (p) => <span className={p.isLowStock ? "text-rose" : "text-chocolate"}>{p.stockQuantity}</span>,
+    },
+  ];
+
   return (
     <PageContainer>
       <HeaderMinimal title="Embalagens" />
@@ -334,13 +424,16 @@ export default function EmbalagensAdminPage() {
               Categorias
             </Link>
           </div>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate md:self-auto"
-          >
-            + Nova
-          </button>
+          <div className="flex items-center gap-2">
+            <ViewToggle value={view} onChange={setView} />
+            <button
+              type="button"
+              onClick={openCreate}
+              className="rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate md:self-auto"
+            >
+              + Nova
+            </button>
+          </div>
         </div>
 
         {!error && (
@@ -419,59 +512,36 @@ export default function EmbalagensAdminPage() {
         )}
         {!loading && !error && packagings.length > 0 && (
           <>
-            <ResponsiveGrid cols={3}>
-              {packagings.map((packaging) => (
-                <EntityCard
-                  key={packaging.id}
-                  href={`/admin/embalagens/${packaging.id}`}
-                  title={packaging.name}
-                  badges={<StatusBadge isActive={packaging.active} activeLabel="Ativa" inactiveLabel="Inativa" />}
-                  actions={
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => openDuplicate(packaging)}
-                        disabled={actionLoading === packaging.id}
-                        aria-label={`Duplicar embalagem ${packaging.name}`}
-                        className="flex-1 rounded-xl border border-sand py-2 text-sm font-semibold text-chocolate transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
-                      >
-                        Duplicar
-                      </button>
-                      {packaging.active ? (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeactivate(packaging)}
-                          disabled={actionLoading === packaging.id}
-                          aria-label={`Desativar embalagem ${packaging.name}`}
-                          className="flex-1 rounded-xl border border-sand py-2 text-sm font-semibold text-muted transition-colors hover:bg-sand/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50"
-                        >
-                          {actionLoading === packaging.id ? "…" : "Desativar"}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleActivate(packaging)}
-                          disabled={actionLoading === packaging.id}
-                          aria-label={`Ativar embalagem ${packaging.name}`}
-                          className="flex-1 rounded-xl bg-sage/10 py-2 text-sm font-semibold text-sage transition-colors hover:bg-sage/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-50"
-                        >
-                          {actionLoading === packaging.id ? "…" : "Ativar"}
-                        </button>
-                      )}
-                    </>
-                  }
-                >
-                  <p className="text-xs text-muted">
-                    {packaging.categoryName ?? "Sem categoria"}
-                    {packaging.supplierName ? ` · ${packaging.supplierName}` : ""}
-                  </p>
-                  <p className="text-sm font-semibold text-chocolate">{formatCurrency(packaging.unitCost)}</p>
-                  <p className={`text-xs ${packaging.isLowStock ? "text-rose" : "text-muted"}`}>
-                    Estoque: {packaging.stockQuantity}{packaging.isLowStock ? " ⚠ abaixo do mínimo" : ""}
-                  </p>
-                </EntityCard>
-              ))}
-            </ResponsiveGrid>
+            {view === "grid" && (
+              <ResponsiveGrid cols={3}>
+                {packagings.map((packaging) => (
+                  <EntityCard
+                    key={packaging.id}
+                    href={`/admin/embalagens/${packaging.id}`}
+                    title={packaging.name}
+                    badges={<StatusBadge isActive={packaging.active} activeLabel="Ativa" inactiveLabel="Inativa" />}
+                    actions={renderActions(packaging, "card")}
+                  >
+                    <p className="text-xs text-muted">
+                      {packaging.categoryName ?? "Sem categoria"}
+                      {packaging.supplierName ? ` · ${packaging.supplierName}` : ""}
+                    </p>
+                    <p className="text-sm font-semibold text-chocolate">{formatCurrency(packaging.unitCost)}</p>
+                    <p className={`text-xs ${packaging.isLowStock ? "text-rose" : "text-muted"}`}>
+                      Estoque: {packaging.stockQuantity}{packaging.isLowStock ? " ⚠ abaixo do mínimo" : ""}
+                    </p>
+                  </EntityCard>
+                ))}
+              </ResponsiveGrid>
+            )}
+            {view === "list" && (
+              <EntityTable
+                items={packagings}
+                columns={columns}
+                getKey={(p) => p.id}
+                renderActions={(p) => renderActions(p, "row")}
+              />
+            )}
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between pt-1">

@@ -10,6 +10,9 @@ import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
+import { EntityTable, type EntityColumn } from "@/components/admin/shared/EntityTable";
+import { ViewToggle } from "@/components/admin/shared/ViewToggle";
+import { useViewMode } from "@/hooks/useViewMode";
 import { formatCurrency } from "@/lib/formatters/currency";
 import * as customerApi from "@/lib/api/customerApi";
 import type { CustomerListItem } from "@/lib/api/customerApi";
@@ -33,6 +36,7 @@ export default function ClientesAdminPage() {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [view, setView] = useViewMode("clientes");
 
   const hasLoadedOnce = useRef(false);
 
@@ -76,14 +80,58 @@ export default function ClientesAdminPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hasActiveFilter = searchInput.trim() !== "";
 
+  const columns: EntityColumn<CustomerListItem>[] = [
+    {
+      key: "name",
+      header: "Nome",
+      render: (c) => <span className="font-semibold text-chocolate">{c.name}</span>,
+    },
+    {
+      key: "phone",
+      header: "Telefone",
+      className: "hidden md:table-cell",
+      render: (c) => <span className="text-muted">{c.phone}</span>,
+    },
+    {
+      key: "ltv",
+      header: "LTV",
+      className: "text-right",
+      render: (c) => <span className="font-semibold text-chocolate">{formatCurrency(c.ltv)}</span>,
+    },
+    {
+      key: "lastOrder",
+      header: "Último pedido",
+      className: "hidden text-right sm:table-cell",
+      render: (c) => <span className="text-muted">{c.lastOrderAt ? formatDateTime(c.lastOrderAt) : "—"}</span>,
+    },
+  ];
+
+  function renderCustomerActions(customer: CustomerListItem, variant: "card" | "row") {
+    const base =
+      variant === "card"
+        ? "flex flex-1 items-center justify-center rounded-xl py-2 text-sm font-semibold"
+        : "flex shrink-0 items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold";
+    return (
+      <Link
+        href={`/admin/clientes/${customer.id}`}
+        className={`${base} border border-sand text-chocolate transition-colors hover:bg-sand/60`}
+      >
+        Ver perfil
+      </Link>
+    );
+  }
+
   return (
     <PageContainer>
       <HeaderMinimal title="Clientes" />
 
       <div className="space-y-4 p-5">
-        <p className="text-sm text-muted">
-          {loading ? "Carregando…" : `${total} cliente${total !== 1 ? "s" : ""}`}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted">
+            {loading ? "Carregando…" : `${total} cliente${total !== 1 ? "s" : ""}`}
+          </p>
+          {!loading && !error && <ViewToggle value={view} onChange={setView} />}
+        </div>
 
         {!error && (
           <SearchBar
@@ -108,39 +156,42 @@ export default function ClientesAdminPage() {
         )}
         {!loading && !error && customers.length > 0 && (
           <>
-            <ResponsiveGrid cols={3}>
-              {customers.map((customer) => (
-                <EntityCard
-                  key={customer.id}
-                  href={`/admin/clientes/${customer.id}`}
-                  title={customer.name}
-                  actions={
-                    <Link
-                      href={`/admin/clientes/${customer.id}`}
-                      className="flex flex-1 items-center justify-center rounded-xl border border-sand py-2 text-sm font-semibold text-chocolate transition-colors hover:bg-sand/60"
-                    >
-                      Ver perfil
-                    </Link>
-                  }
-                >
-                  <p className="text-xs text-muted">{customer.phone}</p>
-                  <div className="grid grid-cols-2 gap-2 text-center">
-                    <div className="rounded-lg bg-sand/60 px-2 py-1.5">
-                      <p className="text-sm font-semibold leading-none text-chocolate">{formatCurrency(customer.ltv)}</p>
-                      <p className="mt-0.5 text-[10px] text-muted">LTV</p>
+            {view === "grid" && (
+              <ResponsiveGrid cols={3}>
+                {customers.map((customer) => (
+                  <EntityCard
+                    key={customer.id}
+                    href={`/admin/clientes/${customer.id}`}
+                    title={customer.name}
+                    actions={renderCustomerActions(customer, "card")}
+                  >
+                    <p className="text-xs text-muted">{customer.phone}</p>
+                    <div className="grid grid-cols-2 gap-2 text-center">
+                      <div className="rounded-lg bg-sand/60 px-2 py-1.5">
+                        <p className="text-sm font-semibold leading-none text-chocolate">{formatCurrency(customer.ltv)}</p>
+                        <p className="mt-0.5 text-[10px] text-muted">LTV</p>
+                      </div>
+                      <div className="rounded-lg bg-sand/60 px-2 py-1.5">
+                        <p className="text-sm font-semibold leading-none text-chocolate">
+                          {customer.lastOrderAt ? formatDateTime(customer.lastOrderAt) : "—"}
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-muted">
+                          {customer.lastOrderAt ? "Último pedido" : "Nenhum pedido ainda"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="rounded-lg bg-sand/60 px-2 py-1.5">
-                      <p className="text-sm font-semibold leading-none text-chocolate">
-                        {customer.lastOrderAt ? formatDateTime(customer.lastOrderAt) : "—"}
-                      </p>
-                      <p className="mt-0.5 text-[10px] text-muted">
-                        {customer.lastOrderAt ? "Último pedido" : "Nenhum pedido ainda"}
-                      </p>
-                    </div>
-                  </div>
-                </EntityCard>
-              ))}
-            </ResponsiveGrid>
+                  </EntityCard>
+                ))}
+              </ResponsiveGrid>
+            )}
+            {view === "list" && (
+              <EntityTable
+                items={customers}
+                columns={columns}
+                getKey={(c) => c.id}
+                renderActions={(c) => renderCustomerActions(c, "row")}
+              />
+            )}
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between pt-1">
