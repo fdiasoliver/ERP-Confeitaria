@@ -2,10 +2,13 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { CategoryChips, ProductCard, ProductHero } from "@/components/vitrine/ProductCard";
+import { CategoryChips, ProductCard, ProductHero, ProductRow, ProductRowActions } from "@/components/vitrine/ProductCard";
 import { VitrineSidebar } from "@/components/vitrine/VitrineSidebar";
+import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
+import { ViewToggle } from "@/components/shared/ViewToggle";
+import { useViewMode } from "@/hooks/useViewMode";
 import { useCart } from "@/context/CartContext";
-import { OCCASIONS as OCCASIONS_FALLBACK, PRODUCTS as MOCK_PRODUCTS } from "@/lib/mock-data";
+import { formatCurrency, OCCASIONS as OCCASIONS_FALLBACK, PRODUCTS as MOCK_PRODUCTS } from "@/lib/mock-data";
 import { getProducts } from "@/services/productService";
 import type { Product } from "@/lib/types";
 
@@ -22,6 +25,7 @@ export default function HomePage() {
   const [occasion, setOccasion] = useState("all");
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [occasions, setOccasions] = useState<Occasion[]>([ALL_OCCASION, ...OCCASIONS_FALLBACK]);
+  const [view, setView] = useViewMode("vitrine");
   const { items } = useCart();
 
   useEffect(() => {
@@ -81,6 +85,48 @@ export default function HomePage() {
       .filter((c) => c.products.length > 0);
   }, [products, filtered]);
 
+  const columns: EntityColumn<Product>[] = [
+    {
+      key: "product",
+      header: "Produto",
+      render: (p) => <ProductRow product={p} />,
+    },
+    {
+      key: "price",
+      header: "Preço",
+      className: "text-right",
+      render: (p) => (
+        <span className="font-semibold text-chocolate">
+          {formatCurrency(p.basePrice)}{p.basePrice < 10 ? "/un" : ""}
+        </span>
+      ),
+    },
+  ];
+
+  function renderCollection(products: Product[]) {
+    if (view === "list") {
+      return (
+        <EntityTable
+          items={products}
+          columns={columns}
+          getKey={(p) => p.id}
+          renderActions={(p) => <ProductRowActions product={p} quantity={quantities[p.id] ?? 0} />}
+        />
+      );
+    }
+    return (
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+        {products.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            quantity={quantities[product.id] ?? 0}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-cream md:flex">
       <VitrineSidebar occasions={occasions} selected={occasion} onSelect={setOccasion} />
@@ -95,7 +141,13 @@ export default function HomePage() {
           />
         </div>
 
-        <div className="md:mx-auto md:max-w-6xl md:px-6 md:py-6">
+        <div className="md:mx-auto md:max-w-7xl md:px-6 md:py-6">
+          {filtered.length > 0 && (
+            <div className="flex justify-end px-5 pb-2 md:px-0">
+              <ViewToggle value={view} onChange={setView} />
+            </div>
+          )}
+
           {hero && (
             <section className="px-5 pb-6 md:px-0">
               <ProductHero product={hero} quantity={quantities[hero.id] ?? 0} />
@@ -105,30 +157,14 @@ export default function HomePage() {
           {featuredRest.length > 0 && (
             <section className="px-5 pb-6 md:px-0">
               <h2 className="font-display mb-3 text-lg font-semibold">Destaques</h2>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                {featuredRest.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    quantity={quantities[product.id] ?? 0}
-                  />
-                ))}
-              </div>
+              {renderCollection(featuredRest)}
             </section>
           )}
 
           {byCategory.map((cat) => (
             <section key={cat.name} className="px-5 pb-6 md:px-0">
               <h2 className="font-display mb-3 text-lg font-semibold">{cat.name}</h2>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                {cat.products.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    quantity={quantities[product.id] ?? 0}
-                  />
-                ))}
-              </div>
+              {renderCollection(cat.products)}
             </section>
           ))}
 

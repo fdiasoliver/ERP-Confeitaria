@@ -120,6 +120,63 @@ export function ProductHero({ product, quantity }: ProductHeroProps) {
   );
 }
 
+/** Célula "Produto" da visão "Lista" da Vitrine (ViewToggle, Sprint DS.6)
+ * dentro de EntityTable — alternativa ao grid de ProductCard. O controle de
+ * quantidade fica em ProductRowActions, a célula de "Ações" da mesma linha. */
+export function ProductRow({ product }: { product: Product }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-xl">
+        {product.imageEmoji}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-chocolate">{product.name}</p>
+        <p className="text-xs text-muted">
+          {product.leadTimeDays} {product.leadTimeDays === 1 ? "dia" : "dias"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function ProductRowActions({ product, quantity }: ProductCardProps) {
+  const { addItem, updateQuantity } = useCart();
+
+  if (quantity === 0) {
+    return (
+      <Button type="button" size="sm" variant="outline" onClick={() => addItem(product)}>
+        Adicionar
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 rounded-lg bg-sand p-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        className="bg-card"
+        onClick={() => updateQuantity(product.id, quantity - 1)}
+        aria-label="Diminuir quantidade"
+      >
+        <Minus />
+      </Button>
+      <span className="min-w-[20px] text-center text-sm font-semibold">{quantity}</span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        className="bg-card"
+        onClick={() => updateQuantity(product.id, quantity + 1)}
+        aria-label="Aumentar quantidade"
+      >
+        <Plus />
+      </Button>
+    </div>
+  );
+}
+
 interface CategoryChipsProps {
   occasions: { id: string; name: string }[];
   selected: string;
