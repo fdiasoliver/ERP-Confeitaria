@@ -10,14 +10,16 @@ export interface EntityColumn<T> {
 }
 
 /** Visão de lista (tabela) — alternativa a um grid de cards, escolhida pelo
- * usuário via ViewToggle. Cross-domain (admin + área do cliente, desde a
- * Sprint DS.6). As colunas são definidas por cada página, porque cada
- * entidade expõe campos diferentes; só a estrutura da tabela é compartilhada. */
+ * usuário via ViewToggle, ou tabela de relatório só-leitura (P3.2). Cross-
+ * domain (admin + área do cliente, desde a Sprint DS.6). As colunas são
+ * definidas por cada página, porque cada entidade expõe campos diferentes; só
+ * a estrutura da tabela é compartilhada. `renderActions` omitido não mostra a
+ * coluna "Ações" (tabelas de relatório não têm ação por linha). */
 export function EntityTable<T>({ items, columns, getKey, renderActions }: {
   items: T[];
   columns: EntityColumn<T>[];
   getKey: (item: T) => string;
-  renderActions: (item: T) => React.ReactNode;
+  renderActions?: (item: T) => React.ReactNode;
 }) {
   return (
     <Card className="shadow-card gap-0 overflow-hidden rounded-2xl py-0">
@@ -34,12 +36,14 @@ export function EntityTable<T>({ items, columns, getKey, renderActions }: {
                   {col.header}
                 </th>
               ))}
-              <th
-                scope="col"
-                className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted"
-              >
-                Ações
-              </th>
+              {renderActions && (
+                <th
+                  scope="col"
+                  className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted"
+                >
+                  Ações
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -53,9 +57,11 @@ export function EntityTable<T>({ items, columns, getKey, renderActions }: {
                     {col.render(item)}
                   </td>
                 ))}
-                <td className="px-4 py-3 align-middle">
-                  <div className="flex justify-end gap-2">{renderActions(item)}</div>
-                </td>
+                {renderActions && (
+                  <td className="px-4 py-3 align-middle">
+                    <div className="flex justify-end gap-2">{renderActions(item)}</div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

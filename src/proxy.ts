@@ -12,8 +12,8 @@ const ROLE_REQUIRED: Record<string, string[]> = {
   "/admin/receitas": ["ADMIN", "PRODUCAO"],
   "/admin/fornecedores": ["ADMIN", "PRODUCAO"],
   "/admin/embalagens": ["ADMIN", "PRODUCAO"],
+  "/admin/relatorios": ["ADMIN", "FINANCEIRO"],
   // "/admin/usuarios": ["ADMIN"],
-  // "/admin/financeiro": ["ADMIN", "FINANCEIRO"],
 };
 
 // Casa tanto a rota exata quanto suas sub-rotas (ex.: "/admin/clientes/[id]"

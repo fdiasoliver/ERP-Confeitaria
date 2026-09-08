@@ -126,6 +126,68 @@ export async function findItemsGroupedByProduct(
   return grouped.map((g) => ({ productId: g.productId, quantity: g._sum.quantity ?? 0 }));
 }
 
+// ─── Leitura — relatório financeiro (P3.2, REGRAS_NEGOCIO.md 13/14) ───────────
+// "basis" decide o critério de faturamento (Product Owner, planejamento do
+// P3.2): ENTREGUE reflete pedidos de fato concluídos (mesmo critério já usado
+// pelo CMV abaixo); PAGO segue a Seção 13.1 literalmente (dinheiro recebido,
+// independente de status de entrega). CMV continua sempre ENTREGUE (13.7) —
+// o basis nunca altera essa regra, só a leitura de faturamento.
+
+export type RevenueBasis = "ENTREGUE" | "PAGO";
+
+function buildRevenueWhere(startDate: Date, endDate: Date, basis: RevenueBasis): Prisma.OrderWhereInput {
+  const range = { deliveryDate: { gte: dayRange(startDate).gte, lte: dayRange(endDate).lte } };
+  return basis === "ENTREGUE" ? { ...range, status: "ENTREGUE" } : { ...range, paymentStatus: "PAGO" };
+}
+
+export async function sumOrderTotals(
+  startDate: Date,
+  endDate: Date,
+  basis: RevenueBasis,
+): Promise<{ total: number; count: number }> {
+  const result = await prisma.order.aggregate({
+    where: buildRevenueWhere(startDate, endDate, basis),
+    _sum: { total: true },
+    _count: true,
+  });
+  return { total: Number(result._sum.total ?? 0), count: result._count };
+}
+
+export async function findItemsGroupedByProductInRange(
+  startDate: Date,
+  endDate: Date,
+  basis: RevenueBasis,
+): Promise<{ productId: string; quantity: number; totalPrice: number }[]> {
+  const grouped = await prisma.orderItem.groupBy({
+    by: ["productId"],
+    where: { order: buildRevenueWhere(startDate, endDate, basis) },
+    _sum: { quantity: true, totalPrice: true },
+  });
+  return grouped.map((g) => ({
+    productId: g.productId,
+    quantity: g._sum.quantity ?? 0,
+    totalPrice: Number(g._sum.totalPrice ?? 0),
+  }));
+}
+
+export async function groupOrdersByPaymentMethod(
+  startDate: Date,
+  endDate: Date,
+  basis: RevenueBasis,
+): Promise<{ paymentMethod: string; total: number; count: number }[]> {
+  const grouped = await prisma.order.groupBy({
+    by: ["paymentMethod"],
+    where: buildRevenueWhere(startDate, endDate, basis),
+    _sum: { total: true },
+    _count: true,
+  });
+  return grouped.map((g) => ({
+    paymentMethod: g.paymentMethod,
+    total: Number(g._sum.total ?? 0),
+    count: g._count,
+  }));
+}
+
 // ─── Escrita — transição de status ─────────────────────────────────────────────
 // Update do pedido + criação de OrderStatusHistory na mesma transação — migrado de
 // src/app/api/orders/[id]/status/route.ts (Sprint 2.K.2 removerá a rota antiga).

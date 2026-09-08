@@ -15,6 +15,7 @@ import {
   ClipboardList,
   Factory,
   Package,
+  BarChart3,
   Settings,
   LogOut,
   type LucideIcon,
@@ -67,6 +68,7 @@ const NAV: NavGroup[] = [
       { href: "/admin/embalagens", label: "Embalagens", roles: ["ADMIN", "PRODUCAO"], icon: Package },
     ],
   },
+  { items: [{ href: "/admin/relatorios", label: "Relatórios", roles: ["ADMIN", "FINANCEIRO"], icon: BarChart3 }] },
   { items: [{ href: "/admin/config", label: "Configurações", roles: ["ADMIN"], icon: Settings }] },
 ];
 
@@ -95,8 +97,9 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Desktop/tablet — sidebar vertical fixa */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-sand bg-white md:flex">
+      {/* Desktop/tablet — sidebar vertical fixa. print:hidden: telas com exportação
+          em PDF via window.print() (ex: /admin/relatorios) não devem imprimir o menu. */}
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-sand bg-white md:flex print:hidden">
         <div className="px-5 py-5">
           <Link href="/admin" className="font-display text-lg font-semibold text-chocolate">
             Doce Menina
@@ -155,7 +158,7 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile — barra horizontal com rolagem */}
-      <div className="flex items-center gap-2 overflow-x-auto border-b border-sand bg-white px-4 py-3 scrollbar-none md:hidden">
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-sand bg-white px-4 py-3 scrollbar-none md:hidden print:hidden">
         <Link href="/admin" className="font-display shrink-0 text-base font-semibold text-chocolate">
           DM
         </Link>
