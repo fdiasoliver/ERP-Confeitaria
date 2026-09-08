@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { CategoryChips, ProductCard, ProductHero, ProductRow, ProductRowActions } from "@/components/vitrine/ProductCard";
+import { ProductDetailDialog } from "@/components/vitrine/ProductDetailDialog";
 import { VitrineSidebar } from "@/components/vitrine/VitrineSidebar";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
 import { ViewToggle } from "@/components/shared/ViewToggle";
@@ -26,6 +27,7 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [occasions, setOccasions] = useState<Occasion[]>([ALL_OCCASION, ...OCCASIONS_FALLBACK]);
   const [view, setView] = useViewMode("vitrine");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { items } = useCart();
 
   useEffect(() => {
@@ -89,7 +91,7 @@ export default function HomePage() {
     {
       key: "product",
       header: "Produto",
-      render: (p) => <ProductRow product={p} />,
+      render: (p) => <ProductRow product={p} onOpenDetails={setSelectedProduct} />,
     },
     {
       key: "price",
@@ -121,6 +123,7 @@ export default function HomePage() {
             key={product.id}
             product={product}
             quantity={quantities[product.id] ?? 0}
+            onOpenDetails={setSelectedProduct}
           />
         ))}
       </div>
@@ -150,7 +153,11 @@ export default function HomePage() {
 
           {hero && (
             <section className="px-5 pb-6 md:px-0">
-              <ProductHero product={hero} quantity={quantities[hero.id] ?? 0} />
+              <ProductHero
+                product={hero}
+                quantity={quantities[hero.id] ?? 0}
+                onOpenDetails={setSelectedProduct}
+              />
             </section>
           )}
 
@@ -175,6 +182,12 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      <ProductDetailDialog
+        product={selectedProduct}
+        quantity={selectedProduct ? quantities[selectedProduct.id] ?? 0 : 0}
+        onClose={() => setSelectedProduct(null)}
+      />
     </div>
   );
 }

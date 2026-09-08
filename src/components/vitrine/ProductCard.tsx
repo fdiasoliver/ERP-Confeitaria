@@ -9,15 +9,44 @@ import { Minus, Plus } from "lucide-react";
 interface ProductCardProps {
   product: Product;
   quantity: number;
+  onOpenDetails: (product: Product) => void;
 }
 
-export function ProductCard({ product, quantity }: ProductCardProps) {
+/** Imagem real (Supabase/S3) tem prioridade sobre o emoji quando disponível
+ * (regra já documentada em Product.imageUrl, lib/types.ts) — antes só o
+ * emoji era renderizado, mesmo com imageUrl presente. */
+export function ProductImage({ product }: { product: Product }) {
+  if (product.imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+    );
+  }
+  return <>{product.imageEmoji}</>;
+}
+
+function handleCardKeyDown(e: React.KeyboardEvent, onOpen: () => void) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onOpen();
+  }
+}
+
+// Card inteiro abre o pop-up de detalhes ao clicar/Enter/Espaço; os botões de
+// quantidade avisam o clique com stopPropagation para não abrir o pop-up junto.
+export function ProductCard({ product, quantity, onOpenDetails }: ProductCardProps) {
   const { addItem, updateQuantity } = useCart();
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-sand bg-card">
-      <div className="flex aspect-square items-center justify-center bg-surface-2 text-5xl">
-        {product.imageEmoji}
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenDetails(product)}
+      onKeyDown={(e) => handleCardKeyDown(e, () => onOpenDetails(product))}
+      className="cursor-pointer overflow-hidden rounded-2xl border border-sand bg-card"
+    >
+      <div className="flex aspect-square items-center justify-center overflow-hidden bg-surface-2 text-5xl">
+        <ProductImage product={product} />
       </div>
       <div className="p-3">
         <h3 className="text-sm font-semibold leading-tight">{product.name}</h3>
@@ -27,7 +56,10 @@ export function ProductCard({ product, quantity }: ProductCardProps) {
           {" · "}
           {product.leadTimeDays} {product.leadTimeDays === 1 ? "dia" : "dias"}
         </p>
-        <div className="mt-2 flex items-center justify-between rounded-lg bg-sand p-1">
+        <div
+          className="mt-2 flex items-center justify-between rounded-lg bg-sand p-1"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button
             type="button"
             variant="ghost"
@@ -65,22 +97,29 @@ export function ProductCard({ product, quantity }: ProductCardProps) {
 interface ProductHeroProps {
   product: Product;
   quantity: number;
+  onOpenDetails: (product: Product) => void;
 }
 
-export function ProductHero({ product, quantity }: ProductHeroProps) {
+export function ProductHero({ product, quantity, onOpenDetails }: ProductHeroProps) {
   const { addItem, updateQuantity } = useCart();
 
   return (
-    <article className="flex items-center gap-4 rounded-2xl border border-sand bg-card p-4">
-      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-4xl">
-        {product.imageEmoji}
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenDetails(product)}
+      onKeyDown={(e) => handleCardKeyDown(e, () => onOpenDetails(product))}
+      className="flex cursor-pointer items-center gap-4 rounded-2xl border border-sand bg-card p-4"
+    >
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-2 text-4xl">
+        <ProductImage product={product} />
       </div>
       <div className="min-w-0 flex-1">
         <h3 className="font-display text-lg font-semibold leading-tight">{product.name}</h3>
         {product.description && (
           <p className="text-muted mt-0.5 text-xs">{product.description}</p>
         )}
-        <div className="mt-2 flex items-center justify-between">
+        <div className="mt-2 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
           <span className="text-sm font-semibold text-rose">
             {formatCurrency(product.basePrice)}
             {product.basePrice < 10 ? "/un" : ""}
@@ -122,12 +161,18 @@ export function ProductHero({ product, quantity }: ProductHeroProps) {
 
 /** Célula "Produto" da visão "Lista" da Vitrine (ViewToggle, Sprint DS.6)
  * dentro de EntityTable — alternativa ao grid de ProductCard. O controle de
- * quantidade fica em ProductRowActions, a célula de "Ações" da mesma linha. */
-export function ProductRow({ product }: { product: Product }) {
+ * quantidade fica em ProductRowActions, a célula de "Ações" da mesma linha
+ * (colunas diferentes de <table>, sem conflito de clique aninhado). */
+export function ProductRow({ product, onOpenDetails }: { product: Product; onOpenDetails: (product: Product) => void }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-xl">
-        {product.imageEmoji}
+    <button
+      type="button"
+      onClick={() => onOpenDetails(product)}
+      className="flex w-full items-center gap-3 text-left"
+      aria-label={`Ver detalhes de ${product.name}`}
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-2 text-xl">
+        <ProductImage product={product} />
       </div>
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-chocolate">{product.name}</p>
@@ -135,11 +180,11 @@ export function ProductRow({ product }: { product: Product }) {
           {product.leadTimeDays} {product.leadTimeDays === 1 ? "dia" : "dias"}
         </p>
       </div>
-    </div>
+    </button>
   );
 }
 
-export function ProductRowActions({ product, quantity }: ProductCardProps) {
+export function ProductRowActions({ product, quantity }: Omit<ProductCardProps, "onOpenDetails">) {
   const { addItem, updateQuantity } = useCart();
 
   if (quantity === 0) {
