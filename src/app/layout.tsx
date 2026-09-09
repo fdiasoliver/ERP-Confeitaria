@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { Providers } from "@/components/Providers";
+import { PwaServiceWorker } from "@/components/PwaServiceWorker";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -14,6 +15,15 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Doce Atelier — Confeitaria Artesanal",
   description: "Encomendas de bolos, doces e docinhos artesanais em São Paulo",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Doce Menina",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#191715",
 };
 
 export default function RootLayout({
@@ -26,6 +36,7 @@ export default function RootLayout({
       <body className="min-h-full antialiased">
         <Providers>{children}</Providers>
         <Toaster position="bottom-center" richColors />
+        <PwaServiceWorker />
       </body>
     </html>
   );
