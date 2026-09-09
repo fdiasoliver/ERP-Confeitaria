@@ -19,6 +19,7 @@ import {
   Scale,
   Palette,
   BarChart3,
+  Wallet,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -39,6 +40,7 @@ const MODULES: { href: string; title: string; desc: string; icon: LucideIcon; re
   { href: "/admin/unidades", title: "Unidades", desc: "Medidas usadas em ingredientes e receitas", icon: Scale, ready: true },
   { href: "/admin/em-construcao?modulo=Tema", title: "Tema", desc: "Cores e identidade visual", icon: Palette },
   { href: "/admin/relatorios", title: "Relatórios", desc: "Faturamento, margem e métodos de pagamento", icon: BarChart3, ready: true },
+  { href: "/admin/despesas", title: "Despesas", desc: "Despesas avulsas e contas a pagar", icon: Wallet, ready: true },
   { href: "/admin/config", title: "Configurações", desc: "Dados da empresa, endereço, PIX e precificação", icon: Settings, ready: true },
 ];
 

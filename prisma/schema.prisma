@@ -251,6 +251,7 @@ model Supplier {
   notes        String? // condições de pagamento, mínimo de compra etc. (texto livre)
   active       Boolean     @default(true)
   packagings   Packaging[] // relação inversa — Módulo 2.H (Sprint 2.H.1), aditiva, nenhum campo existente alterado
+  expenses     Expense[] // relação inversa — Fundação de Despesas (09/09/2026), aditiva
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -543,4 +544,48 @@ model WhatsAppLog {
 
   @@index([orderId])
   @@index([phone])
+}
+
+// ─── Financeiro — Despesas (REGRAS_NEGOCIO.md 13.2/13.4) ──────────────────────
+// Fundação de Despesas (09/09/2026, planejamento com o Product Owner): uma
+// única entidade cobre tanto "despesa avulsa" (13.2) quanto "conta a pagar"
+// (13.4) — diferenciadas só pelo `status`: PAGO (já ocorrida, `dueDate`
+// irrelevante) ou PENDENTE (obrigação futura, `dueDate` é o vencimento).
+// Categoria é lista fixa (enum), sem cadastro próprio — decisão explícita do
+// Product Owner para não abrir mais uma tela de "Categorias" no admin.
+// Centro de custo e cálculo automático de imposto ficaram fora desta fundação
+// (mesma decisão) — podem ser adicionados depois sem quebrar este modelo.
+
+enum ExpenseCategory {
+  ALUGUEL
+  SALARIOS
+  MARKETING
+  IMPOSTOS
+  SERVICOS
+  MANUTENCAO
+  OUTROS
+}
+
+enum ExpenseStatus {
+  PENDENTE
+  PAGO
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  description String
+  category    ExpenseCategory
+  amount      Decimal         @db.Decimal(10, 2)
+  status      ExpenseStatus   @default(PENDENTE)
+  dueDate     DateTime?       @db.Date // relevante quando status = PENDENTE ("conta a pagar")
+  paidDate    DateTime?       @db.Date // preenchida quando status muda para PAGO
+  supplierId  String?
+  supplier    Supplier?       @relation(fields: [supplierId], references: [id])
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([status])
+  @@index([dueDate])
+  @@index([category])
 }

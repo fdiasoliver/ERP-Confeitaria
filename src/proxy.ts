@@ -13,6 +13,7 @@ const ROLE_REQUIRED: Record<string, string[]> = {
   "/admin/fornecedores": ["ADMIN", "PRODUCAO"],
   "/admin/embalagens": ["ADMIN", "PRODUCAO"],
   "/admin/relatorios": ["ADMIN", "FINANCEIRO"],
+  "/admin/despesas": ["ADMIN", "FINANCEIRO"],
   // "/admin/usuarios": ["ADMIN"],
 };
 

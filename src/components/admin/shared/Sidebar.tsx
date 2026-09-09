@@ -16,6 +16,7 @@ import {
   Factory,
   Package,
   BarChart3,
+  Wallet,
   Settings,
   LogOut,
   type LucideIcon,
@@ -68,7 +69,13 @@ const NAV: NavGroup[] = [
       { href: "/admin/embalagens", label: "Embalagens", roles: ["ADMIN", "PRODUCAO"], icon: Package },
     ],
   },
-  { items: [{ href: "/admin/relatorios", label: "Relatórios", roles: ["ADMIN", "FINANCEIRO"], icon: BarChart3 }] },
+  {
+    label: "Financeiro",
+    items: [
+      { href: "/admin/relatorios", label: "Relatórios", roles: ["ADMIN", "FINANCEIRO"], icon: BarChart3 },
+      { href: "/admin/despesas", label: "Despesas", roles: ["ADMIN", "FINANCEIRO"], icon: Wallet },
+    ],
+  },
   { items: [{ href: "/admin/config", label: "Configurações", roles: ["ADMIN"], icon: Settings }] },
 ];
 
