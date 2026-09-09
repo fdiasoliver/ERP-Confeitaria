@@ -30,7 +30,7 @@ const MODULES: { href: string; title: string; desc: string; icon: LucideIcon; re
   { href: "/admin/producao", title: "Produção", desc: "Dashboard do dia e semana", icon: ChefHat, ready: true },
   { href: "/admin/categorias", title: "Categorias", desc: "Organização do catálogo de produtos", icon: Tags, ready: true },
   { href: "/admin/ocasioes", title: "Ocasiões", desc: "Tags de campanha para a vitrine", icon: PartyPopper, ready: true },
-  { href: "/admin/em-construcao?modulo=Usuários", title: "Usuários", desc: "Equipe e permissões", icon: UserCog },
+  { href: "/admin/usuarios", title: "Usuários", desc: "Equipe e permissões", icon: UserCog, ready: true },
   { href: "/admin/clientes", title: "Clientes", desc: "Histórico, LTV e notas internas", icon: Users, ready: true },
   { href: "/admin/ingredientes", title: "Ingredientes", desc: "Estoque e histórico de preços", icon: Egg, ready: true },
   { href: "/admin/fornecedores", title: "Fornecedores", desc: "Cadastro de fornecedores de insumos", icon: Factory, ready: true },

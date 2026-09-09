@@ -17,6 +17,7 @@ import {
   Package,
   BarChart3,
   Wallet,
+  UserCog,
   Settings,
   LogOut,
   type LucideIcon,
@@ -76,6 +77,7 @@ const NAV: NavGroup[] = [
       { href: "/admin/despesas", label: "Despesas", roles: ["ADMIN", "FINANCEIRO"], icon: Wallet },
     ],
   },
+  { items: [{ href: "/admin/usuarios", label: "Usuários", roles: ["ADMIN"], icon: UserCog }] },
   { items: [{ href: "/admin/config", label: "Configurações", roles: ["ADMIN"], icon: Settings }] },
 ];
 
