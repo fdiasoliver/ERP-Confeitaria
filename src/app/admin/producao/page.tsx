@@ -10,6 +10,7 @@ import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
+import { ProductionLoadCalendar } from "@/components/admin/producao/ProductionLoadCalendar";
 import { STATUS_LABELS, DELIVERY_LABELS } from "@/lib/types";
 import type { OrderStatus } from "@/lib/types";
 import { formatCurrency } from "@/lib/formatters/currency";
@@ -21,6 +22,7 @@ import {
   type KanbanOrderDTO,
   type ConsolidatedIngredientDTO,
   type CMVResultDTO,
+  type ProductionLoadDayDTO,
 } from "@/lib/api/orderAdminApi";
 
 // ── Constantes locais ────────────────────────────────────────────────────────
@@ -109,6 +111,24 @@ export default function ProducaoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Abas Semana/Calendário: seleciona um dia no calendário de carga (abaixo) para
+  // ver o Kanban detalhado daquele dia — reaproveita o mesmo carregamento de
+  // Hoje/Amanhã (dateParam), só troca a data de origem (P3.3).
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d;
+  });
+  const [productionLoad, setProductionLoad] = useState<ProductionLoadDayDTO[] | null>(null);
+  const [loadRangeLoading, setLoadRangeLoading] = useState(false);
+  const [loadRangeError, setLoadRangeError] = useState<string | null>(null);
+
+  function handleTabChange(nextTab: Tab) {
+    setTab(nextTab);
+    setSelectedCalendarDate(null);
+  }
+
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -124,9 +144,9 @@ export default function ProducaoPage() {
   const [cmvLoading, setCmvLoading] = useState(true);
   const [cmvError, setCmvError] = useState<string | null>(null);
 
-  // Abas Semana/Calendário: a API só aceita um único dia ou nenhum filtro (não
-  // suporta intervalo) — sem endpoint de intervalo pronto, mesmo padrão de
-  // admin/em-construcao/page.tsx é usado para essas duas abas (ver dateParam null).
+  // Abas Semana/Calendário: o Kanban detalhado só aparece depois de selecionar
+  // um dia no calendário de carga (selectedCalendarDate) — antes disso,
+  // dateParam fica null e só a seção do calendário é exibida (P3.3).
   const dateParam = useMemo(() => {
     if (tab === "Hoje") return toDateParam(new Date());
     if (tab === "Amanhã") {
@@ -134,8 +154,62 @@ export default function ProducaoPage() {
       d.setDate(d.getDate() + 1);
       return toDateParam(d);
     }
+    return selectedCalendarDate;
+  }, [tab, selectedCalendarDate]);
+
+  const isRangeTab = tab === "Semana" || tab === "Calendário";
+
+  const loadRange = useMemo(() => {
+    if (tab === "Semana") {
+      const start = new Date();
+      const end = new Date();
+      end.setDate(end.getDate() + 6);
+      return { start: toDateParam(start), end: toDateParam(end) };
+    }
+    if (tab === "Calendário") {
+      const start = new Date(calendarMonth);
+      const end = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0);
+      return { start: toDateParam(start), end: toDateParam(end) };
+    }
     return null;
-  }, [tab]);
+  }, [tab, calendarMonth]);
+
+  async function loadProductionLoad() {
+    if (!loadRange) return;
+    setLoadRangeLoading(true);
+    setLoadRangeError(null);
+    try {
+      const result = await orderAdminApi.getProductionLoad(loadRange.start, loadRange.end);
+      setProductionLoad(result);
+    } catch (err) {
+      setLoadRangeError(err instanceof Error ? err.message : "Erro ao carregar carga de produção.");
+    } finally {
+      setLoadRangeLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (loadRange) loadProductionLoad(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [loadRange]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function goToPreviousMonth() {
+    setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    setSelectedCalendarDate(null);
+  }
+
+  function goToNextMonth() {
+    setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    setSelectedCalendarDate(null);
+  }
+
+  const selectedDayLabel = useMemo(() => {
+    if (tab === "Hoje") return "hoje";
+    if (tab === "Amanhã") return "amanhã";
+    if (selectedCalendarDate) {
+      return new Date(`${selectedCalendarDate}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
+    }
+    return "";
+  }, [tab, selectedCalendarDate]);
 
   async function load(silent = false) {
     if (!dateParam) return;
@@ -252,8 +326,6 @@ export default function ProducaoPage() {
     }
   }
 
-  const showDateRangeUnavailable = tab === "Semana" || tab === "Calendário";
-
   return (
     <PageContainer>
       <HeaderMinimal title="Produção" />
@@ -265,7 +337,7 @@ export default function ProducaoPage() {
               <button
                 key={t}
                 type="button"
-                onClick={() => setTab(t)}
+                onClick={() => handleTabChange(t)}
                 className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
                   tab === t ? "bg-chocolate text-white" : "bg-white text-chocolate hover:bg-sand/60"
                 }`}
@@ -276,18 +348,43 @@ export default function ProducaoPage() {
           </div>
         </div>
 
-        {showDateRangeUnavailable && (
-          <div className="shadow-card flex flex-col items-center justify-center rounded-2xl bg-white px-5 py-16 text-center">
-            <span className="mb-4 text-5xl">🔧</span>
-            <h2 className="font-display mb-2 text-xl font-semibold text-chocolate">Em construção</h2>
-            <p className="text-sm text-muted">
-              A visão de {tab === "Semana" ? "Semana" : "Calendário"} ainda não está disponível — a API atual
-              só suporta consulta por um único dia. Este módulo será implementado em uma próxima Sprint.
-            </p>
-          </div>
+        {isRangeTab && (
+          <section className="shadow-card rounded-2xl bg-white p-4">
+            {tab === "Calendário" && (
+              <div className="mb-3 flex items-center justify-between">
+                <button type="button" onClick={goToPreviousMonth} aria-label="Mês anterior" className="rounded-lg px-2 py-1 text-chocolate hover:bg-sand/60">
+                  ‹
+                </button>
+                <p className="font-display font-semibold text-chocolate capitalize">
+                  {calendarMonth.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+                </p>
+                <button type="button" onClick={goToNextMonth} aria-label="Próximo mês" className="rounded-lg px-2 py-1 text-chocolate hover:bg-sand/60">
+                  ›
+                </button>
+              </div>
+            )}
+
+            {loadRangeLoading && <LoadingState count={1} />}
+            {!loadRangeLoading && loadRangeError && <ErrorState message={loadRangeError} onRetry={() => loadProductionLoad()} />}
+            {!loadRangeLoading && !loadRangeError && productionLoad && (
+              <>
+                <ProductionLoadCalendar
+                  days={productionLoad}
+                  selectedDate={selectedCalendarDate}
+                  onSelectDate={setSelectedCalendarDate}
+                  layout={tab === "Semana" ? "week" : "month"}
+                />
+                <div className="mt-3 flex items-center gap-4 text-[10px] text-muted">
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-sand" /> sem pedidos</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-sage/40" /> normal</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-rose/40" /> sobrecarga</span>
+                </div>
+              </>
+            )}
+          </section>
         )}
 
-        {!showDateRangeUnavailable && (
+        {dateParam && (
           <>
             {loading && <LoadingState count={4} />}
             {!loading && error && <ErrorState message={error} onRetry={() => load(false)} />}
@@ -334,7 +431,9 @@ export default function ProducaoPage() {
                 )}
 
                 <section>
-                  <h2 className="font-display mb-3 font-semibold text-chocolate">Kanban</h2>
+                  <h2 className="font-display mb-3 font-semibold text-chocolate">
+                    Kanban{isRangeTab ? ` — ${selectedDayLabel}` : ""}
+                  </h2>
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                     {COLUMN_ORDER.map((column) => {
                       const orders = kanbanData.columns[column];
@@ -397,7 +496,7 @@ export default function ProducaoPage() {
                 {COLUMN_ORDER.every((column) => kanbanData.columns[column].length === 0) && (
                   <EmptyState
                     title="Nenhum pedido para esta data"
-                    description={`Não há pedidos em produção para ${tab === "Hoje" ? "hoje" : "amanhã"}.`}
+                    description={`Não há pedidos em produção para ${selectedDayLabel}.`}
                   />
                 )}
               </>
@@ -414,7 +513,7 @@ export default function ProducaoPage() {
                   {consolidation.length === 0 ? (
                     <EmptyState
                       title="Nenhum ingrediente a consolidar"
-                      description={`Não há pedidos elegíveis para consolidação de ingredientes em ${tab === "Hoje" ? "hoje" : "amanhã"}.`}
+                      description={`Não há pedidos elegíveis para consolidação de ingredientes em ${selectedDayLabel}.`}
                     />
                   ) : (
                     <div className="shadow-card overflow-hidden rounded-2xl bg-white">

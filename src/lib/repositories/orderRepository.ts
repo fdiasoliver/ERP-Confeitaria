@@ -126,6 +126,24 @@ export async function findItemsGroupedByProduct(
   return grouped.map((g) => ({ productId: g.productId, quantity: g._sum.quantity ?? 0 }));
 }
 
+// ─── Leitura — carga de produção por dia (P3.3, calendário) ───────────────────
+
+export async function countOrdersByDeliveryDateInRange(
+  startDate: Date,
+  endDate: Date,
+  excludeStatuses: OrderStatus[] = [],
+): Promise<{ date: Date; count: number }[]> {
+  const grouped = await prisma.order.groupBy({
+    by: ["deliveryDate"],
+    where: {
+      deliveryDate: { gte: dayRange(startDate).gte, lte: dayRange(endDate).lte },
+      ...(excludeStatuses.length > 0 ? { status: { notIn: excludeStatuses } } : {}),
+    },
+    _count: true,
+  });
+  return grouped.map((g) => ({ date: g.deliveryDate, count: g._count }));
+}
+
 // ─── Leitura — relatório financeiro (P3.2, REGRAS_NEGOCIO.md 13/14) ───────────
 // "basis" decide o critério de faturamento (Product Owner, planejamento do
 // P3.2): ENTREGUE reflete pedidos de fato concluídos (mesmo critério já usado

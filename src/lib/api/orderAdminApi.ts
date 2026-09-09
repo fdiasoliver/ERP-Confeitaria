@@ -72,6 +72,14 @@ export interface CMVResultDTO {
   items: CMVLineDTO[];
 }
 
+// Espelha src/lib/orderService.ts (ProductionLoadDayDTO) — carga de produção
+// por dia, P3.3 (Calendário de produção).
+export interface ProductionLoadDayDTO {
+  date: string;
+  orderCount: number;
+  isOverloaded: boolean;
+}
+
 export interface OrderDTO {
   id: string;
   orderNumber: number;
@@ -146,4 +154,10 @@ export async function getConsolidation(
  * src/app/api/admin/cmv/route.ts). */
 export async function getCMV(startDate: string, endDate: string): Promise<CMVResultDTO> {
   return request<CMVResultDTO>(`/api/admin/cmv?startDate=${startDate}&endDate=${endDate}`);
+}
+
+/** `startDate`/`endDate` no formato YYYY-MM-DD. Ambos obrigatórios (ver
+ * src/app/api/admin/orders/load/route.ts). */
+export async function getProductionLoad(startDate: string, endDate: string): Promise<ProductionLoadDayDTO[]> {
+  return request<ProductionLoadDayDTO[]>(`/api/admin/orders/load?startDate=${startDate}&endDate=${endDate}`);
 }

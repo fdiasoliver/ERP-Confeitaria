@@ -65,9 +65,12 @@ export type UserDTO = Omit<PrismaUser, "passwordHash" | "createdAt" | "updatedAt
 };
 
 function mapToUser(raw: PrismaUser): UserDTO {
-  const { passwordHash: _passwordHash, ...rest } = raw;
   return {
-    ...rest,
+    id: raw.id,
+    name: raw.name,
+    email: raw.email,
+    role: raw.role,
+    active: raw.active,
     createdAt: raw.createdAt.toISOString(),
     updatedAt: raw.updatedAt.toISOString(),
   };

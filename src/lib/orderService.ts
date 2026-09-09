@@ -6,6 +6,7 @@ import {
   countByDateAndStatus,
   sumItemQuantityByDateAndStatus,
   countByDateExcludingStatus,
+  countOrdersByDeliveryDateInRange,
   findItemsForConsolidation,
   updateStatusWithHistory,
   type OrderWithItems,
@@ -13,6 +14,7 @@ import {
 import { resolveConversionFactor } from "@/lib/recipeService";
 import { notifyOrderStatus } from "@/lib/whatsappNotificationService";
 import { findCustomerPhoneById } from "@/lib/repositories/customerRepository";
+import { getStoreConfig } from "@/lib/storeConfigService";
 
 // ─── Erros de domínio ─────────────────────────────────────────────────────────
 
@@ -217,6 +219,51 @@ export async function getKanbanData(date?: Date): Promise<KanbanDataDTO> {
     stats: { orderCount, itemCount, urgentCount },
     columns,
   };
+}
+
+// ─── Carga de produção por dia (P3.3 — Calendário de produção) ────────────────
+//
+// Aba "Calendário"/"Semana" em /admin/producao (antes "Em construção" — a API
+// de Kanban só aceitava um único dia). RASCUNHO (ainda não confirmado) e
+// CANCELADO (não vai ser produzido) ficam fora da contagem — carga real de
+// produção, não "quantos registros de Order existem nessa data" (diferente do
+// `orderCount` do Kanban de um único dia, que não faz essa exclusão — aqui a
+// distinção importa mais, porque o objetivo é alertar sobrecarga real).
+//
+// Limiar de sobrecarga: StoreConfig.monthlyProductionUnits (já configurado em
+// /admin/config para o cálculo de precificação do P3.1) ÷ 30 — reaproveita um
+// número que o Product Owner já forneceu, em vez de inventar uma constante
+// nova. Heurística simples, ajustável depois se não fizer sentido na prática.
+
+export interface ProductionLoadDayDTO {
+  date: string; // YYYY-MM-DD
+  orderCount: number;
+  isOverloaded: boolean;
+}
+
+function toDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+export async function getProductionLoad(startDate: Date, endDate: Date): Promise<ProductionLoadDayDTO[]> {
+  const [grouped, storeConfig] = await Promise.all([
+    countOrdersByDeliveryDateInRange(startDate, endDate, ["RASCUNHO", "CANCELADO"] as PrismaOrderStatus[]),
+    getStoreConfig(),
+  ]);
+
+  const dailyCapacity = Math.max(1, Math.round(storeConfig.monthlyProductionUnits / 30));
+  const countByDate = new Map(grouped.map((g) => [toDateKey(g.date), g.count]));
+
+  const days: ProductionLoadDayDTO[] = [];
+  const cursor = new Date(startDate);
+  while (cursor <= endDate) {
+    const key = toDateKey(cursor);
+    const orderCount = countByDate.get(key) ?? 0;
+    days.push({ date: key, orderCount, isOverloaded: orderCount > dailyCapacity });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return days;
 }
 
 // ─── Consolidação de batch (A-03) ──────────────────────────────────────────────
