@@ -1,22 +1,25 @@
+export interface ThemeTokens {
+  cream: string;
+  chocolate: string;
+  rose: string;
+  sage: string;
+  caramel: string;
+  sand: string;
+  muted: string;
+  surface2: string;
+}
+
 export interface ThemePreset {
   id: string;
   name: string;
   description: string;
-  tokens: {
-    cream: string;
-    chocolate: string;
-    rose: string;
-    sage: string;
-    caramel: string;
-    sand: string;
-    muted: string;
-    surface2: string;
-  };
+  tokens: ThemeTokens;
 }
 
 export interface ThemeStatus {
   activePresetId: string;
-  presets: ThemePreset[];
+  modernoPreset: ThemePreset;
+  customTokens: ThemeTokens;
 }
 
 export class ApiRequestError extends Error {
@@ -40,6 +43,10 @@ export async function getThemeStatus(): Promise<ThemeStatus> {
   return request<ThemeStatus>("/api/admin/theme");
 }
 
-export async function setThemePreset(presetId: string): Promise<ThemePreset> {
-  return request<ThemePreset>("/api/admin/theme", { method: "PATCH", body: JSON.stringify({ presetId }) });
+export async function activatePreset(presetId: string): Promise<{ activePresetId: string }> {
+  return request("/api/admin/theme", { method: "PATCH", body: JSON.stringify({ presetId }) });
+}
+
+export async function saveCustomTheme(tokens: ThemeTokens): Promise<{ activePresetId: string; tokens: ThemeTokens }> {
+  return request("/api/admin/theme", { method: "PATCH", body: JSON.stringify({ presetId: "personalizado", tokens }) });
 }

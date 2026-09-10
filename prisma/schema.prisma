@@ -136,7 +136,8 @@ model ThemeConfig {
   // nunca lidos em nenhum lugar do código, valores default de antes da Sprint
   // DS.1 — dívida legada, fora do escopo do Módulo Tema (09-10/09/2026), não
   // removidos aqui para não ser uma mudança não solicitada.
-  activePreset    String   @default("moderno") // chave de src/lib/theme-presets.ts — Módulo Tema (09-10/09/2026)
+  activePreset    String   @default("moderno") // "moderno" | "personalizado" — src/lib/theme-presets.ts
+  customTokens    Json? // as 8 cores do preset "personalizado" (formato ThemePreset["tokens"]) — null até o admin salvar pela 1ª vez
   logoUrl         String?
   faviconUrl      String?
   isActive        Boolean  @default(true)

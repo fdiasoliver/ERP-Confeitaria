@@ -15,6 +15,10 @@ export async function ThemeStyleOverride() {
   const { tokens } = preset;
   const css = `html:root{--cream:${tokens.cream};--chocolate:${tokens.chocolate};--rose:${tokens.rose};--sage:${tokens.sage};--caramel:${tokens.caramel};--sand:${tokens.sand};--muted:${tokens.muted};--surface-2:${tokens.surface2};}`;
 
-  // CSS vem só de theme-presets.ts (valores fixos em código, nunca texto livre de usuário).
+  // Seguro mesmo para o preset "personalizado" (cores vindas do banco, não de
+  // theme-presets.ts): getActiveThemePreset() só usa customTokens depois de
+  // isCompleteThemeTokens() validar as 8 contra /^#[0-9A-Fa-f]{6}$/ — nenhum
+  // valor que chegue aqui pode fugir desse formato, então não há como injetar
+  // `</style>`/HTML através de uma cor.
   return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }
