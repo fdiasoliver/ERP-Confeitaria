@@ -132,6 +132,11 @@ model ThemeConfig {
   secondaryColor  String   @default("#3D2B1F")
   backgroundColor String   @default("#FAF7F2")
   accentColor     String   @default("#7A9E7E")
+  // Campos acima (primaryColor/secondaryColor/backgroundColor/accentColor):
+  // nunca lidos em nenhum lugar do código, valores default de antes da Sprint
+  // DS.1 — dívida legada, fora do escopo do Módulo Tema (09-10/09/2026), não
+  // removidos aqui para não ser uma mudança não solicitada.
+  activePreset    String   @default("moderno") // chave de src/lib/theme-presets.ts — Módulo Tema (09-10/09/2026)
   logoUrl         String?
   faviconUrl      String?
   isActive        Boolean  @default(true)

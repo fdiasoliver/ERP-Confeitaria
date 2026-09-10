@@ -18,6 +18,7 @@ import {
   BarChart3,
   Wallet,
   UserCog,
+  Palette,
   Settings,
   LogOut,
   type LucideIcon,
@@ -78,7 +79,12 @@ const NAV: NavGroup[] = [
     ],
   },
   { items: [{ href: "/admin/usuarios", label: "Usuários", roles: ["ADMIN"], icon: UserCog }] },
-  { items: [{ href: "/admin/config", label: "Configurações", roles: ["ADMIN"], icon: Settings }] },
+  {
+    items: [
+      { href: "/admin/tema", label: "Tema", roles: ["ADMIN"], icon: Palette },
+      { href: "/admin/config", label: "Configurações", roles: ["ADMIN"], icon: Settings },
+    ],
+  },
 ];
 
 function initials(nameOrEmail: string): string {
