@@ -131,8 +131,7 @@ export default function TemaAdminPage() {
 
       <div className="space-y-4 p-5">
         <p className="text-sm text-muted">
-          Escolha a paleta do site inteiro (loja e admin). A mudança pode levar até 1 hora para aparecer em todas as
-          páginas (cache).
+          Escolha a paleta do site inteiro (loja e admin). A mudança aparece assim que você recarregar a página.
         </p>
 
         {loading && <LoadingState count={2} />}

@@ -9,7 +9,11 @@ import "./globals.css";
 // Cacheado por 1h — o layout raiz nunca deve depender do banco a cada
 // requisição (mesma cautela de app/manifest.ts, motivada pelo incidente de
 // pool de conexões corrigido nesta sessão). ThemeStyleOverride também nunca
-// lança (getActiveThemePreset já trata falha do banco internamente).
+// lança (getActiveThemePreset já trata falha do banco internamente). O 1h é
+// só a rede de segurança para tráfego normal — ao salvar um tema em
+// /admin/tema, a API já chama revalidatePath("/", "layout") na hora, então a
+// troca aparece no próximo carregamento, não depois de até 1h (achado real do
+// Product Owner, 10/09/2026: salvar funcionava mas o site não refletia).
 export const revalidate = 3600;
 
 // Fonte única (Sprint DS.3) — substitui Fraunces (display) + DM Sans (corpo).
