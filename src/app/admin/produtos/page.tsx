@@ -459,6 +459,14 @@ function ProdutosAdminPageContent() {
     const busy = actionLoading === product.id;
     return (
       <>
+        {variant === "row" && (
+          <Link
+            href={`/admin/produtos/${product.id}`}
+            className={`${base} ${neutral} text-chocolate`}
+          >
+            Ver produto
+          </Link>
+        )}
         <button type="button" onClick={() => openEdit(product)} className={`${base} ${neutral} text-chocolate`}>
           Editar
         </button>

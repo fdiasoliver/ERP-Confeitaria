@@ -326,6 +326,14 @@ export default function EmbalagensAdminPage() {
     const busy = actionLoading === packaging.id;
     return (
       <>
+        {variant === "row" && (
+          <Link
+            href={`/admin/embalagens/${packaging.id}`}
+            className={`${base} ${neutral} text-chocolate`}
+          >
+            Ver embalagem
+          </Link>
+        )}
         <button
           type="button"
           onClick={() => openDuplicate(packaging)}
