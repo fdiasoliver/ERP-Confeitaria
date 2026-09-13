@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // Rotas não listadas aqui requerem apenas autenticação admin (qualquer UserRole).
 const ROLE_REQUIRED: Record<string, string[]> = {
   "/admin/config": ["ADMIN"],
+  "/admin/canais-venda": ["ADMIN"],
   "/admin/clientes": ["ADMIN", "ATENDIMENTO"],
   "/admin/producao": ["ADMIN", "ATENDIMENTO", "PRODUCAO", "FINANCEIRO"],
   "/admin/unidades": ["ADMIN", "PRODUCAO"],

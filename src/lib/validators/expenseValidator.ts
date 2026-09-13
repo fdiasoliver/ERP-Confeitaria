@@ -17,6 +17,8 @@ export interface ExpenseInput {
   amount: number;
   dueDate?: string | null; // YYYY-MM-DD
   supplierId?: string | null;
+  salesChannelId?: string | null;
+  productCategoryId?: string | null;
   notes?: string | null;
 }
 

@@ -349,6 +349,7 @@ model ProductCategory {
   icon      String    @default("package")
   isActive  Boolean   @default(true)
   products  Product[]
+  expenses  Expense[] // relação inversa — obrigatória pelo Prisma (Centro de Custo, Sprint 2)
 }
 
 model OccasionTag {
@@ -404,6 +405,23 @@ model ProductOccasion {
   occasion   OccasionTag @relation(fields: [occasionId], references: [id], onDelete: Cascade)
 
   @@id([productId, occasionId])
+}
+
+// ─── Canais de venda ─────────────────────────────────────────────────────────
+// Pré-requisito para o futuro Centro de Custo (Despesas) — cadastro do canal em
+// si, aditivo, sem nenhuma relação com Expense ou qualquer outro modelo ainda.
+
+model SalesChannel {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  color     String    @default("#E8A598")
+  icon      String    @default("layout-grid")
+  sortOrder Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expenses  Expense[] // relação inversa — obrigatória pelo Prisma (Centro de Custo, Sprint 2)
 }
 
 // ─── Embalagens ──────────────────────────────────────────────────────────────
@@ -578,20 +596,26 @@ enum ExpenseStatus {
 }
 
 model Expense {
-  id          String          @id @default(cuid())
-  description String
-  category    ExpenseCategory
-  amount      Decimal         @db.Decimal(10, 2)
-  status      ExpenseStatus   @default(PENDENTE)
-  dueDate     DateTime?       @db.Date // relevante quando status = PENDENTE ("conta a pagar")
-  paidDate    DateTime?       @db.Date // preenchida quando status muda para PAGO
-  supplierId  String?
-  supplier    Supplier?       @relation(fields: [supplierId], references: [id])
-  notes       String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id                String           @id @default(cuid())
+  description       String
+  category          ExpenseCategory
+  amount            Decimal          @db.Decimal(10, 2)
+  status            ExpenseStatus    @default(PENDENTE)
+  dueDate           DateTime?        @db.Date // relevante quando status = PENDENTE ("conta a pagar")
+  paidDate          DateTime?        @db.Date // preenchida quando status muda para PAGO
+  supplierId        String?
+  supplier          Supplier?        @relation(fields: [supplierId], references: [id])
+  salesChannelId    String?
+  salesChannel      SalesChannel?    @relation(fields: [salesChannelId], references: [id], onDelete: SetNull)
+  productCategoryId String?
+  productCategory   ProductCategory? @relation(fields: [productCategoryId], references: [id], onDelete: SetNull)
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@index([status])
   @@index([dueDate])
   @@index([category])
+  @@index([salesChannelId])
+  @@index([productCategoryId])
 }

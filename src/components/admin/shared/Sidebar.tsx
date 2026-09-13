@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   Tags,
   PartyPopper,
+  Store,
   Scale,
   Egg,
   ClipboardList,
@@ -59,6 +60,7 @@ const NAV: NavGroup[] = [
       { href: "/admin/produtos", label: "Produtos", roles: ["ADMIN"], icon: ShoppingBag },
       { href: "/admin/categorias", label: "Categorias", roles: ["ADMIN"], icon: Tags },
       { href: "/admin/ocasioes", label: "Ocasiões", roles: ["ADMIN"], icon: PartyPopper },
+      { href: "/admin/canais-venda", label: "Canais de Venda", roles: ["ADMIN"], icon: Store },
     ],
   },
   {

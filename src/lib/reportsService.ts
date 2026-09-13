@@ -6,6 +6,10 @@ import {
   groupOrdersByPaymentMethod,
   type RevenueBasis,
 } from "@/lib/repositories/orderRepository";
+import {
+  sumPaidExpensesBySalesChannel,
+  sumPaidExpensesByProductCategory,
+} from "@/lib/repositories/expenseRepository";
 
 export type { RevenueBasis };
 
@@ -94,5 +98,30 @@ export async function getFinancialReport(
     grossMargin,
     byCategory,
     byPaymentMethod,
+  };
+}
+
+export interface CostCenterBucketDTO {
+  label: string;
+  total: number;
+}
+
+export interface CostCenterReportDTO {
+  startDate: string;
+  endDate: string;
+  bySalesChannel: CostCenterBucketDTO[];
+  byProductCategory: CostCenterBucketDTO[];
+}
+
+export async function getCostCenterReport(startDate: Date, endDate: Date): Promise<CostCenterReportDTO> {
+  const [bySalesChannel, byProductCategory] = await Promise.all([
+    sumPaidExpensesBySalesChannel(startDate, endDate),
+    sumPaidExpensesByProductCategory(startDate, endDate),
+  ]);
+  return {
+    startDate: startDate.toISOString().slice(0, 10),
+    endDate: endDate.toISOString().slice(0, 10),
+    bySalesChannel,
+    byProductCategory,
   };
 }

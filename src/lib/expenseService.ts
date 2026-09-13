@@ -14,7 +14,7 @@ import {
   markExpensePending as dbMarkExpensePending,
   type ListExpensesParams,
   type PagedResult,
-  type ExpenseWithSupplier,
+  type ExpenseWithRelations,
 } from "@/lib/repositories/expenseRepository";
 
 // ─── Erros de domínio ─────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ export class ExpenseValidationFailedError extends Error {
 
 // ─── Mapeamento Prisma → domínio ──────────────────────────────────────────────
 
-export type ExpenseDTO = Omit<ExpenseWithSupplier, "amount" | "dueDate" | "paidDate" | "createdAt" | "updatedAt"> & {
+export type ExpenseDTO = Omit<ExpenseWithRelations, "amount" | "dueDate" | "paidDate" | "createdAt" | "updatedAt"> & {
   amount: number;
   dueDate: string | null;
   paidDate: string | null;
@@ -41,7 +41,7 @@ export type ExpenseDTO = Omit<ExpenseWithSupplier, "amount" | "dueDate" | "paidD
   updatedAt: string;
 };
 
-function mapToExpense(raw: ExpenseWithSupplier): ExpenseDTO {
+function mapToExpense(raw: ExpenseWithRelations): ExpenseDTO {
   return {
     ...raw,
     amount: Number(raw.amount),
@@ -85,6 +85,8 @@ export async function createExpense(input: ExpenseInput): Promise<ExpenseDTO> {
     amount: input.amount,
     dueDate: parseDate(input.dueDate) ?? null,
     supplierId: input.supplierId ?? null,
+    salesChannelId: input.salesChannelId ?? null,
+    productCategoryId: input.productCategoryId ?? null,
     notes: input.notes ?? null,
   });
   return mapToExpense(raw);
@@ -107,6 +109,8 @@ export async function updateExpense(id: string, input: Partial<ExpenseInput>): P
     amount: input.amount,
     dueDate: parseDate(input.dueDate),
     supplierId: input.supplierId,
+    salesChannelId: input.salesChannelId,
+    productCategoryId: input.productCategoryId,
     notes: input.notes,
   });
   return mapToExpense(raw);

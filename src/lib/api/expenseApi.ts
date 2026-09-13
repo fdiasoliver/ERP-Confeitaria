@@ -21,6 +21,10 @@ export interface Expense {
   paidDate: string | null;
   supplierId: string | null;
   supplier: { id: string; name: string } | null;
+  salesChannelId: string | null;
+  salesChannel: { id: string; name: string } | null;
+  productCategoryId: string | null;
+  productCategory: { id: string; name: string } | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -32,6 +36,8 @@ export interface ExpenseInput {
   amount: number;
   dueDate?: string | null;
   supplierId?: string | null;
+  salesChannelId?: string | null;
+  productCategoryId?: string | null;
   notes?: string | null;
 }
 

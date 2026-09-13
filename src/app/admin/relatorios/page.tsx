@@ -19,6 +19,8 @@ import {
   type CategoryBreakdownDTO,
   type PaymentMethodBreakdownDTO,
   type RevenueBasis,
+  type CostCenterReportDTO,
+  type CostCenterBucketDTO,
 } from "@/lib/api/reportsApi";
 
 function toDateParam(date: Date): string {
@@ -65,6 +67,10 @@ export default function RelatoriosAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [costCenterReport, setCostCenterReport] = useState<CostCenterReportDTO | null>(null);
+  const [costCenterLoading, setCostCenterLoading] = useState(true);
+  const [costCenterError, setCostCenterError] = useState<string | null>(null);
+
   async function loadReport() {
     setLoading(true);
     setError(null);
@@ -78,9 +84,26 @@ export default function RelatoriosAdminPage() {
     }
   }
 
+  async function loadCostCenterReport() {
+    setCostCenterLoading(true);
+    setCostCenterError(null);
+    try {
+      const result = await reportsApi.getCostCenterReport(startDate, endDate);
+      setCostCenterReport(result);
+    } catch (err) {
+      setCostCenterError(err instanceof ApiRequestError || err instanceof Error ? err.message : "Erro ao carregar centro de custo.");
+    } finally {
+      setCostCenterLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadReport(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [startDate, endDate, basis]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadCostCenterReport(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [startDate, endDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const categoryColumns: EntityColumn<CategoryBreakdownDTO>[] = [
     { key: "categoryName", header: "Categoria", render: (c) => <span className="font-semibold text-chocolate">{c.categoryName}</span> },
@@ -94,6 +117,11 @@ export default function RelatoriosAdminPage() {
     { key: "method", header: "Método", render: (p) => <span className="font-semibold text-chocolate">{paymentLabel(p.paymentMethod)}</span> },
     { key: "count", header: "Pedidos", className: "text-right", render: (p) => p.count },
     { key: "total", header: "Valor", className: "text-right", render: (p) => formatCurrency(p.total) },
+  ];
+
+  const costCenterColumns: EntityColumn<CostCenterBucketDTO>[] = [
+    { key: "label", header: "Nome", render: (b) => <span className="font-semibold text-chocolate">{b.label}</span> },
+    { key: "total", header: "Total", className: "text-right", render: (b) => formatCurrency(b.total) },
   ];
 
   function exportCategoryCSV() {
@@ -203,6 +231,33 @@ export default function RelatoriosAdminPage() {
                 <EmptyState title="Nenhum dado no período" description="Ajuste o filtro de datas ou o critério de faturamento." />
               ) : (
                 <EntityTable items={report.byPaymentMethod} columns={paymentColumns} getKey={(p) => p.paymentMethod} />
+              )}
+            </div>
+          </>
+        )}
+
+        <h2 className="font-display text-base font-semibold text-chocolate">Centro de custo</h2>
+
+        {costCenterLoading && <LoadingState count={2} />}
+        {!costCenterLoading && costCenterError && <ErrorState message={costCenterError} onRetry={loadCostCenterReport} />}
+
+        {!costCenterLoading && !costCenterError && costCenterReport && (
+          <>
+            <div>
+              <h3 className="font-display mb-2 text-sm font-semibold text-chocolate">Despesas por canal de venda</h3>
+              {costCenterReport.bySalesChannel.length === 0 ? (
+                <EmptyState title="Nenhuma despesa paga no período" description="Ajuste o filtro de datas." />
+              ) : (
+                <EntityTable items={costCenterReport.bySalesChannel} columns={costCenterColumns} getKey={(b) => b.label} />
+              )}
+            </div>
+
+            <div>
+              <h3 className="font-display mb-2 text-sm font-semibold text-chocolate">Despesas por categoria de produto</h3>
+              {costCenterReport.byProductCategory.length === 0 ? (
+                <EmptyState title="Nenhuma despesa paga no período" description="Ajuste o filtro de datas." />
+              ) : (
+                <EntityTable items={costCenterReport.byProductCategory} columns={costCenterColumns} getKey={(b) => b.label} />
               )}
             </div>
           </>

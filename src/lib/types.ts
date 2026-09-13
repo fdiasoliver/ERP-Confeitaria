@@ -49,6 +49,24 @@ export type ProductCategoryInput = {
 
 export type ProductCategoryWithCount = ProductCategory & { productCount: number };
 
+export interface SalesChannel {
+  id: string;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  color: string;
+  icon: string;
+  isActive: boolean;
+}
+
+export type SalesChannelInput = {
+  name: string;
+  sortOrder?: number;
+  color?: string;
+  icon?: string;
+  isActive?: boolean;
+};
+
 export interface OccasionTag {
   id: string;
   name: string;

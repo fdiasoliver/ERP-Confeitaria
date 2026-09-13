@@ -105,6 +105,15 @@ async function main() {
     console.log("✅ StoreConfig criada");
   }
 
+  // ─── Canais de venda
+  await prisma.salesChannel.upsert({
+    where: { slug: "loja-vitrine-online" },
+    update: {},
+    create: { name: "Loja/Vitrine online", slug: "loja-vitrine-online", sortOrder: 0, isActive: true },
+  });
+
+  console.log("✅ Canal de venda criado");
+
   // ─── Cadeia produtiva: Unidades → Ingredientes → Receita (Sprint I.2 — Frente B)
   await seedProductionChain(prisma);
 

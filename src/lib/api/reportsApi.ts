@@ -59,3 +59,27 @@ export async function getFinancialReport(
     `/api/admin/reports/financial?startDate=${startDate}&endDate=${endDate}&basis=${basis}`,
   );
 }
+
+export interface CostCenterBucketDTO {
+  label: string;
+  total: number;
+}
+
+export interface CostCenterReportDTO {
+  startDate: string;
+  endDate: string;
+  bySalesChannel: CostCenterBucketDTO[];
+  byProductCategory: CostCenterBucketDTO[];
+}
+
+/** `startDate`/`endDate` no formato YYYY-MM-DD, ambos obrigatórios. Sem parâmetro
+ * de basis — a agregação sempre usa despesas com status PAGO (ver
+ * src/app/api/admin/reports/cost-centers/route.ts). */
+export async function getCostCenterReport(
+  startDate: string,
+  endDate: string,
+): Promise<CostCenterReportDTO> {
+  return request<CostCenterReportDTO>(
+    `/api/admin/reports/cost-centers?startDate=${startDate}&endDate=${endDate}`,
+  );
+}

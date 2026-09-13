@@ -31,6 +31,9 @@ import {
 } from "@/lib/api/expenseApi";
 import * as supplierApi from "@/lib/api/supplierApi";
 import type { Supplier } from "@/lib/api/supplierApi";
+import * as salesChannelApi from "@/lib/api/salesChannelApi";
+import * as productCategoryApi from "@/lib/api/productCategoryApi";
+import type { SalesChannel, ProductCategoryWithCount } from "@/lib/types";
 
 // ── Local types ────────────────────────────────────────────────────────────────
 
@@ -42,10 +45,12 @@ interface ExpenseForm {
   amount: string;
   dueDate: string;
   supplierId: string;
+  salesChannelId: string;
+  productCategoryId: string;
   notes: string;
 }
 
-const EMPTY_FORM: ExpenseForm = { description: "", category: "OUTROS", amount: "", dueDate: "", supplierId: "", notes: "" };
+const EMPTY_FORM: ExpenseForm = { description: "", category: "OUTROS", amount: "", dueDate: "", supplierId: "", salesChannelId: "", productCategoryId: "", notes: "" };
 
 type StatusFilter = "all" | ExpenseStatus;
 type CategoryFilter = "all" | ExpenseCategory;
@@ -78,6 +83,8 @@ export default function DespesasAdminPage() {
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<{ pendingTotal: number; paidTotal: number } | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [channels, setChannels] = useState<SalesChannel[]>([]);
+  const [categories, setCategories] = useState<ProductCategoryWithCount[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +115,28 @@ export default function DespesasAdminPage() {
         setSuppliers(result.items);
       } catch {
         toast.error("Erro ao carregar fornecedores de apoio.");
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await salesChannelApi.listChannels();
+        setChannels(result.filter((c) => c.isActive));
+      } catch {
+        toast.error("Erro ao carregar canais de venda.");
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await productCategoryApi.listCategories();
+        setCategories(result.filter((c) => c.isActive));
+      } catch {
+        toast.error("Erro ao carregar categorias de produto.");
       }
     })();
   }, []);
@@ -197,6 +226,8 @@ export default function DespesasAdminPage() {
       amount: String(expense.amount),
       dueDate: expense.dueDate ?? "",
       supplierId: expense.supplierId ?? "",
+      salesChannelId: expense.salesChannelId ?? "",
+      productCategoryId: expense.productCategoryId ?? "",
       notes: expense.notes ?? "",
     });
     setFormErrors({});
@@ -248,6 +279,8 @@ export default function DespesasAdminPage() {
         amount: parseFloat(form.amount),
         dueDate: form.dueDate.trim() === "" ? null : form.dueDate,
         supplierId: form.supplierId === "" ? null : form.supplierId,
+        salesChannelId: form.salesChannelId === "" ? null : form.salesChannelId,
+        productCategoryId: form.productCategoryId === "" ? null : form.productCategoryId,
         notes: form.notes.trim() === "" ? null : form.notes,
       };
       if (modal === "create") {
@@ -442,6 +475,8 @@ export default function DespesasAdminPage() {
                     <p className="text-xs text-muted">
                       {EXPENSE_CATEGORY_LABELS[expense.category]}
                       {expense.supplier ? ` · ${expense.supplier.name}` : ""}
+                      {expense.salesChannel ? ` · ${expense.salesChannel.name}` : ""}
+                      {expense.productCategory ? ` · ${expense.productCategory.name}` : ""}
                       {expense.dueDate ? ` · vence ${formatShortDate(expense.dueDate)}` : ""}
                     </p>
                     <p className="text-sm font-semibold text-chocolate">{formatCurrency(expense.amount)}</p>
@@ -525,6 +560,20 @@ export default function DespesasAdminPage() {
             <select id="exp-supplier" className="input-field" value={form.supplierId} onChange={(e) => setField("supplierId", e.target.value)} disabled={submitting}>
               <option value="">Sem fornecedor</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </Field>
+
+          <Field label="Canal de venda (opcional)" htmlFor="exp-sales-channel">
+            <select id="exp-sales-channel" className="input-field" value={form.salesChannelId} onChange={(e) => setField("salesChannelId", e.target.value)} disabled={submitting}>
+              <option value="">Sem canal</option>
+              {channels.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </Field>
+
+          <Field label="Categoria de produto (opcional)" htmlFor="exp-product-category">
+            <select id="exp-product-category" className="input-field" value={form.productCategoryId} onChange={(e) => setField("productCategoryId", e.target.value)} disabled={submitting}>
+              <option value="">Sem categoria</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
 

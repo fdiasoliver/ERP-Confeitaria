@@ -20,9 +20,17 @@ export interface PagedResult<T> {
   pageSize: number;
 }
 
-export type ExpenseWithSupplier = Expense & { supplier: { id: string; name: string } | null };
+export type ExpenseWithRelations = Expense & {
+  supplier: { id: string; name: string } | null;
+  salesChannel: { id: string; name: string } | null;
+  productCategory: { id: string; name: string } | null;
+};
 
-const withSupplier = { supplier: { select: { id: true, name: true } } } satisfies Prisma.ExpenseInclude;
+const withRelations = {
+  supplier: { select: { id: true, name: true } },
+  salesChannel: { select: { id: true, name: true } },
+  productCategory: { select: { id: true, name: true } },
+} satisfies Prisma.ExpenseInclude;
 
 function buildWhere(
   params: Pick<ListExpensesParams, "search" | "status" | "category" | "startDate" | "endDate">,
@@ -42,11 +50,11 @@ function buildWhere(
   };
 }
 
-export async function findExpenseById(id: string): Promise<ExpenseWithSupplier | null> {
-  return prisma.expense.findUnique({ where: { id }, include: withSupplier });
+export async function findExpenseById(id: string): Promise<ExpenseWithRelations | null> {
+  return prisma.expense.findUnique({ where: { id }, include: withRelations });
 }
 
-export async function listExpensesPaged(params: ListExpensesParams): Promise<PagedResult<ExpenseWithSupplier>> {
+export async function listExpensesPaged(params: ListExpensesParams): Promise<PagedResult<ExpenseWithRelations>> {
   const page = params.page && params.page > 0 ? params.page : 1;
   const pageSize = params.pageSize && params.pageSize > 0 ? params.pageSize : 20;
   const where = buildWhere(params);
@@ -56,7 +64,7 @@ export async function listExpensesPaged(params: ListExpensesParams): Promise<Pag
   const [items, total] = await Promise.all([
     prisma.expense.findMany({
       where,
-      include: withSupplier,
+      include: withRelations,
       orderBy: { [orderByField]: orderDirection },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -73,33 +81,76 @@ export interface ExpenseWriteData {
   amount: number;
   dueDate?: Date | null;
   supplierId?: string | null;
+  salesChannelId?: string | null;
+  productCategoryId?: string | null;
   notes?: string | null;
 }
 
-export async function createExpense(data: ExpenseWriteData): Promise<ExpenseWithSupplier> {
-  return prisma.expense.create({ data, include: withSupplier });
+export async function createExpense(data: ExpenseWriteData): Promise<ExpenseWithRelations> {
+  return prisma.expense.create({ data, include: withRelations });
 }
 
-export async function updateExpense(id: string, data: Partial<ExpenseWriteData>): Promise<ExpenseWithSupplier> {
-  return prisma.expense.update({ where: { id }, data, include: withSupplier });
+export async function updateExpense(id: string, data: Partial<ExpenseWriteData>): Promise<ExpenseWithRelations> {
+  return prisma.expense.update({ where: { id }, data, include: withRelations });
 }
 
 export async function deleteExpense(id: string): Promise<void> {
   await prisma.expense.delete({ where: { id } });
 }
 
-export async function markExpensePaid(id: string, paidDate: Date): Promise<ExpenseWithSupplier> {
+export async function markExpensePaid(id: string, paidDate: Date): Promise<ExpenseWithRelations> {
   return prisma.expense.update({
     where: { id },
     data: { status: "PAGO", paidDate },
-    include: withSupplier,
+    include: withRelations,
   });
 }
 
-export async function markExpensePending(id: string): Promise<ExpenseWithSupplier> {
+export async function markExpensePending(id: string): Promise<ExpenseWithRelations> {
   return prisma.expense.update({
     where: { id },
     data: { status: "PENDENTE", paidDate: null },
-    include: withSupplier,
+    include: withRelations,
   });
+}
+
+// ─── Centro de Custo (relatório) ───────────────────────────────────────────────
+
+export interface CostCenterBucket {
+  label: string; // nome do canal/categoria, ou "Sem canal"/"Sem categoria"
+  total: number;
+}
+
+export async function sumPaidExpensesBySalesChannel(startDate: Date, endDate: Date): Promise<CostCenterBucket[]> {
+  const expenses = await prisma.expense.findMany({
+    where: { status: "PAGO", paidDate: { gte: startDate, lte: endDate } },
+    select: { amount: true, salesChannel: { select: { name: true } } },
+  });
+
+  const bucketMap = new Map<string, number>();
+  for (const expense of expenses) {
+    const label = expense.salesChannel?.name ?? "Sem canal";
+    bucketMap.set(label, (bucketMap.get(label) ?? 0) + Number(expense.amount));
+  }
+
+  return Array.from(bucketMap.entries())
+    .map(([label, total]) => ({ label, total }))
+    .sort((a, b) => b.total - a.total);
+}
+
+export async function sumPaidExpensesByProductCategory(startDate: Date, endDate: Date): Promise<CostCenterBucket[]> {
+  const expenses = await prisma.expense.findMany({
+    where: { status: "PAGO", paidDate: { gte: startDate, lte: endDate } },
+    select: { amount: true, productCategory: { select: { name: true } } },
+  });
+
+  const bucketMap = new Map<string, number>();
+  for (const expense of expenses) {
+    const label = expense.productCategory?.name ?? "Sem categoria";
+    bucketMap.set(label, (bucketMap.get(label) ?? 0) + Number(expense.amount));
+  }
+
+  return Array.from(bucketMap.entries())
+    .map(([label, total]) => ({ label, total }))
+    .sort((a, b) => b.total - a.total);
 }
