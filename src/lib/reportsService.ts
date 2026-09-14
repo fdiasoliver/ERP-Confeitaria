@@ -9,6 +9,9 @@ import {
 import {
   sumPaidExpensesBySalesChannel,
   sumPaidExpensesByProductCategory,
+  sumPaidExpensesByPeriod,
+  sumPaidExpensesByPeriodSplitByTax,
+  getAccountsPayableSummary,
 } from "@/lib/repositories/expenseRepository";
 
 export type { RevenueBasis };
@@ -123,5 +126,122 @@ export async function getCostCenterReport(startDate: Date, endDate: Date): Promi
     endDate: endDate.toISOString().slice(0, 10),
     bySalesChannel,
     byProductCategory,
+  };
+}
+
+// ─── Fluxo de Caixa (relatório) ─────────────────────────────────────────────────
+
+export interface CashFlowReportDTO {
+  basis: RevenueBasis;
+  startDate: string;
+  endDate: string;
+  inflow: number; // entradas — revenue no basis selecionado (sumOrderTotals)
+  outflow: number; // saídas — todas as despesas pagas no período (todas categorias)
+  balance: number; // inflow - outflow
+}
+
+export async function getCashFlowReport(
+  startDate: Date,
+  endDate: Date,
+  basis: RevenueBasis,
+): Promise<CashFlowReportDTO> {
+  const [{ total: inflow }, outflow] = await Promise.all([
+    sumOrderTotals(startDate, endDate, basis),
+    sumPaidExpensesByPeriod(startDate, endDate),
+  ]);
+
+  return {
+    basis,
+    startDate: startDate.toISOString().slice(0, 10),
+    endDate: endDate.toISOString().slice(0, 10),
+    inflow,
+    outflow,
+    balance: inflow - outflow,
+  };
+}
+
+// ─── DRE (relatório) ────────────────────────────────────────────────────────────
+
+// "Devoluções e cancelamentos" fica zerada/omitida por decisão explícita do
+// Product Owner — nenhuma dedução de cancelamento é calculada aqui.
+export interface DREReportDTO {
+  basis: RevenueBasis;
+  startDate: string;
+  endDate: string;
+  netRevenue: number; // Receita líquida (revenue do getFinancialReport, no basis selecionado)
+  cmv: number; // (-) CMV — sempre ENTREGUE (getFinancialReport)
+  grossProfit: number; // (=) Lucro bruto = netRevenue - cmv
+  operatingExpenses: number; // (-) Despesas operacionais (category != IMPOSTOS)
+  ebitda: number; // (=) EBITDA = grossProfit - operatingExpenses
+  taxes: number; // (-) Impostos (category == IMPOSTOS)
+  netProfit: number; // (=) Lucro líquido = ebitda - taxes
+}
+
+export async function getDREReport(startDate: Date, endDate: Date, basis: RevenueBasis): Promise<DREReportDTO> {
+  const [financial, { operatingExpenses, taxes }] = await Promise.all([
+    getFinancialReport(startDate, endDate, basis),
+    sumPaidExpensesByPeriodSplitByTax(startDate, endDate),
+  ]);
+
+  const grossProfit = financial.revenue - financial.cmv;
+  const ebitda = grossProfit - operatingExpenses;
+  const netProfit = ebitda - taxes;
+
+  return {
+    basis,
+    startDate: financial.startDate,
+    endDate: financial.endDate,
+    netRevenue: financial.revenue,
+    cmv: financial.cmv,
+    grossProfit,
+    operatingExpenses,
+    ebitda,
+    taxes,
+    netProfit,
+  };
+}
+
+// ─── Contas a Pagar (relatório) ─────────────────────────────────────────────────
+
+export interface AccountsPayableItemDTO {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  dueDate: string | null;
+  salesChannelId: string | null;
+  productCategoryId: string | null;
+}
+
+export interface AccountsPayableCategoryBucketDTO {
+  category: string;
+  total: number;
+}
+
+export interface AccountsPayableReportDTO {
+  totalPending: number;
+  totalOverdue: number;
+  byCategory: AccountsPayableCategoryBucketDTO[];
+  items: AccountsPayableItemDTO[];
+}
+
+// Sem parâmetro de data — Contas a Pagar é sempre "hoje", dívida em aberto
+// agora, não um evento de período (ver getAccountsPayableSummary).
+export async function getAccountsPayableReport(): Promise<AccountsPayableReportDTO> {
+  const summary = await getAccountsPayableSummary();
+
+  return {
+    totalPending: summary.totalPending,
+    totalOverdue: summary.totalOverdue,
+    byCategory: summary.byCategory,
+    items: summary.items.map((item) => ({
+      id: item.id,
+      description: item.description,
+      amount: item.amount,
+      category: item.category,
+      dueDate: item.dueDate ? item.dueDate.toISOString().slice(0, 10) : null,
+      salesChannelId: item.salesChannelId,
+      productCategoryId: item.productCategoryId,
+    })),
   };
 }

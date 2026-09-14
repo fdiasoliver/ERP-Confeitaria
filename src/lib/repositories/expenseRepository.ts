@@ -154,3 +154,129 @@ export async function sumPaidExpensesByProductCategory(startDate: Date, endDate:
     .map(([label, total]) => ({ label, total }))
     .sort((a, b) => b.total - a.total);
 }
+
+// ─── Fluxo de Caixa / DRE / Contas a Pagar (relatório) ─────────────────────────
+
+/**
+ * Soma todas as despesas pagas no período, todas as categorias (inclusive
+ * Impostos) — saídas de caixa real para o relatório de Fluxo de Caixa.
+ */
+export async function sumPaidExpensesByPeriod(startDate: Date, endDate: Date): Promise<number> {
+  const result = await prisma.expense.aggregate({
+    where: { status: "PAGO", paidDate: { gte: startDate, lte: endDate } },
+    _sum: { amount: true },
+  });
+  return Number(result._sum.amount ?? 0);
+}
+
+export interface PaidExpensesTaxSplit {
+  operatingExpenses: number; // category !== IMPOSTOS
+  taxes: number; // category === IMPOSTOS
+}
+
+/**
+ * Mesmo universo de sumPaidExpensesByPeriod (despesas pagas no período), mas
+ * separado em Despesas Operacionais x Impostos num único groupBy — usado pelo
+ * DRE, que precisa das duas linhas separadas.
+ */
+export async function sumPaidExpensesByPeriodSplitByTax(startDate: Date, endDate: Date): Promise<PaidExpensesTaxSplit> {
+  const grouped = await prisma.expense.groupBy({
+    by: ["category"],
+    where: { status: "PAGO", paidDate: { gte: startDate, lte: endDate } },
+    _sum: { amount: true },
+  });
+
+  let operatingExpenses = 0;
+  let taxes = 0;
+  for (const bucket of grouped) {
+    const amount = Number(bucket._sum.amount ?? 0);
+    if (bucket.category === "IMPOSTOS") {
+      taxes += amount;
+    } else {
+      operatingExpenses += amount;
+    }
+  }
+
+  return { operatingExpenses, taxes };
+}
+
+export interface AccountsPayableCategoryBucket {
+  category: ExpenseCategory;
+  total: number;
+}
+
+export interface AccountsPayableItem {
+  id: string;
+  description: string;
+  amount: number;
+  category: ExpenseCategory;
+  dueDate: Date | null;
+  salesChannelId: string | null;
+  productCategoryId: string | null;
+}
+
+export interface AccountsPayableSummary {
+  totalPending: number;
+  totalOverdue: number;
+  byCategory: AccountsPayableCategoryBucket[];
+  items: AccountsPayableItem[];
+}
+
+/**
+ * Contas a Pagar — sempre "hoje", sem filtro de período: dívida em aberto
+ * agora (status = PENDENTE), não um evento de um intervalo de datas.
+ */
+export async function getAccountsPayableSummary(): Promise<AccountsPayableSummary> {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const [pending, grouped] = await Promise.all([
+    prisma.expense.findMany({
+      where: { status: "PENDENTE" },
+      select: {
+        id: true,
+        description: true,
+        amount: true,
+        category: true,
+        dueDate: true,
+        salesChannelId: true,
+        productCategoryId: true,
+      },
+    }),
+    prisma.expense.groupBy({
+      by: ["category"],
+      where: { status: "PENDENTE" },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const totalPending = pending.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const totalOverdue = pending
+    .filter((expense) => expense.dueDate !== null && expense.dueDate < startOfToday)
+    .reduce((sum, expense) => sum + Number(expense.amount), 0);
+
+  const byCategory: AccountsPayableCategoryBucket[] = grouped
+    .map((bucket) => ({ category: bucket.category, total: Number(bucket._sum.amount ?? 0) }))
+    .sort((a, b) => b.total - a.total);
+
+  // Despesas sem dueDate vão para o fim da lista — tratado explicitamente,
+  // não deixado para a ordenação padrão do Prisma decidir a posição do null.
+  const items: AccountsPayableItem[] = [...pending]
+    .sort((a, b) => {
+      if (a.dueDate === null && b.dueDate === null) return 0;
+      if (a.dueDate === null) return 1;
+      if (b.dueDate === null) return -1;
+      return a.dueDate.getTime() - b.dueDate.getTime();
+    })
+    .map((expense) => ({
+      id: expense.id,
+      description: expense.description,
+      amount: Number(expense.amount),
+      category: expense.category,
+      dueDate: expense.dueDate,
+      salesChannelId: expense.salesChannelId,
+      productCategoryId: expense.productCategoryId,
+    }));
+
+  return { totalPending, totalOverdue, byCategory, items };
+}

@@ -4,6 +4,39 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Sprint 3 — P3.2] — 2026-09-13 — Fluxo de caixa, Contas a pagar e DRE (Relatórios financeiros, Épico 3)
+
+**Tipo:** Terceira sprint do módulo P3.2 (Relatórios financeiros, Épico 3), atrás de `getFinancialReport`/`getCostCenterReport` das Sprints 1 e 2 anteriores deste mesmo módulo. Três novos relatórios em `/admin/relatorios`, todos atrás de `requireFinance()` (ADMIN+FINANCEIRO).
+
+### Implementação
+
+- **Fluxo de caixa** — regime de caixa realizado, não projetado. Entradas = `revenue` do relatório financeiro (`getFinancialReport`), no critério de faturamento selecionado (Entregues/Pagos). Saídas = Σ `Expense.amount` com `status=PAGO` e `paidDate` no período, todas as categorias (inclusive Impostos). Saldo do período = Entradas − Saídas. Usa o mesmo seletor de período De/Até e o mesmo toggle de critério de faturamento já existentes na página.
+- **Contas a pagar** — visão de dívida em aberto no momento da consulta, não filtrada por período. Total pendente = Σ `Expense.amount` com `status=PENDENTE`. Total vencido = mesmo filtro restrito a `dueDate` anterior a hoje. Lista de despesas pendentes agrupada por categoria, ordenada por vencimento (mais próximo primeiro; sem vencimento no fim).
+- **DRE** — Receita líquida (`revenue` do `getFinancialReport`, no basis selecionado) − CMV (sempre pedidos `ENTREGUE`) = Lucro bruto; − Despesas operacionais (`Expense` `PAGO`, `paidDate` no período, categoria ≠ Impostos) = EBITDA; − Impostos (mesma base, categoria = Impostos) = Lucro líquido.
+
+**Arquivos alterados:**
+- `src/lib/repositories/expenseRepository.ts` — `sumPaidExpensesByPeriod`, `sumPaidExpensesByPeriodSplitByTax`, `getAccountsPayableSummary`
+- `src/lib/reportsService.ts` — `getCashFlowReport`, `getDREReport`, `getAccountsPayableReport` + DTOs
+- `src/app/api/admin/reports/cash-flow/route.ts`, `src/app/api/admin/reports/dre/route.ts`, `src/app/api/admin/reports/accounts-payable/route.ts` (novas rotas)
+- `src/lib/api/reportsApi.ts` — funções cliente novas
+- `src/app/admin/relatorios/page.tsx` — 3 novas seções (Fluxo de caixa, DRE, Contas a pagar)
+
+Nenhuma alteração em `prisma/schema.prisma`.
+
+### Escopo explicitamente não incluído
+
+"Previsão de entradas a partir de pedidos confirmados" não foi implementada — o Fluxo de caixa reflete apenas valores já realizados, nunca uma projeção. "Devoluções e cancelamentos" não é calculada/deduzida na DRE — decisão explícita do Product Owner, por não existir hoje um valor de pedido cancelado confiável para deduzir. Ambas as omissões são exibidas como nota explícita na UI (`/admin/relatorios`).
+
+### Validação
+
+`tsc`/`lint`: 0 erros. 1 warning cosmético não-bloqueante em `src/app/admin/relatorios/page.tsx:196` (comentário `eslint-disable` órfão, sem efeito funcional). Validação funcional aprovada.
+
+### Documentação corrigida retroativamente
+
+`REGRAS_NEGOCIO.md` Seção 13.6 (Centro de custo) — já implementada na Sprint 2 anterior deste mesmo módulo (despesas pagas agrupadas por canal de venda e por categoria de produto, via `sumPaidExpensesBySalesChannel`/`sumPaidExpensesByProductCategory` em `expenseRepository.ts` e `getCostCenterReport` em `reportsService.ts`), mas a Sprint 2 não havia atualizado esta seção, que permanecia registrada como "A definir". Corrigida nesta sprint, sem alteração de código. Seções 13.3, 13.4 e 13.8 de `REGRAS_NEGOCIO.md` atualizadas com as regras desta sprint. `PLAN.md` — módulo P3.2 (Relatórios financeiros) marcado como concluído.
+
+---
+
 ## [Módulo P3.1] — 2026-09-07 — Precificação automática (primeiro módulo do Épico 3)
 
 **Tipo:** Primeiro módulo do Épico 3 (Inteligência Operacional). Schema já vinha preparado desde antes (`StoreConfig.laborCostPerHour`/`fixedCostMonthly`/`monthlyProductionUnits`/`targetMarginPercent`, `Recipe.prepTimeMinutes`, todos já coletando dado real) — faltava só a lógica de cálculo, nunca implementada.

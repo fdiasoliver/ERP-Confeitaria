@@ -720,17 +720,30 @@ Originadas de:
 
 ## 13.3 Fluxo de caixa
 
-**A definir.** Não existe entidade de movimentação financeira no schema atual.
+Regime de caixa **realizado** (não projetado):
 
-Deverá contemplar:
-- Entradas (recebimentos de pedidos)
-- Saídas (pagamentos a fornecedores, despesas operacionais)
-- Saldo por período
-- Previsão de entradas a partir de pedidos confirmados
+```
+Entradas = revenue do relatório financeiro (getFinancialReport), no critério de faturamento selecionado (Entregues/Pagos)
+Saídas = Σ Expense.amount, status = PAGO, paidDate no período, todas as categorias (inclusive Impostos)
+Saldo do período = Entradas − Saídas
+```
+
+Usa o mesmo seletor de período (De/Até) e o mesmo toggle de critério de faturamento (Entregue/Pago) já existentes em `/admin/relatorios`. Ver `getCashFlowReport` (`src/lib/reportsService.ts`) e `sumPaidExpensesByPeriod` (`src/lib/repositories/expenseRepository.ts`).
+
+**Nota de transparência (fora de escopo desta sprint):** previsão de entradas a partir de pedidos confirmados não foi implementada — este relatório reflete apenas valores já realizados, nunca uma projeção futura.
 
 ## 13.4 Contas a pagar
 
-**A definir.** Não existe no schema atual.
+Visão da dívida em aberto no momento da consulta — **não filtrada por período**:
+
+```
+Total pendente = Σ Expense.amount onde status = PENDENTE
+Total vencido = Total pendente, restrito a dueDate < hoje
+```
+
+Lista de despesas pendentes agrupada por categoria (`Expense.category`), ordenada por vencimento — mais próximo primeiro; despesas sem `dueDate` vão para o fim da lista. Ver `getAccountsPayableSummary` (`src/lib/repositories/expenseRepository.ts`) e `getAccountsPayableReport` (`src/lib/reportsService.ts`).
+
+Não usa o seletor de período De/Até de `/admin/relatorios` — a UI exibe nota explícita sobre isso.
 
 ## 13.5 Contas a receber
 
@@ -738,7 +751,12 @@ Derivadas de pedidos com `paymentStatus = PENDENTE` e data de entrega futura.
 
 ## 13.6 Centro de custo
 
-**A definir.** Não existe no schema atual.
+Implementado (módulo Relatórios financeiros, `/admin/relatorios`) por duas dimensões, ambas restritas a despesas com `status = PAGO` e `paidDate` no período selecionado:
+
+- **Por canal de venda** — soma de `Expense.amount` agrupada por `Expense.salesChannelId` (rótulo `SalesChannel.name`; despesas sem canal vinculado aparecem como "Sem canal").
+- **Por categoria de produto** — soma de `Expense.amount` agrupada por `Expense.productCategoryId` (rótulo `ProductCategory.name`; despesas sem categoria vinculada aparecem como "Sem categoria").
+
+Cada dimensão é uma lista ordenada por total decrescente. Ver `sumPaidExpensesBySalesChannel`/`sumPaidExpensesByProductCategory` (`src/lib/repositories/expenseRepository.ts`) e `getCostCenterReport` (`src/lib/reportsService.ts`).
 
 ## 13.7 CMV (Custo da Mercadoria Vendida)
 
@@ -750,19 +768,19 @@ O `costPrice` dos produtos deve refletir o custo real no momento da produção �
 
 ## 13.8 DRE (Demonstrativo de Resultado do Exercício)
 
-**A definir.** Estrutura mínima esperada:
-
 ```
-(+) Receita bruta de vendas
-(-) Devoluções e cancelamentos
-(=) Receita líquida
-(-) CMV
+Receita líquida             = revenue do relatório financeiro (getFinancialReport), no critério de faturamento selecionado
+(−) CMV                     = cmv do relatório financeiro (sempre pedidos ENTREGUE — ver Seção 13.7)
 (=) Lucro bruto
-(-) Despesas operacionais (fixas + variáveis)
+(−) Despesas operacionais   = Σ Expense.amount, status = PAGO, paidDate no período, category ≠ IMPOSTOS
 (=) EBITDA
-(-) Impostos (A definir)
+(−) Impostos                = Σ Expense.amount, status = PAGO, paidDate no período, category = IMPOSTOS
 (=) Lucro líquido
 ```
+
+Ver `getDREReport` (`src/lib/reportsService.ts`) e `sumPaidExpensesByPeriodSplitByTax` (`src/lib/repositories/expenseRepository.ts`).
+
+**Nota de transparência (fora de escopo desta sprint):** "Devoluções e cancelamentos" (linha presente na estrutura mínima originalmente prevista para esta seção) fica zerada/omitida por decisão explícita do Product Owner — não existe hoje um valor de pedido cancelado a deduzir de forma confiável. A UI (`/admin/relatorios`) exibe nota explícita sobre essa omissão.
 
 ## 13.9 Impostos
 
