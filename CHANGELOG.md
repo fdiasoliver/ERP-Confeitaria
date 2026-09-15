@@ -4,6 +4,42 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo P3.3] — 2026-09-15 — Calendário de produção: reagendamento negociado (conclusão, Épico 4)
+
+**Tipo:** Conclusão do Módulo P3.3 (Calendário de produção, Épico 4). A aba "Calendário" (visualização de pedidos por data de entrega com indicador de carga, alerta de sobreposição) já havia sido implementada e commitada anteriormente (commit `75c9f04`, "Add Módulo P3.3: Calendário de produção") sem entrada própria neste CHANGELOG — gap pré-existente, não resolvido retroativamente nesta entrada, fora do escopo desta sprint. Esta entrada documenta a entrega final que completa a lista de "Entregas" do módulo em `PLAN.md`: reagendamento negociado de pedidos.
+
+### Implementação
+
+- **Schema (`prisma/schema.prisma`):** novo enum `RescheduleStatus` (`NONE`, `PENDENTE`, `ACEITO`, `RECUSADO`); `Order` ganha `suggestedDeliveryDate DateTime? @db.Date` e `rescheduleStatus RescheduleStatus @default(NONE)`. Sem tabela de histórico dedicada para reagendamento — decisão arquitetural registrada em comentário no código (`src/lib/orderService.ts`): a trilha de auditoria mínima vem do `WhatsAppLog` da notificação disparada; `OrderStatusHistory` não é reaproveitado por ser tipado estritamente para `OrderStatus`, não para `RescheduleStatus`.
+- **`PATCH /api/admin/orders/[id]/reschedule`** — admin sugere nova data de entrega. Atrás de `requireOrderAccess()`. Bloqueia pedidos com status `CANCELADO`/`ENTREGUE`. Dispara notificação WhatsApp best-effort (`notifyRescheduleSuggested`, nova em `whatsappNotificationService.ts`, template `order_reschedule_suggested`, texto "Olá! Precisamos reagendar seu pedido #{numero}. Nova data sugerida: {data}. Acesse /pedidos para confirmar ou recusar."), sempre registrada em `WhatsAppLog` (sucesso ou erro).
+- **`PATCH /api/orders/[id]/reschedule-response`** — cliente aceita ou recusa. Novo guard `src/lib/auth/requireCustomer.ts` (primitiva irmã de `requireRole`/`requireAdmin`, ADR-020, mas para sessão de cliente) — usa sessão NextAuth real, nunca confia em telefone vindo do corpo da requisição. Exige `rescheduleStatus === "PENDENTE"`. Aceito: `deliveryDate` passa a ser `suggestedDeliveryDate`. Recusado: `deliveryDate` original é mantido. Em ambos os casos, `suggestedDeliveryDate` é limpo e `rescheduleStatus` volta a `NONE`.
+- **`src/lib/orderService.ts`:** `suggestReschedule`, `respondToReschedule`, exceptions `InvalidRescheduleStateError`/`CustomerPhoneMismatchError`.
+- **Frontend admin (`src/app/admin/producao/page.tsx`):** ação "Sugerir novo dia" no Kanban, com seletor de data, desabilitada para pedidos `CANCELADO`/`ENTREGUE`.
+- **Frontend cliente (`src/app/(client)/pedidos/page.tsx`):** banner de Aceitar/Recusar quando `rescheduleStatus === "PENDENTE"`.
+
+**Arquivos alterados:**
+- `prisma/schema.prisma`
+- `src/lib/repositories/orderRepository.ts`
+- `src/lib/orderService.ts` / `src/services/orderService.ts`
+- `src/lib/whatsappNotificationService.ts`
+- `src/lib/types.ts`
+- `src/lib/api/orderAdminApi.ts`
+- `src/app/admin/producao/page.tsx`
+- `src/app/(client)/pedidos/page.tsx`
+- `src/app/api/admin/orders/[id]/reschedule/route.ts` (novo)
+- `src/app/api/orders/[id]/reschedule-response/route.ts` (novo)
+- `src/lib/auth/requireCustomer.ts` (novo)
+
+### Validação
+
+`npx tsc --noEmit`: 0 erros. `npm run lint`: 0 erros/avisos. Validação funcional end-to-end (endpoints reais, banco de produção) pendente — depende de `npx prisma db push` aplicar as colunas novas do schema ao banco real, ainda não executado.
+
+### Documentação
+
+`PLAN.md` — módulo P3.3 marcado como concluído. `REGRAS_NEGOCIO.md` Seção 12.11 (nova) — regras de reagendamento negociado.
+
+---
+
 ## [Sprint 3 — P3.2] — 2026-09-13 — Fluxo de caixa, Contas a pagar e DRE (Relatórios financeiros, Épico 3)
 
 **Tipo:** Terceira sprint do módulo P3.2 (Relatórios financeiros, Épico 3), atrás de `getFinancialReport`/`getCostCenterReport` das Sprints 1 e 2 anteriores deste mesmo módulo. Três novos relatórios em `/admin/relatorios`, todos atrás de `requireFinance()` (ADMIN+FINANCEIRO).

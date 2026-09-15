@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Prisma, OrderStatus } from "@prisma/client";
+import type { Prisma, OrderStatus, RescheduleStatus } from "@prisma/client";
 
 // ─── Tipos e includes ──────────────────────────────────────────────────────────
 
@@ -231,5 +231,26 @@ export async function updateStatusWithHistory(
     });
 
     return updated;
+  });
+}
+
+// ─── Escrita — reagendamento negociado ─────────────────────────────────────────
+// Sem tabela de histórico dedicada (decisão arquitetural — ver orderService.ts,
+// suggestReschedule/respondToReschedule): apenas os 2 campos escalares do
+// pedido são atualizados, sem transação (uma única query `update`, ao contrário
+// de updateStatusWithHistory acima, que grava em duas tabelas).
+
+export async function updateRescheduleFields(
+  orderId: string,
+  data: {
+    deliveryDate?: Date;
+    suggestedDeliveryDate: Date | null;
+    rescheduleStatus: RescheduleStatus;
+  },
+): Promise<OrderWithItems> {
+  return prisma.order.update({
+    where: { id: orderId },
+    data,
+    include: withItems,
   });
 }

@@ -38,6 +38,8 @@ interface RawOrder {
   paymentMethod: string;
   paymentStatus?: string | null;
   orderNotes?: string | null;
+  suggestedDeliveryDate?: string | Date | null;
+  rescheduleStatus?: string | null;
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<{ id: string; orderNumber: number }> {
@@ -100,6 +102,12 @@ export async function getOrdersByPhone(phone: string): Promise<Order[]> {
     paymentMethod: o.paymentMethod as Order["paymentMethod"],
     paymentStatus: o.paymentStatus ? (o.paymentStatus as Order["paymentStatus"]) : undefined,
     orderNotes: o.orderNotes ?? undefined,
+    suggestedDeliveryDate: o.suggestedDeliveryDate
+      ? (typeof o.suggestedDeliveryDate === "string"
+          ? o.suggestedDeliveryDate.slice(0, 10)
+          : new Date(o.suggestedDeliveryDate).toISOString().slice(0, 10))
+      : undefined,
+    rescheduleStatus: o.rescheduleStatus as Order["rescheduleStatus"],
   }));
 }
 
@@ -117,5 +125,24 @@ export async function updateOrderStatus(
   if (!res.ok) {
     const data = await res.json().catch(() => ({})) as { error?: string };
     throw new Error(data.error ?? "Erro ao atualizar status");
+  }
+}
+
+// Responde à sugestão de reagendamento do admin (rescheduleStatus === "PENDENTE").
+// Não envia telefone no corpo — a rota identifica o cliente pela sessão
+// (requireCustomer, ver src/lib/auth/requireCustomer.ts).
+export async function respondToReschedule(
+  orderId: string,
+  response: "ACEITO" | "RECUSADO",
+): Promise<void> {
+  const res = await fetch(`/api/orders/${orderId}/reschedule-response`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ response }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(data.error ?? "Erro ao responder ao reagendamento");
   }
 }

@@ -21,6 +21,12 @@ export type PaymentStatus =
   | "PARCIAL"
   | "ESTORNADO";
 
+export type RescheduleStatus =
+  | "NONE"
+  | "PENDENTE"
+  | "ACEITO"
+  | "RECUSADO";
+
 export type PixKeyType = "CPF" | "CNPJ" | "EMAIL" | "TELEFONE" | "ALEATORIA";
 
 export interface ValidationError {
@@ -165,6 +171,8 @@ export interface Order {
   paymentMethod: PaymentMethod;
   paymentStatus?: PaymentStatus;
   orderNotes?: string;
+  suggestedDeliveryDate?: string;
+  rescheduleStatus?: RescheduleStatus;
 }
 
 export interface StoreConfig {

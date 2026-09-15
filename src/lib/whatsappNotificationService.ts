@@ -63,3 +63,34 @@ export async function notifyOrderStatus(input: NotifyOrderStatusInput): Promise<
     console.error("[whatsappNotificationService] Falha inesperada:", err);
   }
 }
+
+// ─── Reagendamento negociado (Sprint 4/4 — Dashboard Executivo + Calendário) ──
+// Fora de TEMPLATES/buildMessage acima: reagendamento não é um OrderStatus,
+// é orquestrado por orderService.suggestReschedule. Texto fixo já aprovado
+// pelo Product Owner — não alterar sem nova decisão de produto.
+
+interface NotifyRescheduleSuggestedInput {
+  orderId: string;
+  phone: string;
+  orderNumber: number;
+  suggestedDate: Date;
+}
+
+export async function notifyRescheduleSuggested(input: NotifyRescheduleSuggestedInput): Promise<void> {
+  const dateKey = input.suggestedDate.toISOString().slice(0, 10);
+  const message = `Olá! Precisamos reagendar seu pedido #${input.orderNumber}. Nova data sugerida: ${formatDate(dateKey)}. Acesse /pedidos para confirmar ou recusar.`;
+
+  try {
+    const result = await sendWhatsAppMessage(input.phone, message);
+    await logWhatsAppMessage({
+      phone: input.phone,
+      message,
+      template: "order_reschedule_suggested",
+      orderId: input.orderId,
+      success: result.success,
+      error: result.error,
+    });
+  } catch (err) {
+    console.error("[whatsappNotificationService] Falha inesperada:", err);
+  }
+}

@@ -132,6 +132,12 @@ export default function ProducaoPage() {
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Reagendamento negociado — só um card por vez pode ter o formulário inline
+  // aberto (mesmo padrão de moveTarget acima, sem modal dedicado).
+  const [rescheduleOrderId, setRescheduleOrderId] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleLoading, setRescheduleLoading] = useState<string | null>(null);
+
   // Consolidação de ingredientes — segue a mesma data da aba ativa (Hoje/
   // Amanhã), carregamento independente do Kanban (chamada de API separada).
   const [consolidation, setConsolidation] = useState<ConsolidatedIngredientDTO[] | null>(null);
@@ -326,6 +332,23 @@ export default function ProducaoPage() {
     }
   }
 
+  async function handleSuggestReschedule(order: KanbanOrderDTO) {
+    if (!rescheduleDate) return;
+    setRescheduleLoading(order.id);
+    const toastId = toast.loading("Enviando sugestão de novo dia…");
+    try {
+      await orderAdminApi.suggestReschedule(order.id, rescheduleDate);
+      toast.success(`Reagendamento sugerido para o pedido #${order.orderNumber}.`, { id: toastId });
+      setRescheduleOrderId(null);
+      setRescheduleDate("");
+      await load(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao sugerir novo dia.", { id: toastId });
+    } finally {
+      setRescheduleLoading(null);
+    }
+  }
+
   return (
     <PageContainer>
       <HeaderMinimal title="Produção" />
@@ -451,6 +474,8 @@ export default function ProducaoPage() {
                           )}
                           {orders.map((order) => {
                             const options = NEXT_STATUS_OPTIONS[order.status] ?? [];
+                            const canReschedule = order.status !== "CANCELADO" && order.status !== "ENTREGUE";
+                            const isReschedulingThis = rescheduleOrderId === order.id;
                             return (
                               <div key={order.id} className="shadow-card mb-2 rounded-lg bg-white p-2.5 text-xs">
                                 <p className="font-semibold text-chocolate">
@@ -484,6 +509,56 @@ export default function ProducaoPage() {
                                     </select>
                                   )}
                                 </div>
+
+                                {canReschedule && (
+                                  <div className="mt-1.5 border-t border-sand pt-1.5">
+                                    {isReschedulingThis ? (
+                                      <div className="flex flex-col gap-1">
+                                        <input
+                                          type="date"
+                                          aria-label={`Nova data para o pedido #${order.orderNumber}`}
+                                          className="rounded-md border border-sand bg-white px-1 py-0.5 text-[10px]"
+                                          min={toDateParam(new Date())}
+                                          value={rescheduleDate}
+                                          onChange={(e) => setRescheduleDate(e.target.value)}
+                                          disabled={rescheduleLoading === order.id}
+                                        />
+                                        <div className="flex gap-1">
+                                          <button
+                                            type="button"
+                                            className="flex-1 rounded-md border border-sand px-1 py-0.5 text-[10px] font-semibold text-muted hover:bg-sand/60"
+                                            disabled={rescheduleLoading === order.id}
+                                            onClick={() => {
+                                              setRescheduleOrderId(null);
+                                              setRescheduleDate("");
+                                            }}
+                                          >
+                                            Cancelar
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="flex-1 rounded-md bg-caramel px-1 py-0.5 text-[10px] font-semibold text-white disabled:opacity-50"
+                                            disabled={!rescheduleDate || rescheduleLoading === order.id}
+                                            onClick={() => handleSuggestReschedule(order)}
+                                          >
+                                            {rescheduleLoading === order.id ? "…" : "Confirmar"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="text-[10px] font-semibold text-caramel hover:underline"
+                                        onClick={() => {
+                                          setRescheduleOrderId(order.id);
+                                          setRescheduleDate("");
+                                        }}
+                                      >
+                                        Sugerir novo dia
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}

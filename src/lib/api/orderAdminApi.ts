@@ -1,4 +1,4 @@
-import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types";
+import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus, RescheduleStatus } from "@/lib/types";
 
 // ── Tipos de exibição (DTO) ──────────────────────────────────────────────────
 // Espelham src/lib/orderService.ts (KanbanOrderDTO/KanbanDataDTO/OrderDTO), sem
@@ -97,6 +97,8 @@ export interface OrderDTO {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   orderNotes: string | null;
+  suggestedDeliveryDate: string | null;
+  rescheduleStatus: RescheduleStatus;
   items: OrderItemDTO[];
   createdAt: string;
   updatedAt: string;
@@ -136,6 +138,14 @@ export async function updateOrderStatus(
   return request<OrderDTO>(`/api/admin/orders/${orderId}/status`, {
     method: "PATCH",
     body: JSON.stringify(notes !== undefined ? { status, notes } : { status }),
+  });
+}
+
+/** `newDate` no formato YYYY-MM-DD (ver src/app/api/admin/orders/[id]/reschedule/route.ts). */
+export async function suggestReschedule(orderId: string, newDate: string): Promise<OrderDTO> {
+  return request<OrderDTO>(`/api/admin/orders/${orderId}/reschedule`, {
+    method: "PATCH",
+    body: JSON.stringify({ newDate }),
   });
 }
 

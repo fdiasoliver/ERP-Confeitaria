@@ -701,6 +701,16 @@ Mensagem automática enviada ao cliente (telefone do `Customer`, não necessaria
 
 Envio best-effort — falha de envio (provedor indisponível, etc.) nunca bloqueia nem reverte a mudança de status do pedido; sempre registrada em `WhatsAppLog` (sucesso ou erro). Ver `src/lib/whatsappNotificationService.ts`.
 
+## 12.11 Reagendamento negociado (definido nesta sprint, conclusão do Módulo P3.3 — 15/09/2026)
+
+- Fluxo: admin sugere nova data de entrega (`suggestedDeliveryDate`) para um pedido em qualquer status exceto `CANCELADO`/`ENTREGUE`; pedido entra em `rescheduleStatus = PENDENTE`.
+- Cliente aceita ou recusa a sugestão. Aceito: `deliveryDate` do pedido passa a ser `suggestedDeliveryDate`. Recusado: `deliveryDate` original é mantido.
+- Em ambos os casos, `suggestedDeliveryDate` é limpo e `rescheduleStatus` volta para `NONE`.
+- **Quem pode responder:** apenas o cliente dono do pedido, validado pela sessão NextAuth real (nunca por telefone enviado no corpo da requisição).
+- **Notificação:** WhatsApp best-effort ao cliente quando o admin sugere reagendamento (template `order_reschedule_suggested`), sempre registrada em `WhatsAppLog`, mesmo padrão best-effort das demais notificações da Seção 12.10.
+- **Sem histórico dedicado:** diferente da regra geral da Seção 12.1 (toda mudança de `OrderStatus` registrada em `OrderStatusHistory`), mudanças de `rescheduleStatus` não são registradas ali — `OrderStatusHistory` é tipado estritamente para `OrderStatus`, não para `RescheduleStatus`. A trilha de auditoria mínima vem do `WhatsAppLog`.
+- **Reagendamentos múltiplos/consecutivos no mesmo pedido:** A definir (schema guarda só a sugestão pendente atual, sem histórico).
+
 ---
 
 # 13. Financeiro

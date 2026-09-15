@@ -59,6 +59,13 @@ enum OrderStatus {
   CANCELADO
 }
 
+enum RescheduleStatus {
+  NONE
+  PENDENTE
+  ACEITO
+  RECUSADO
+}
+
 enum PriceSource {
   MANUAL
   CONAB_CEASA
@@ -481,34 +488,36 @@ model ProductPackaging {
 // ─── Pedidos ───────────────────────────────────────────────────────────────────
 
 model Order {
-  id                 String               @id @default(cuid())
-  orderNumber        Int                  @unique @default(autoincrement())
-  customerId         String
-  customer           Customer             @relation(fields: [customerId], references: [id])
-  status             OrderStatus          @default(CONFIRMADO)
-  deliveryType       DeliveryType
-  deliveryDate       DateTime             @db.Date
-  deliveryTimeSlot   String? // "14:00-16:00"
-  addressId          String?
-  address            Address?             @relation(fields: [addressId], references: [id])
-  receiverName       String
-  receiverPhone      String?
-  deliveryFee        Decimal              @default(0) @db.Decimal(10, 2)
-  deliveryDistanceKm Float?
-  subtotal           Decimal              @db.Decimal(10, 2)
-  total              Decimal              @db.Decimal(10, 2)
-  paymentMethod      PaymentMethod
-  paymentStatus      PaymentStatus        @default(PENDENTE)
-  pixTxId            String? // ID transação PIX integrado
-  orderNotes         String? // Observações gerais do pedido
-  createdById        String?
-  createdBy          User?                @relation("OrderCreatedBy", fields: [createdById], references: [id])
-  items              OrderItem[]
-  attachments        OrderAttachment[]
-  statusHistory      OrderStatusHistory[]
-  whatsappLogs       WhatsAppLog[]
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  id                    String               @id @default(cuid())
+  orderNumber           Int                  @unique @default(autoincrement())
+  customerId            String
+  customer              Customer             @relation(fields: [customerId], references: [id])
+  status                OrderStatus          @default(CONFIRMADO)
+  deliveryType          DeliveryType
+  deliveryDate          DateTime             @db.Date
+  deliveryTimeSlot      String? // "14:00-16:00"
+  addressId             String?
+  address               Address?             @relation(fields: [addressId], references: [id])
+  receiverName          String
+  receiverPhone         String?
+  deliveryFee           Decimal              @default(0) @db.Decimal(10, 2)
+  deliveryDistanceKm    Float?
+  subtotal              Decimal              @db.Decimal(10, 2)
+  total                 Decimal              @db.Decimal(10, 2)
+  paymentMethod         PaymentMethod
+  paymentStatus         PaymentStatus        @default(PENDENTE)
+  pixTxId               String? // ID transação PIX integrado
+  orderNotes            String? // Observações gerais do pedido
+  suggestedDeliveryDate DateTime?            @db.Date
+  rescheduleStatus      RescheduleStatus     @default(NONE)
+  createdById           String?
+  createdBy             User?                @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  items                 OrderItem[]
+  attachments           OrderAttachment[]
+  statusHistory         OrderStatusHistory[]
+  whatsappLogs          WhatsAppLog[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
 
   @@index([customerId])
   @@index([deliveryDate, status])

@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
 import { ViewToggle } from "@/components/shared/ViewToggle";
@@ -11,6 +13,7 @@ import { formatCurrency } from "@/lib/mock-data";
 import { formatDate } from "@/lib/formatters/date";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useUserOrders } from "@/hooks/useUserOrders";
+import { respondToReschedule } from "@/services/orderService";
 import type { CartItem, Order } from "@/lib/types";
 import { STATUS_LABELS } from "@/lib/types";
 
@@ -31,8 +34,28 @@ export default function PedidosPage() {
   const { loadFromOrder } = useCart();
   const router = useRouter();
   const customer = useCurrentUser();
-  const { orders, isLoading, error } = useUserOrders(customer?.phone ?? null);
+  const { orders, isLoading, error, refetch } = useUserOrders(customer?.phone ?? null);
   const [view, setView] = useViewMode("pedidos");
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+
+  async function handleRespondToReschedule(orderId: string, response: "ACEITO" | "RECUSADO") {
+    setRespondingId(orderId);
+    const toastId = toast.loading(
+      response === "ACEITO" ? "Confirmando novo dia de entrega…" : "Recusando novo dia de entrega…",
+    );
+    try {
+      await respondToReschedule(orderId, response);
+      toast.success(
+        response === "ACEITO" ? "Novo dia de entrega confirmado." : "Sugestão de novo dia recusada.",
+        { id: toastId },
+      );
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao responder ao reagendamento.", { id: toastId });
+    } finally {
+      setRespondingId(null);
+    }
+  }
 
   const handleRepeat = (orderId: string, customize = false) => {
     const order = orders.find((o) => o.id === orderId);
@@ -63,11 +86,39 @@ export default function PedidosPage() {
   };
 
   // Mesmas ações nas duas visões — mesmo padrão dos toggles do admin (Sprint DS.6).
+  // Quando há reagendamento pendente (rescheduleStatus === "PENDENTE"), a visão em
+  // lista prioriza Aceitar/Recusar no lugar das ações padrão — a visão em card já
+  // oferece essas mesmas ações dentro do banner dedicado (renderRescheduleBanner).
   function renderActions(order: Order, variant: "card" | "row") {
     const base =
       variant === "card"
         ? "flex-1 rounded-lg py-2.5 text-sm font-semibold"
         : "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold";
+
+    if (variant === "row" && order.rescheduleStatus === "PENDENTE") {
+      const busy = respondingId === order.id;
+      return (
+        <>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => handleRespondToReschedule(order.id, "RECUSADO")}
+            className={`${base} border border-sand disabled:opacity-50`}
+          >
+            Recusar
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => handleRespondToReschedule(order.id, "ACEITO")}
+            className={`${base} bg-caramel text-white disabled:opacity-50`}
+          >
+            {busy ? "…" : "Aceitar"}
+          </button>
+        </>
+      );
+    }
+
     return (
       <>
         <button type="button" className={`${base} border border-sand`}>
@@ -84,6 +135,42 @@ export default function PedidosPage() {
     );
   }
 
+  // Banner de reagendamento pendente — só a visão em card (a principal desta
+  // página); a visão em lista usa renderActions acima para as mesmas ações,
+  // mais compacto para caber numa linha de tabela.
+  function renderRescheduleBanner(order: Order) {
+    if (order.rescheduleStatus !== "PENDENTE" || !order.suggestedDeliveryDate) return null;
+    const busy = respondingId === order.id;
+    return (
+      <div className="mt-3 rounded-xl border border-caramel/40 bg-caramel/10 p-3">
+        <p className="text-sm font-semibold text-chocolate">
+          Novo dia sugerido: {formatDate(order.suggestedDeliveryDate)}
+        </p>
+        <p className="mt-0.5 text-xs text-muted">
+          A confeitaria sugeriu uma nova data de entrega para este pedido.
+        </p>
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => handleRespondToReschedule(order.id, "RECUSADO")}
+            className="flex-1 rounded-lg border border-sand py-1.5 text-xs font-semibold text-chocolate disabled:opacity-50"
+          >
+            Recusar
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => handleRespondToReschedule(order.id, "ACEITO")}
+            className="flex-1 rounded-lg bg-caramel py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {busy ? "…" : "Aceitar"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const columns: EntityColumn<Order>[] = [
     {
       key: "orderNumber",
@@ -96,6 +183,11 @@ export default function PedidosPage() {
           >
             {STATUS_LABELS[o.status]}
           </span>
+          {o.rescheduleStatus === "PENDENTE" && o.suggestedDeliveryDate && (
+            <span className="rounded-full bg-caramel/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-caramel">
+              Novo dia sugerido: {formatDate(o.suggestedDeliveryDate)}
+            </span>
+          )}
         </div>
       ),
     },
@@ -196,6 +288,8 @@ export default function PedidosPage() {
                 </div>
 
                 <p className="mt-2 font-semibold">{formatCurrency(order.total)}</p>
+
+                {renderRescheduleBanner(order)}
 
                 <div className="mt-3 flex gap-2">{renderActions(order, "card")}</div>
               </article>

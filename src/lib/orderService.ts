@@ -1,5 +1,5 @@
-import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types";
-import type { OrderStatus as PrismaOrderStatus } from "@prisma/client";
+import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus, RescheduleStatus } from "@/lib/types";
+import type { OrderStatus as PrismaOrderStatus, RescheduleStatus as PrismaRescheduleStatus } from "@prisma/client";
 import {
   findByDateAndStatus,
   findOrderById,
@@ -9,10 +9,11 @@ import {
   countOrdersByDeliveryDateInRange,
   findItemsForConsolidation,
   updateStatusWithHistory,
+  updateRescheduleFields,
   type OrderWithItems,
 } from "@/lib/repositories/orderRepository";
 import { resolveConversionFactor } from "@/lib/recipeService";
-import { notifyOrderStatus } from "@/lib/whatsappNotificationService";
+import { notifyOrderStatus, notifyRescheduleSuggested } from "@/lib/whatsappNotificationService";
 import { findCustomerPhoneById } from "@/lib/repositories/customerRepository";
 import { getStoreConfig } from "@/lib/storeConfigService";
 
@@ -30,6 +31,21 @@ export class InvalidStatusTransitionError extends Error {
     public to: OrderStatus,
   ) {
     super(`Transição de status inválida: ${from} → ${to}`);
+  }
+}
+
+export class InvalidRescheduleStateError extends Error {
+  constructor(
+    public orderId: string,
+    public reason: string,
+  ) {
+    super(`Reagendamento inválido para o pedido ${orderId}: ${reason}`);
+  }
+}
+
+export class CustomerPhoneMismatchError extends Error {
+  constructor(public orderId: string) {
+    super(`O telefone informado não corresponde ao cliente do pedido ${orderId}.`);
   }
 }
 
@@ -81,6 +97,8 @@ export interface OrderDTO {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   orderNotes: string | null;
+  suggestedDeliveryDate: string | null;
+  rescheduleStatus: RescheduleStatus;
   items: OrderItemDTO[];
   createdAt: string;
   updatedAt: string;
@@ -104,6 +122,8 @@ function mapOrderDTO(order: OrderWithItems): OrderDTO {
     paymentMethod: order.paymentMethod as PaymentMethod,
     paymentStatus: order.paymentStatus as PaymentStatus,
     orderNotes: order.orderNotes,
+    suggestedDeliveryDate: order.suggestedDeliveryDate ? order.suggestedDeliveryDate.toISOString().slice(0, 10) : null,
+    rescheduleStatus: order.rescheduleStatus as RescheduleStatus,
     items: order.items.map((item) => ({
       id: item.id,
       productId: item.productId,
@@ -352,4 +372,66 @@ export async function updateOrderStatus(orderId: string, newStatus: OrderStatus,
   }
 
   return dto;
+}
+
+// ─── Reagendamento negociado (Sprint 4/4 — Dashboard Executivo + Calendário) ──
+// Sem tabela de histórico dedicada (decisão arquitetural): a trilha de auditoria
+// mínima vem do WhatsAppLog da notificação disparada por suggestReschedule
+// (template "order_reschedule_suggested"). OrderStatusHistory não é reaproveitado
+// aqui — é tipado estritamente para OrderStatus, não para RescheduleStatus.
+
+export async function suggestReschedule(orderId: string, newDate: Date): Promise<OrderDTO> {
+  const existing = await findOrderById(orderId);
+  if (!existing) throw new OrderNotFoundError(orderId);
+
+  const currentStatus = existing.status as OrderStatus;
+  if (currentStatus === "CANCELADO" || currentStatus === "ENTREGUE") {
+    throw new InvalidRescheduleStateError(orderId, `pedido está com status ${currentStatus}`);
+  }
+
+  const updated = await updateRescheduleFields(orderId, {
+    suggestedDeliveryDate: newDate,
+    rescheduleStatus: "PENDENTE" as PrismaRescheduleStatus,
+  });
+  const dto = mapOrderDTO(updated);
+
+  // Best-effort — nunca bloqueia nem falha a mutação principal (mesmo padrão de
+  // updateOrderStatus acima; notifyRescheduleSuggested já engole os próprios erros).
+  const phone = await findCustomerPhoneById(dto.customerId).catch(() => null);
+  if (phone) {
+    await notifyRescheduleSuggested({
+      orderId: dto.id,
+      phone,
+      orderNumber: dto.orderNumber,
+      suggestedDate: newDate,
+    });
+  }
+
+  return dto;
+}
+
+export async function respondToReschedule(
+  orderId: string,
+  customerPhone: string,
+  response: "ACEITO" | "RECUSADO",
+): Promise<OrderDTO> {
+  const existing = await findOrderById(orderId);
+  if (!existing) throw new OrderNotFoundError(orderId);
+
+  if (existing.rescheduleStatus !== "PENDENTE") {
+    throw new InvalidRescheduleStateError(orderId, "não há reagendamento pendente para este pedido");
+  }
+
+  const ownerPhone = await findCustomerPhoneById(existing.customerId);
+  if (ownerPhone !== customerPhone) {
+    throw new CustomerPhoneMismatchError(orderId);
+  }
+
+  const updated = await updateRescheduleFields(orderId, {
+    deliveryDate: response === "ACEITO" ? (existing.suggestedDeliveryDate ?? existing.deliveryDate) : undefined,
+    suggestedDeliveryDate: null,
+    rescheduleStatus: "NONE" as PrismaRescheduleStatus,
+  });
+
+  return mapOrderDTO(updated);
 }
