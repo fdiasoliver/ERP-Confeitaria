@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Prisma, Customer } from "@prisma/client";
+import type { Prisma, Customer, CustomerType } from "@prisma/client";
 
 // ─── Tipos e includes ──────────────────────────────────────────────────────────
 
@@ -140,6 +140,29 @@ export async function updateCustomerProfile(
   data: { name?: string; birthDate?: Date | null },
 ): Promise<Customer> {
   return prisma.customer.update({ where: { id }, data });
+}
+
+// ─── Leitura — checagem de duplicidade por CNPJ (cliente corporativo) ─────────
+// Equivalente a findCustomerByPhone (acima) para o campo cnpj (@unique) — mesmo
+// padrão, seleção mínima, usada só para checagem de duplicidade no Service.
+
+export async function findCustomerByCnpj(cnpj: string): Promise<Pick<Customer, "id"> | null> {
+  return prisma.customer.findUnique({ where: { cnpj }, select: { id: true } });
+}
+
+// ─── Escrita — criação (cliente corporativo + consumidor final) ───────────────
+
+export async function createCustomer(data: {
+  name: string;
+  type: CustomerType;
+  phone?: string | null;
+  cnpj?: string | null;
+  companyName?: string | null;
+  tradeName?: string | null;
+  email?: string | null;
+  notes?: string | null;
+}): Promise<Customer> {
+  return prisma.customer.create({ data });
 }
 
 // ─── Uso/vínculo — exclusão protegida ──────────────────────────────────────────

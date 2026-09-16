@@ -13,7 +13,7 @@ import { formatDate } from "@/lib/formatters/date";
 import { STATUS_LABELS, PAYMENT_LABELS } from "@/lib/types";
 import type { PaymentStatus } from "@/lib/types";
 import * as customerApi from "@/lib/api/customerApi";
-import { ApiRequestError } from "@/lib/api/customerApi";
+import { ApiRequestError, CUSTOMER_TYPE_LABELS } from "@/lib/api/customerApi";
 import type { CustomerDetail } from "@/lib/api/customerApi";
 
 const MAX_NOTES_LENGTH = 2000;
@@ -122,12 +122,25 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       <HeaderMinimal title="Cliente" />
 
       <div className="space-y-4 p-5">
-        <Link href="/admin/clientes" className="text-sm font-medium text-chocolate underline">
-          ← Voltar para Clientes
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/admin/clientes" className="text-sm font-medium text-chocolate underline">
+            ← Voltar para Clientes
+          </Link>
+          <Link
+            href={`/admin/orcamentos?customerId=${customer.id}`}
+            className="rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90"
+          >
+            + Novo orçamento
+          </Link>
+        </div>
 
         <div className="shadow-card rounded-2xl bg-white p-5">
-          <h1 className="font-display mb-1 text-xl font-semibold text-chocolate">{customer.name}</h1>
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-xl font-semibold text-chocolate">{customer.name}</h1>
+            <span className="rounded-full bg-sand px-2 py-0.5 text-xs font-semibold text-chocolate">
+              {CUSTOMER_TYPE_LABELS[customer.type]}
+            </span>
+          </div>
           <p className="mb-4 text-sm text-muted">
             Cliente desde {formatDateTime(customer.createdAt)}
           </p>
@@ -135,13 +148,35 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <p className="mb-1 text-xs font-medium text-muted">Telefone</p>
-              <p className="input-field bg-sand/40 text-chocolate">{customer.phone}</p>
-              <p className="mt-1 text-[11px] text-muted">Somente leitura — chave de login do cliente.</p>
+              <p className="input-field bg-sand/40 text-chocolate">{customer.phone ?? "Não informado"}</p>
+              <p className="mt-1 text-[11px] text-muted">
+                {customer.type === "CONSUMIDOR_FINAL"
+                  ? "Somente leitura — chave de login do cliente."
+                  : "Somente leitura."}
+              </p>
             </div>
             {customer.email && (
               <div>
                 <p className="mb-1 text-xs font-medium text-muted">E-mail</p>
                 <p className="input-field bg-sand/40 text-chocolate">{customer.email}</p>
+              </div>
+            )}
+            {customer.type === "CORPORATIVO" && customer.cnpj && (
+              <div>
+                <p className="mb-1 text-xs font-medium text-muted">CNPJ</p>
+                <p className="input-field bg-sand/40 text-chocolate">{customer.cnpj}</p>
+              </div>
+            )}
+            {customer.type === "CORPORATIVO" && customer.companyName && (
+              <div>
+                <p className="mb-1 text-xs font-medium text-muted">Razão social</p>
+                <p className="input-field bg-sand/40 text-chocolate">{customer.companyName}</p>
+              </div>
+            )}
+            {customer.type === "CORPORATIVO" && customer.tradeName && (
+              <div>
+                <p className="mb-1 text-xs font-medium text-muted">Nome fantasia</p>
+                <p className="input-field bg-sand/40 text-chocolate">{customer.tradeName}</p>
               </div>
             )}
           </div>

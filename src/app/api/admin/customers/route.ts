@@ -1,8 +1,15 @@
 import { NextRequest } from "next/server";
 import { requireRole } from "@/lib/auth/requireRole";
-import { ok, internalError } from "@/lib/http/responses";
+import { ok, created, badRequest, invalidBody, conflict, internalError } from "@/lib/http/responses";
 import type { ListCustomersParams } from "@/lib/repositories/customerRepository";
-import { listCustomers } from "@/lib/customerService";
+import type { CustomerCreateInput } from "@/lib/validators/customerValidator";
+import {
+  listCustomers,
+  createCustomer,
+  CustomerValidationFailedError,
+  CustomerDuplicatePhoneError,
+  CustomerDuplicateCnpjError,
+} from "@/lib/customerService";
 
 function parseListParams(searchParams: URLSearchParams): ListCustomersParams {
   const params: ListCustomersParams = {};
@@ -44,6 +51,32 @@ export async function GET(request: NextRequest) {
     const result = await listCustomers(parseListParams(searchParams));
     return ok(result);
   } catch {
+    return internalError();
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const denied = await requireRole(["ADMIN", "ATENDIMENTO"]);
+  if (denied) return denied;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return invalidBody();
+  }
+
+  try {
+    const customer = await createCustomer(body as CustomerCreateInput);
+    return created(customer);
+  } catch (err) {
+    if (err instanceof CustomerValidationFailedError) return badRequest(err.errors);
+    if (err instanceof CustomerDuplicatePhoneError) {
+      return conflict("CUSTOMER_DUPLICATE_PHONE", err.message, { phone: err.phone });
+    }
+    if (err instanceof CustomerDuplicateCnpjError) {
+      return conflict("CUSTOMER_DUPLICATE_CNPJ", err.message, { cnpj: err.cnpj });
+    }
     return internalError();
   }
 }

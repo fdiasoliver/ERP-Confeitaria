@@ -82,7 +82,10 @@ export const authOptions: NextAuthOptions = {
         return {
           id: customer.id,
           name: customer.name,
-          phone: customer.phone,
+          // `phone` é `String?` no schema desde a Sprint de cliente corporativo —
+          // mas este provider só autentica pelo fluxo OTP por telefone (o próprio
+          // `phone` validado acima), nunca null na prática deste fluxo.
+          phone: customer.phone ?? undefined,
           userType: "customer" as const,
         };
       },

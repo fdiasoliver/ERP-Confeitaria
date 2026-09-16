@@ -166,21 +166,35 @@ model User {
   updatedAt    DateTime @updatedAt
 }
 
-// ─── Clientes (chave: celular) ───────────────────────────────────────────────
+// ─── Clientes (chave: celular, ou CNPJ/nome para corporativo) ─────────────────
+// Cliente corporativo (Sprint de Orçamento — 16/09/2026): `phone` deixou de ser
+// obrigatório — Postgres trata múltiplos NULL como distintos em coluna @unique,
+// então @unique é mantido sem risco de colisão entre clientes sem telefone.
+// Regra de obrigatoriedade por `type` fica em código (customerValidator.ts),
+// não em constraint de banco.
+
+enum CustomerType {
+  CONSUMIDOR_FINAL
+  CORPORATIVO
+}
 
 model Customer {
-  id        String    @id @default(cuid())
-  name      String
-  phone     String    @unique // DDD + número — chave de identificação
-  email     String?
-  birthDate DateTime? @db.Date // Cadastro complementar do cliente — base para futuro CRM (sem índice: não usado em WHERE/ORDER BY nesta missão)
-  notes     String? // Notas internas da equipe
-  active    Boolean   @default(true)
-  addresses Address[]
-  orders    Order[]
-  otpCodes  OtpCode[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String       @id @default(cuid())
+  name        String
+  phone       String?      @unique // DDD + número — chave de identificação (obrigatório para CONSUMIDOR_FINAL, ver customerValidator.ts)
+  type        CustomerType @default(CONSUMIDOR_FINAL)
+  cnpj        String?      @unique
+  companyName String?
+  tradeName   String?
+  email       String?
+  birthDate   DateTime?    @db.Date // Cadastro complementar do cliente — base para futuro CRM (sem índice: não usado em WHERE/ORDER BY nesta missão)
+  notes       String? // Notas internas da equipe
+  active      Boolean      @default(true)
+  addresses   Address[]
+  orders      Order[]
+  otpCodes    OtpCode[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Address {

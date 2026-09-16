@@ -60,7 +60,12 @@ function mapCustomerProfileDTO(
   return {
     id: customer.id,
     name: customer.name,
-    phone: customer.phone,
+    // `phone` é `String?` no schema desde a Sprint de cliente corporativo (Customer
+    // pode não ter telefone) — mas este Service é exclusivo do fluxo de
+    // autoatendimento do cliente final, sempre autenticado via OTP por telefone
+    // (requireCustomer.ts) e sempre encontrado aqui via findCustomerByPhone(phone),
+    // então nunca é null na prática deste fluxo.
+    phone: customer.phone ?? "",
     birthDate: customer.birthDate ? customer.birthDate.toISOString().slice(0, 10) : null,
     isProfileComplete: customer.name !== NEW_CUSTOMER_PLACEHOLDER_NAME,
   };

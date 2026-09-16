@@ -1,4 +1,4 @@
-import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus, RescheduleStatus } from "@/lib/types";
+import type { DeliveryAddressInput, DeliveryType, OrderStatus, PaymentMethod, PaymentStatus, RescheduleStatus } from "@/lib/types";
 
 // ── Tipos de exibição (DTO) ──────────────────────────────────────────────────
 // Espelham src/lib/orderService.ts (KanbanOrderDTO/KanbanDataDTO/OrderDTO), sem
@@ -104,6 +104,34 @@ export interface OrderDTO {
   updatedAt: string;
 }
 
+// Espelha CreateOrderInput de src/lib/orderService.ts (criação de orçamento pela
+// equipe) — mesmo padrão acima: o cliente HTTP declara localmente o tipo de
+// entrada, sem importar o Service (server-side).
+export interface CreateOrderItemInput {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  observation?: string;
+}
+
+export interface CreateOrderInput {
+  customerId: string;
+  deliveryDate: string;
+  deliveryType: DeliveryType;
+  deliveryFee: number;
+  addressId?: string;
+  deliveryAddress?: DeliveryAddressInput;
+  receiverName?: string;
+  receiverPhone?: string;
+  orderNotes?: string;
+  paymentMethod: PaymentMethod;
+  subtotal: number;
+  total: number;
+  items: CreateOrderItemInput[];
+}
+
 // ── Cliente HTTP ──────────────────────────────────────────────────────────────
 
 export class ApiRequestError extends Error {
@@ -128,6 +156,23 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export async function getKanbanData(date?: string): Promise<KanbanDataDTO> {
   const qs = date ? `?date=${date}` : "";
   return request<KanbanDataDTO>(`/api/admin/orders${qs}`);
+}
+
+/** Lista pedidos por status, sem o agrupamento por coluna do Kanban — usada pela
+ * fila de orçamentos pendentes (status=RASCUNHO). Ver GET /api/admin/orders?status=
+ * em src/app/api/admin/orders/route.ts. */
+export async function listOrdersByStatus(status: OrderStatus): Promise<OrderDTO[]> {
+  return request<OrderDTO[]>(`/api/admin/orders?status=${status}`);
+}
+
+/** Cria um orçamento (Order com status RASCUNHO) para um cliente já cadastrado —
+ * contraparte administrativa de POST /api/orders (checkout público, não usado
+ * aqui). Ver POST /api/admin/orders em src/app/api/admin/orders/route.ts. */
+export async function createOrder(input: CreateOrderInput): Promise<OrderDTO> {
+  return request<OrderDTO>(`/api/admin/orders`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function updateOrderStatus(

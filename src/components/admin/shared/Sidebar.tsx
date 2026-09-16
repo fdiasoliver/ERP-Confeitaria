@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ChefHat,
   Users,
+  FileText,
   ShoppingBag,
   Tags,
   PartyPopper,
@@ -52,6 +53,7 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/admin/producao", label: "Produção", roles: ALL_ROLES, icon: ChefHat },
       { href: "/admin/clientes", label: "Clientes", roles: ["ADMIN", "ATENDIMENTO"], icon: Users },
+      { href: "/admin/orcamentos", label: "Orçamentos", roles: ["ADMIN", "ATENDIMENTO", "PRODUCAO"], icon: FileText },
     ],
   },
   {

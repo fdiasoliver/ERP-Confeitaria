@@ -6,10 +6,21 @@ import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus } from "@/
 // que já vivem em @/lib/types.ts (fonte única, mesmo padrão de productApi.ts para
 // esses mesmos enums no histórico de pedidos).
 
+// Cliente corporativo + consumidor final (Sprint de Orçamento — 16/09/2026):
+// `type` espelha o enum Prisma `CustomerType` (customerRepository.ts) — string
+// literal, nunca importado do Prisma no cliente HTTP (mesmo padrão de
+// UnitOfMeasure.type em unitApi.ts).
+export type CustomerType = "CONSUMIDOR_FINAL" | "CORPORATIVO";
+
+export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
+  CONSUMIDOR_FINAL: "Consumidor final",
+  CORPORATIVO: "Corporativo",
+};
+
 export interface CustomerListItem {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   ltv: number;
   lastOrderAt: string | null;
   active: boolean;
@@ -66,7 +77,11 @@ export interface CustomerOrderHistoryItem {
 export interface Customer {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
+  type: CustomerType;
+  cnpj: string | null;
+  companyName: string | null;
+  tradeName: string | null;
   email: string | null;
   notes: string | null;
   active: boolean;
@@ -77,6 +92,19 @@ export interface Customer {
 export interface CustomerDetail extends Customer {
   orders: CustomerOrderHistoryItem[];
   addressGroups: AddressGroup[];
+}
+
+// Espelha CustomerCreateInput de src/lib/validators/customerValidator.ts — mesmo
+// padrão de não importar o Validator (server-side) no cliente HTTP.
+export interface CustomerCreateInput {
+  name: string;
+  type: CustomerType;
+  phone?: string | null;
+  cnpj?: string | null;
+  companyName?: string | null;
+  tradeName?: string | null;
+  email?: string | null;
+  notes?: string | null;
 }
 
 export class ApiRequestError extends Error {
@@ -110,6 +138,13 @@ function buildQuery(params: ListCustomersParams): string {
 
 export async function listCustomers(params: ListCustomersParams = {}): Promise<PagedCustomers> {
   return request<PagedCustomers>(`/api/admin/customers${buildQuery(params)}`);
+}
+
+export async function createCustomer(input: CustomerCreateInput): Promise<Customer> {
+  return request<Customer>(`/api/admin/customers`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function getCustomer(id: string): Promise<CustomerDetail> {

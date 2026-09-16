@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Prisma, OrderStatus, RescheduleStatus } from "@prisma/client";
+import type { Prisma, OrderStatus, RescheduleStatus, DeliveryType, PaymentMethod } from "@prisma/client";
 
 // ─── Tipos e includes ──────────────────────────────────────────────────────────
 
@@ -231,6 +231,83 @@ export async function updateStatusWithHistory(
     });
 
     return updated;
+  });
+}
+
+// ─── Escrita — criação (orçamento admin) ───────────────────────────────────────
+// Contraparte, para o admin, da transação hoje embutida em
+// src/app/api/orders/route.ts (checkout público, não alterado por esta sprint) —
+// mesmo padrão de snapshot em OrderItem (productName/unitPrice/totalPrice) e
+// registro em OrderStatusHistory na mesma transação. Recebe dados já resolvidos
+// (customerId, addressId, deliveryDistanceKm) — resolução de endereço/frete é
+// responsabilidade do Service (orderService.ts), não desta função.
+
+export interface CreateOrderWithItemsInput {
+  customerId: string;
+  status: OrderStatus;
+  deliveryType: DeliveryType;
+  deliveryDate: Date;
+  deliveryTimeSlot?: string | null;
+  addressId?: string | null;
+  receiverName: string;
+  receiverPhone?: string | null;
+  deliveryFee: number;
+  deliveryDistanceKm?: number | null;
+  subtotal: number;
+  total: number;
+  paymentMethod: PaymentMethod;
+  orderNotes?: string | null;
+  createdById?: string | null;
+  statusHistoryNotes?: string | null;
+  items: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    observation?: string | null;
+  }[];
+}
+
+export async function createOrderWithItems(data: CreateOrderWithItemsInput): Promise<OrderWithItems> {
+  return prisma.$transaction(async (tx) => {
+    return tx.order.create({
+      data: {
+        customerId: data.customerId,
+        status: data.status,
+        deliveryType: data.deliveryType,
+        deliveryDate: data.deliveryDate,
+        deliveryTimeSlot: data.deliveryTimeSlot ?? null,
+        addressId: data.addressId ?? null,
+        receiverName: data.receiverName,
+        receiverPhone: data.receiverPhone ?? null,
+        deliveryFee: data.deliveryFee,
+        deliveryDistanceKm: data.deliveryDistanceKm ?? null,
+        subtotal: data.subtotal,
+        total: data.total,
+        paymentMethod: data.paymentMethod,
+        paymentStatus: "PENDENTE",
+        orderNotes: data.orderNotes ?? null,
+        createdById: data.createdById ?? null,
+        items: {
+          create: data.items.map((i) => ({
+            productId: i.productId,
+            productName: i.productName,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            totalPrice: i.totalPrice,
+            observation: i.observation ?? null,
+          })),
+        },
+        statusHistory: {
+          create: {
+            status: data.status,
+            notes: data.statusHistoryNotes ?? null,
+          },
+        },
+      },
+      include: withItems,
+    });
   });
 }
 

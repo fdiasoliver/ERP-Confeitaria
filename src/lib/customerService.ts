@@ -1,9 +1,12 @@
 import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus, ValidationError } from "@/lib/types";
-import type { Address, Customer } from "@prisma/client";
+import type { Address, Customer, CustomerType } from "@prisma/client";
 import {
   findAllCustomers,
   findCustomerById,
+  findCustomerByPhone,
+  findCustomerByCnpj,
   updateCustomerNotes as dbUpdateCustomerNotes,
+  createCustomer as dbCreateCustomer,
   countCustomerOrders,
   activateCustomer as activateCustomerInRepo,
   deactivateCustomer as deactivateCustomerInRepo,
@@ -12,7 +15,12 @@ import {
   type CustomerRow,
   type CustomerWithDetail,
 } from "@/lib/repositories/customerRepository";
-import { validateCustomerNotesUpdate, type CustomerNotesInput } from "@/lib/validators/customerValidator";
+import {
+  validateCustomerNotesUpdate,
+  validateCustomerCreate,
+  type CustomerNotesInput,
+  type CustomerCreateInput,
+} from "@/lib/validators/customerValidator";
 
 // ─── Erros de domínio ─────────────────────────────────────────────────────────
 
@@ -37,12 +45,33 @@ export class CustomerInUseError extends Error {
   }
 }
 
+// Cliente corporativo + consumidor final (Sprint de Orçamento — 16/09/2026):
+// `phone` deixou de ser garantidamente presente (cliente corporativo pode ter só
+// CNPJ) — checagem de duplicidade só é aplicada quando o respectivo campo é
+// informado, nunca os dois exigidos ao mesmo tempo.
+
+export class CustomerDuplicatePhoneError extends Error {
+  constructor(public phone: string) {
+    super(`Já existe um cliente com o telefone "${phone}".`);
+  }
+}
+
+export class CustomerDuplicateCnpjError extends Error {
+  constructor(public cnpj: string) {
+    super(`Já existe um cliente com o CNPJ "${cnpj}".`);
+  }
+}
+
 // ─── Mapeamento Prisma → domínio ──────────────────────────────────────────────
 
 export interface CustomerDTO {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
+  type: CustomerType;
+  cnpj: string | null;
+  companyName: string | null;
+  tradeName: string | null;
   email: string | null;
   notes: string | null;
   active: boolean;
@@ -55,6 +84,10 @@ function mapCustomerDTO(customer: Customer): CustomerDTO {
     id: customer.id,
     name: customer.name,
     phone: customer.phone,
+    type: customer.type,
+    cnpj: customer.cnpj,
+    companyName: customer.companyName,
+    tradeName: customer.tradeName,
     email: customer.email,
     notes: customer.notes,
     active: customer.active,
@@ -66,7 +99,7 @@ function mapCustomerDTO(customer: Customer): CustomerDTO {
 export interface CustomerListItemDTO {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   ltv: number;
   lastOrderAt: string | null;
   active: boolean;
@@ -259,6 +292,54 @@ export async function updateCustomerNotes(id: string, input: CustomerNotesInput)
 
   const updated = await dbUpdateCustomerNotes(id, input.notes ?? null);
   return mapCustomerDTO(updated);
+}
+
+// ─── Criação — cliente corporativo + consumidor final ─────────────────────────
+// Fluxo: trim(name/phone/cnpj/companyName/tradeName) → validator (regras por
+// `type`, ver customerValidator.ts) → unicidade de phone → unicidade de cnpj →
+// Repository → map. Mesmo formato de fluxo já documentado em unitService.ts
+// (createUnit): validação primeiro, unicidade depois, escrita por último.
+
+export async function createCustomer(input: CustomerCreateInput): Promise<CustomerDTO> {
+  const trimmedName = input.name.trim();
+  const trimmedPhone = input.phone?.trim() || null;
+  const trimmedCnpj = input.cnpj?.trim() || null;
+  const trimmedCompanyName = input.companyName?.trim() || null;
+  const trimmedTradeName = input.tradeName?.trim() || null;
+  const trimmedEmail = input.email?.trim() || null;
+
+  const errors = validateCustomerCreate({
+    ...input,
+    name: trimmedName,
+    phone: trimmedPhone,
+    cnpj: trimmedCnpj,
+    companyName: trimmedCompanyName,
+    tradeName: trimmedTradeName,
+  });
+  if (errors.length > 0) throw new CustomerValidationFailedError(errors);
+
+  if (trimmedPhone) {
+    const phoneConflict = await findCustomerByPhone(trimmedPhone);
+    if (phoneConflict) throw new CustomerDuplicatePhoneError(trimmedPhone);
+  }
+
+  if (trimmedCnpj) {
+    const cnpjConflict = await findCustomerByCnpj(trimmedCnpj);
+    if (cnpjConflict) throw new CustomerDuplicateCnpjError(trimmedCnpj);
+  }
+
+  const created = await dbCreateCustomer({
+    name: trimmedName,
+    type: input.type as CustomerType,
+    phone: trimmedPhone,
+    cnpj: trimmedCnpj,
+    companyName: trimmedCompanyName,
+    tradeName: trimmedTradeName,
+    email: trimmedEmail,
+    notes: input.notes ?? null,
+  });
+
+  return mapCustomerDTO(created);
 }
 
 // ─── Ativar/Desativar/Excluir ──────────────────────────────────────────────────

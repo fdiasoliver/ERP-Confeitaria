@@ -1,4 +1,4 @@
-import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus, RescheduleStatus } from "@/lib/types";
+import type { DeliveryType, DeliveryAddressInput, OrderStatus, PaymentMethod, PaymentStatus, RescheduleStatus, ValidationError } from "@/lib/types";
 import type { OrderStatus as PrismaOrderStatus, RescheduleStatus as PrismaRescheduleStatus } from "@prisma/client";
 import {
   findByDateAndStatus,
@@ -10,12 +10,16 @@ import {
   findItemsForConsolidation,
   updateStatusWithHistory,
   updateRescheduleFields,
+  createOrderWithItems,
   type OrderWithItems,
 } from "@/lib/repositories/orderRepository";
 import { resolveConversionFactor } from "@/lib/recipeService";
 import { notifyOrderStatus, notifyRescheduleSuggested } from "@/lib/whatsappNotificationService";
-import { findCustomerPhoneById } from "@/lib/repositories/customerRepository";
+import { findCustomerPhoneById, findCustomerById } from "@/lib/repositories/customerRepository";
+import { findAddressById, createAddress } from "@/lib/repositories/addressRepository";
 import { getStoreConfig } from "@/lib/storeConfigService";
+import { checkFreeDeliveryEligibility, DistanceCalculationFailedError } from "@/lib/deliveryService";
+import { CustomerNotFoundError } from "@/lib/customerService";
 
 // ─── Erros de domínio ─────────────────────────────────────────────────────────
 
@@ -46,6 +50,23 @@ export class InvalidRescheduleStateError extends Error {
 export class CustomerPhoneMismatchError extends Error {
   constructor(public orderId: string) {
     super(`O telefone informado não corresponde ao cliente do pedido ${orderId}.`);
+  }
+}
+
+// Criação de orçamento (admin) — ver createOrder, seção "Criação" mais abaixo.
+export class OrderValidationFailedError extends Error {
+  constructor(public errors: ValidationError[]) {
+    super("Dados inválidos.");
+  }
+}
+
+// Endereço salvo (addressId) inválido ou pertencente a outro cliente — mesmo
+// significado de InvalidAddressError em src/app/api/orders/route.ts (rota
+// pública, não alterada por esta sprint), reimplementado aqui porque aquela
+// classe não é exportada por aquele arquivo.
+export class OrderInvalidAddressError extends Error {
+  constructor() {
+    super("Endereço inválido.");
   }
 }
 
@@ -434,4 +455,135 @@ export async function respondToReschedule(
   });
 
   return mapOrderDTO(updated);
+}
+
+// ─── Criação — orçamento (admin) ───────────────────────────────────────────────
+// Contraparte administrativa de src/app/api/orders/route.ts (checkout público,
+// não alterado por esta sprint) — mesma regra de resolução de endereço e de
+// recálculo de frete grátis, mas recebe `customerId` (não `customerPhone`/upsert)
+// e devolve OrderDTO em vez do registro bruto do Prisma. `status` e `createdById`
+// são parâmetros — quem chama decide (a Route usa "RASCUNHO" e o id do admin
+// autenticado, resolvido via getServerSession, nunca recalculado aqui).
+
+export interface CreateOrderInput {
+  customerId: string;
+  deliveryDate: string;
+  deliveryType: DeliveryType;
+  deliveryFee: number;
+  addressId?: string;
+  deliveryAddress?: DeliveryAddressInput;
+  receiverName?: string;
+  receiverPhone?: string;
+  orderNotes?: string;
+  paymentMethod: PaymentMethod;
+  subtotal: number;
+  total: number;
+  items: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    observation?: string;
+  }[];
+}
+
+export async function createOrder(
+  input: CreateOrderInput,
+  status: OrderStatus,
+  createdById: string | null,
+): Promise<OrderDTO> {
+  const errors: ValidationError[] = [];
+  if (!input.items || input.items.length === 0) {
+    errors.push({ field: "items", code: "REQUIRED", message: "Pelo menos um item é obrigatório." });
+  }
+  if (errors.length > 0) throw new OrderValidationFailedError(errors);
+
+  const customer = await findCustomerById(input.customerId);
+  if (!customer) throw new CustomerNotFoundError(input.customerId);
+
+  // Recalcula a distância/elegibilidade de entrega grátis no servidor — nunca confia
+  // no que foi enviado (mesma regra de src/app/api/orders/route.ts, não simplificada
+  // nem pulada aqui).
+  let deliveryDistanceKm: number | null = null;
+  if (input.deliveryType === "ENTREGA_GRATIS" && input.deliveryAddress) {
+    try {
+      const eligibility = await checkFreeDeliveryEligibility(input.deliveryAddress);
+      if (!eligibility.isWithinFreeRadius) {
+        throw new OrderValidationFailedError([
+          {
+            field: "deliveryType",
+            code: "OUT_OF_FREE_RADIUS",
+            message: `Este endereço está a ${eligibility.distanceKm.toFixed(1)} km, fora do raio de entrega grátis (${eligibility.freeDeliveryRadiusKm} km). Escolha outra forma de entrega.`,
+          },
+        ]);
+      }
+      deliveryDistanceKm = eligibility.distanceKm;
+    } catch (err) {
+      if (err instanceof OrderValidationFailedError) throw err;
+      if (err instanceof DistanceCalculationFailedError) {
+        throw new OrderValidationFailedError([
+          { field: "deliveryAddress", code: "DISTANCE_CALCULATION_FAILED", message: err.message },
+        ]);
+      }
+      throw err;
+    }
+  }
+
+  // Endereço salvo (addressId) reaproveitado — checagem de ownership obrigatória —
+  // ou novo Address criado, mesmo padrão da rota pública (nunca ambos).
+  let resolvedAddressId: string | null = null;
+  if (input.addressId) {
+    const address = await findAddressById(input.addressId);
+    if (!address || address.customerId !== customer.id) {
+      throw new OrderInvalidAddressError();
+    }
+    resolvedAddressId = address.id;
+  } else if (input.deliveryType !== "RETIRADA" && input.deliveryAddress) {
+    const addr = await createAddress(customer.id, {
+      label: "Entrega",
+      street: input.deliveryAddress.street,
+      number: input.deliveryAddress.number,
+      complement: input.deliveryAddress.complement ?? null,
+      neighborhood: input.deliveryAddress.neighborhood,
+      city: input.deliveryAddress.city,
+      state: input.deliveryAddress.state,
+      zipCode: input.deliveryAddress.zipCode,
+    });
+    resolvedAddressId = addr.id;
+  }
+
+  const createdOrder = await createOrderWithItems({
+    customerId: customer.id,
+    status: status as PrismaOrderStatus,
+    deliveryType: input.deliveryType,
+    deliveryDate: new Date(input.deliveryDate + "T12:00:00"),
+    addressId: resolvedAddressId,
+    receiverName: input.receiverName ?? customer.name,
+    receiverPhone: input.receiverPhone ?? null,
+    deliveryFee: input.deliveryType === "ENTREGA_GRATIS" ? 0 : input.deliveryFee,
+    deliveryDistanceKm,
+    subtotal: input.subtotal,
+    total: input.total,
+    paymentMethod: input.paymentMethod,
+    orderNotes: input.orderNotes ?? null,
+    createdById,
+    statusHistoryNotes: "Orçamento criado pela equipe",
+    items: input.items,
+  });
+
+  return mapOrderDTO(createdOrder);
+}
+
+// ─── Leitura — listagem simples por status (orçamentos pendentes) ─────────────
+// Reaproveita findByDateAndStatus (já usado pelo Kanban, acima) sem filtro de
+// data — não duplica uma segunda função de leitura no Repository.
+
+export interface ListOrdersFilters {
+  status?: OrderStatus;
+}
+
+export async function listOrders(filters: ListOrdersFilters = {}): Promise<OrderDTO[]> {
+  const orders = await findByDateAndStatus(undefined, filters.status as PrismaOrderStatus | undefined);
+  return orders.map(mapOrderDTO);
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { toast } from "sonner";
+import { Field } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ResponsiveGrid } from "@/components/admin/shared/ResponsiveGrid";
 import { SearchBar } from "@/components/admin/shared/SearchBar";
@@ -14,12 +15,41 @@ import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { FilterChips } from "@/components/admin/shared/FilterChips";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
+import { EntityForm } from "@/components/admin/shared/EntityForm";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
 import { ViewToggle } from "@/components/shared/ViewToggle";
 import { useViewMode } from "@/hooks/useViewMode";
 import { formatCurrency } from "@/lib/formatters/currency";
+import type { ValidationError } from "@/lib/types";
 import * as customerApi from "@/lib/api/customerApi";
-import { ApiRequestError, type CustomerListItem } from "@/lib/api/customerApi";
+import {
+  ApiRequestError,
+  CUSTOMER_TYPE_LABELS,
+  type CustomerListItem,
+  type CustomerType,
+} from "@/lib/api/customerApi";
+
+// ── Formulário "Novo cliente" ───────────────────────────────────────────────
+
+interface CustomerForm {
+  name: string;
+  type: CustomerType;
+  phone: string;
+  cnpj: string;
+  companyName: string;
+  tradeName: string;
+  email: string;
+}
+
+const EMPTY_CUSTOMER_FORM: CustomerForm = {
+  name: "",
+  type: "CONSUMIDOR_FINAL",
+  phone: "",
+  cnpj: "",
+  companyName: "",
+  tradeName: "",
+  email: "",
+};
 
 const PAGE_SIZE = 12;
 
@@ -52,6 +82,11 @@ export default function ClientesAdminPage() {
 
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const [modal, setModal] = useState<"create" | null>(null);
+  const [form, setForm] = useState<CustomerForm>(EMPTY_CUSTOMER_FORM);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const hasLoadedOnce = useRef(false);
 
@@ -147,6 +182,87 @@ export default function ClientesAdminPage() {
     }
   }
 
+  // ── Formulário de criação ("Novo cliente") ─────────────────────────────────
+
+  function openCreate() {
+    setForm(EMPTY_CUSTOMER_FORM);
+    setFormErrors({});
+    setModal("create");
+  }
+
+  function closeModal() { setModal(null); setFormErrors({}); }
+
+  function setField<K extends keyof CustomerForm>(key: K, value: CustomerForm[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setFormErrors((prev) => { const n = { ...prev }; delete n[key]; return n; });
+  }
+
+  // Mesmas regras de customerValidator.ts (validateCustomerCreate) — duplicação
+  // deliberada e aceita (skill frontend-pattern 4.9): o backend é sempre a fonte
+  // de verdade final, applyServerValidationErrors sobrescreve estes erros locais.
+  function validateForm(): boolean {
+    const errs: Record<string, string> = {};
+    const name = form.name.trim();
+    if (!name) errs.name = "Nome é obrigatório.";
+
+    const phone = form.phone.trim();
+    const cnpj = form.cnpj.trim();
+    const companyName = form.companyName.trim();
+
+    if (form.type === "CONSUMIDOR_FINAL") {
+      if (!phone) errs.phone = "Telefone é obrigatório para consumidor final.";
+    } else {
+      if (!phone && !cnpj) errs.phone = "Informe ao menos telefone ou CNPJ para cliente corporativo.";
+      if (!companyName) errs.companyName = "Razão social é obrigatória para cliente corporativo.";
+    }
+
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  function applyServerValidationErrors(details: unknown) {
+    if (!Array.isArray(details)) return false;
+    const errs: Record<string, string> = {};
+    (details as ValidationError[]).forEach((e) => { errs[e.field] = e.message; });
+    if (Object.keys(errs).length === 0) return false;
+    setFormErrors(errs);
+    return true;
+  }
+
+  async function handleCreateSubmit() {
+    if (!validateForm()) return;
+    setSubmitting(true);
+    const toastId = toast.loading("Criando cliente…");
+    try {
+      await customerApi.createCustomer({
+        name: form.name.trim(),
+        type: form.type,
+        phone: form.phone.trim() === "" ? null : form.phone.trim(),
+        cnpj: form.type === "CORPORATIVO" && form.cnpj.trim() !== "" ? form.cnpj.trim() : null,
+        companyName: form.type === "CORPORATIVO" && form.companyName.trim() !== "" ? form.companyName.trim() : null,
+        tradeName: form.type === "CORPORATIVO" && form.tradeName.trim() !== "" ? form.tradeName.trim() : null,
+        email: form.email.trim() === "" ? null : form.email.trim(),
+      });
+      toast.success("Cliente criado com sucesso.", { id: toastId });
+      closeModal();
+      await loadCustomers(true);
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
+        toast.error("Corrija os campos destacados.", { id: toastId });
+      } else if (err instanceof ApiRequestError && err.code === "CUSTOMER_DUPLICATE_PHONE") {
+        setFormErrors({ phone: err.message });
+        toast.error(err.message, { id: toastId });
+      } else if (err instanceof ApiRequestError && err.code === "CUSTOMER_DUPLICATE_CNPJ") {
+        setFormErrors({ cnpj: err.message });
+        toast.error(err.message, { id: toastId });
+      } else {
+        toast.error(err instanceof Error ? err.message : "Erro ao criar cliente.", { id: toastId });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   const columns: EntityColumn<CustomerListItem>[] = [
     {
       key: "name",
@@ -157,7 +273,7 @@ export default function ClientesAdminPage() {
       key: "phone",
       header: "Telefone",
       className: "hidden md:table-cell",
-      render: (c) => <span className="text-muted">{c.phone}</span>,
+      render: (c) => <span className="text-muted">{c.phone ?? "—"}</span>,
     },
     {
       key: "status",
@@ -236,7 +352,16 @@ export default function ClientesAdminPage() {
           <p className="text-sm text-muted">
             {loading ? "Carregando…" : `${total} cliente${total !== 1 ? "s" : ""}`}
           </p>
-          {!loading && !error && <ViewToggle value={view} onChange={setView} />}
+          <div className="flex items-center gap-2">
+            {!loading && !error && <ViewToggle value={view} onChange={setView} />}
+            <button
+              type="button"
+              onClick={openCreate}
+              className="rounded-xl bg-chocolate px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-chocolate/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate"
+            >
+              + Novo cliente
+            </button>
+          </div>
         </div>
 
         {!error && (
@@ -285,7 +410,7 @@ export default function ClientesAdminPage() {
                     badges={<StatusBadge isActive={customer.active} />}
                     actions={renderCustomerActions(customer, "card")}
                   >
-                    <p className="text-xs text-muted">{customer.phone}</p>
+                    <p className="text-xs text-muted">{customer.phone ?? "Sem telefone"}</p>
                     <div className="grid grid-cols-2 gap-2 text-center">
                       <div className="rounded-lg bg-sand/60 px-2 py-1.5">
                         <p className="text-sm font-semibold leading-none text-chocolate">{formatCurrency(customer.ltv)}</p>
@@ -337,6 +462,103 @@ export default function ClientesAdminPage() {
           </>
         )}
       </div>
+
+      {modal && (
+        <EntityForm
+          title="Novo cliente"
+          submitting={submitting}
+          submitLabel="Criar"
+          onClose={closeModal}
+          onSubmit={handleCreateSubmit}
+        >
+          <Field label="Tipo de cliente" required htmlFor="customer-type">
+            <select
+              id="customer-type"
+              className="input-field"
+              value={form.type}
+              onChange={(e) => setField("type", e.target.value as CustomerType)}
+              disabled={submitting}
+            >
+              <option value="CONSUMIDOR_FINAL">{CUSTOMER_TYPE_LABELS.CONSUMIDOR_FINAL}</option>
+              <option value="CORPORATIVO">{CUSTOMER_TYPE_LABELS.CORPORATIVO}</option>
+            </select>
+          </Field>
+
+          <Field label="Nome" required htmlFor="customer-name" error={formErrors.name}>
+            <input
+              id="customer-name"
+              className={`input-field ${formErrors.name ? "border-rose" : ""}`}
+              value={form.name}
+              onChange={(e) => setField("name", e.target.value)}
+              placeholder={form.type === "CORPORATIVO" ? "Nome do contato" : "Ex: Maria Silva"}
+              disabled={submitting}
+            />
+          </Field>
+
+          <Field
+            label={form.type === "CORPORATIVO" ? "Telefone (opcional se houver CNPJ)" : "Telefone"}
+            required={form.type === "CONSUMIDOR_FINAL"}
+            htmlFor="customer-phone"
+            error={formErrors.phone}
+          >
+            <input
+              id="customer-phone"
+              className={`input-field ${formErrors.phone ? "border-rose" : ""}`}
+              value={form.phone}
+              onChange={(e) => setField("phone", e.target.value)}
+              placeholder="Ex: 11999998888"
+              disabled={submitting}
+            />
+          </Field>
+
+          {form.type === "CORPORATIVO" && (
+            <>
+              <Field label="CNPJ (opcional se houver telefone)" htmlFor="customer-cnpj" error={formErrors.cnpj}>
+                <input
+                  id="customer-cnpj"
+                  className={`input-field ${formErrors.cnpj ? "border-rose" : ""}`}
+                  value={form.cnpj}
+                  onChange={(e) => setField("cnpj", e.target.value)}
+                  placeholder="Ex: 12345678000199"
+                  disabled={submitting}
+                />
+              </Field>
+              <Field label="Razão social" required htmlFor="customer-company-name" error={formErrors.companyName}>
+                <input
+                  id="customer-company-name"
+                  className={`input-field ${formErrors.companyName ? "border-rose" : ""}`}
+                  value={form.companyName}
+                  onChange={(e) => setField("companyName", e.target.value)}
+                  placeholder="Ex: Doce Menina Eventos LTDA"
+                  disabled={submitting}
+                />
+              </Field>
+              <Field label="Nome fantasia (opcional)" htmlFor="customer-trade-name">
+                <input
+                  id="customer-trade-name"
+                  className="input-field"
+                  value={form.tradeName}
+                  onChange={(e) => setField("tradeName", e.target.value)}
+                  placeholder="Ex: Doce Menina Eventos"
+                  disabled={submitting}
+                />
+              </Field>
+            </>
+          )}
+
+          <Field label="E-mail (opcional)" htmlFor="customer-email">
+            <input
+              id="customer-email"
+              type="email"
+              className="input-field"
+              value={form.email}
+              onChange={(e) => setField("email", e.target.value)}
+              placeholder="Ex: contato@empresa.com.br"
+              disabled={submitting}
+            />
+          </Field>
+        </EntityForm>
+      )}
 
       {confirmAction && (
         <ConfirmDialog
