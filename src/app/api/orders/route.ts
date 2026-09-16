@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { checkFreeDeliveryEligibility, DistanceCalculationFailedError } from "@/lib/deliveryService";
+import { NEW_CUSTOMER_PLACEHOLDER_NAME } from "@/lib/constants/customer";
 import type { DeliveryType, PaymentMethod } from "@/lib/types";
 
 interface CreateOrderBody {
@@ -9,6 +10,7 @@ interface CreateOrderBody {
   deliveryDate: string;
   deliveryType: DeliveryType;
   deliveryFee: number;
+  addressId?: string;
   deliveryAddress?: {
     street: string;
     number: string;
@@ -32,6 +34,14 @@ interface CreateOrderBody {
     totalPrice: number;
     observation?: string;
   }[];
+}
+
+// Endereço salvo (addressId) inválido ou pertencente a outro cliente — lançado
+// dentro da transação (tx) do POST abaixo, mapeado para 422 no catch externo.
+class InvalidAddressError extends Error {
+  constructor() {
+    super("Endereço inválido.");
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -67,7 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
   }
 
-  const { customerPhone, items, deliveryAddress, ...orderData } = body;
+  const { customerPhone, items, deliveryAddress, addressId, ...orderData } = body;
 
   if (!customerPhone || !items?.length) {
     return NextResponse.json({ error: "customerPhone e items são obrigatórios" }, { status: 400 });
@@ -102,14 +112,25 @@ export async function POST(request: NextRequest) {
       const customer = await tx.customer.upsert({
         where: { phone: customerPhone },
         update: {},
-        create: { name: "Cliente", phone: customerPhone },
+        create: { name: NEW_CUSTOMER_PLACEHOLDER_NAME, phone: customerPhone },
       });
 
-      // Cria um registro real de Address quando há entrega com endereço informado.
-      // Esses endereços acumulam no banco e estarão disponíveis quando o módulo de
-      // Clientes (P2.4) for implementado — sem necessidade de migração ou retrabalho.
+      // Cria um registro real de Address quando há entrega com endereço informado,
+      // ou reaproveita um endereço salvo já existente (cadastro complementar do
+      // cliente) quando `addressId` é enviado — nunca cria um Address duplicado
+      // nesse segundo caso. Esses endereços acumulam no banco e estarão disponíveis
+      // quando o módulo de Clientes (P2.4) for implementado — sem necessidade de
+      // migração ou retrabalho.
       let resolvedAddressId: string | null = null;
-      if (orderData.deliveryType !== "RETIRADA" && deliveryAddress) {
+      if (addressId) {
+        // Dentro da mesma transação (tx) — checagem de ownership obrigatória: o
+        // endereço salvo só pode ser usado pelo próprio dono.
+        const address = await tx.address.findUnique({ where: { id: addressId } });
+        if (!address || address.customerId !== customer.id) {
+          throw new InvalidAddressError();
+        }
+        resolvedAddressId = address.id;
+      } else if (orderData.deliveryType !== "RETIRADA" && deliveryAddress) {
         const addr = await tx.address.create({
           data: { customerId: customer.id, label: "Entrega", ...deliveryAddress },
         });
@@ -156,7 +177,10 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(result, { status: 201 });
-  } catch {
+  } catch (err) {
+    if (err instanceof InvalidAddressError) {
+      return NextResponse.json({ error: "Endereço inválido." }, { status: 422 });
+    }
     return NextResponse.json({ error: "Erro ao criar pedido" }, { status: 500 });
   }
 }

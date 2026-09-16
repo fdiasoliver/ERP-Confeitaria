@@ -118,3 +118,24 @@ export async function findCustomerPhoneById(id: string): Promise<string | null> 
 export async function updateCustomerNotes(id: string, notes: string | null): Promise<Customer> {
   return prisma.customer.update({ where: { id }, data: { notes } });
 }
+
+// ─── Leitura/escrita — cadastro complementar do cliente (name/birthDate) ──────
+// Usadas por customerProfileService.ts (o próprio cliente editando os próprios
+// dados) — diferente de updateCustomerNotes acima, que é o Service ADMIN
+// editando `notes` de um Customer de terceiros.
+
+export async function findCustomerByPhone(
+  phone: string,
+): Promise<Pick<Customer, "id" | "name" | "phone" | "birthDate"> | null> {
+  return prisma.customer.findUnique({
+    where: { phone },
+    select: { id: true, name: true, phone: true, birthDate: true },
+  });
+}
+
+export async function updateCustomerProfile(
+  id: string,
+  data: { name?: string; birthDate?: Date | null },
+): Promise<Customer> {
+  return prisma.customer.update({ where: { id }, data });
+}

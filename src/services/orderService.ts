@@ -6,7 +6,12 @@ export interface CreateOrderInput {
   deliveryDate: string;
   deliveryType: DeliveryType;
   deliveryFee: number;
+  // Alternativos entre si — nunca enviar os dois ao mesmo tempo. addressId
+  // referencia um Address já salvo do cliente autenticado (POST /api/orders
+  // valida a posse); deliveryAddress cria um Address novo (comportamento
+  // já existente, inalterado).
   deliveryAddress?: DeliveryAddressInput;
+  addressId?: string;
   receiverName?: string;
   receiverPhone?: string;
   orderNotes?: string;

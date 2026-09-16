@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/mock-data";
 import { getMinDeliveryDate } from "@/lib/utils";
 import { createOrder } from "@/services/orderService";
 import { checkDeliveryDistance } from "@/lib/api/deliveryApi";
+import { listMyAddresses, type SavedAddress } from "@/services/customerProfileApi";
 import type { DeliveryType, PaymentMethod } from "@/lib/types";
 import { DELIVERY_LABELS, PAYMENT_LABELS } from "@/lib/types";
 
@@ -49,6 +50,8 @@ export default function CheckoutPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<number | null>(null);
   const [distanceCheck, setDistanceCheck] = useState<DistanceCheckState>({ status: "idle" });
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
 
   // Preenche os dados do destinatário a partir da sessão ao carregar (apenas uma vez)
   const initializedFromSession = useRef(false);
@@ -59,6 +62,38 @@ export default function CheckoutPage() {
       initializedFromSession.current = true;
     }
   }, [customer]);
+
+  // Busca os endereços salvos do cliente autenticado uma única vez, quando
+  // aplicável (entrega, não retirada) — mesmo espírito de `initializedFromSession`.
+  const loadedSavedAddresses = useRef(false);
+  useEffect(() => {
+    if (!customer || deliveryType === "RETIRADA" || loadedSavedAddresses.current) return;
+    loadedSavedAddresses.current = true;
+    listMyAddresses()
+      .then(setSavedAddresses)
+      .catch((e) => console.error("Erro ao carregar endereços salvos:", e));
+  }, [customer, deliveryType]);
+
+  // Preenche os campos de endereço a partir de um endereço salvo selecionado;
+  // "Novo endereço" (null) limpa os campos para evitar resíduo do anterior.
+  const handleSelectAddress = (addressId: string | null) => {
+    setSelectedAddressId(addressId);
+    if (addressId === null) {
+      setStreet("");
+      setAddressNumber("");
+      setComplement("");
+      setNeighborhood("");
+      setZipCode("");
+      return;
+    }
+    const addr = savedAddresses.find((a) => a.id === addressId);
+    if (!addr) return;
+    setStreet(addr.street);
+    setAddressNumber(addr.number);
+    setComplement(addr.complement ?? "");
+    setNeighborhood(addr.neighborhood);
+    setZipCode(addr.zipCode);
+  };
 
   const leadTime = items.length > 0
     ? Math.max(...items.map((i) => i.product.leadTimeDays))
@@ -149,15 +184,19 @@ export default function CheckoutPage() {
         deliveryDate,
         deliveryType,
         deliveryFee,
-        deliveryAddress: deliveryType !== "RETIRADA" ? {
-          street,
-          number: addressNumber,
-          complement: complement || undefined,
-          neighborhood,
-          zipCode,
-          city: "São Paulo",
-          state: "SP",
-        } : undefined,
+        ...(deliveryType !== "RETIRADA" && selectedAddressId
+          ? { addressId: selectedAddressId }
+          : {
+              deliveryAddress: deliveryType !== "RETIRADA" ? {
+                street,
+                number: addressNumber,
+                complement: complement || undefined,
+                neighborhood,
+                zipCode,
+                city: "São Paulo",
+                state: "SP",
+              } : undefined,
+            }),
         receiverName: deliveryType !== "RETIRADA" ? receiverName : undefined,
         receiverPhone: deliveryType !== "RETIRADA" ? receiverPhone : undefined,
         orderNotes,
@@ -292,13 +331,42 @@ export default function CheckoutPage() {
 
         {deliveryType !== "RETIRADA" && (
           <>
+            {savedAddresses.length > 0 && (
+              <Field label="Endereço de entrega">
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAddress(null)}
+                    className={`option-card w-full text-left ${
+                      selectedAddressId === null ? "selected" : ""
+                    }`}
+                  >
+                    <strong>Novo endereço</strong>
+                  </button>
+                  {savedAddresses.map((addr) => (
+                    <button
+                      key={addr.id}
+                      type="button"
+                      onClick={() => handleSelectAddress(addr.id)}
+                      className={`option-card w-full text-left ${
+                        selectedAddressId === addr.id ? "selected" : ""
+                      }`}
+                    >
+                      <strong>{addr.label ? addr.label : `${addr.street}, ${addr.number}`}</strong>
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            )}
+
             <Field label="Rua / Avenida *">
               <input
                 type="text"
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
                 placeholder="Ex: Rua Augusta"
-                className="input-field"
+                disabled={selectedAddressId !== null}
+                className="input-field disabled:opacity-60"
               />
             </Field>
 
@@ -310,7 +378,8 @@ export default function CheckoutPage() {
                   value={addressNumber}
                   onChange={(e) => setAddressNumber(e.target.value)}
                   placeholder="123"
-                  className="input-field"
+                  disabled={selectedAddressId !== null}
+                  className="input-field disabled:opacity-60"
                 />
               </div>
               <div>
@@ -320,7 +389,8 @@ export default function CheckoutPage() {
                   value={zipCode}
                   onChange={(e) => setZipCode(e.target.value)}
                   placeholder="00000-000"
-                  className="input-field"
+                  disabled={selectedAddressId !== null}
+                  className="input-field disabled:opacity-60"
                 />
               </div>
             </div>
@@ -330,7 +400,8 @@ export default function CheckoutPage() {
                 type="text"
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
-                className="input-field"
+                disabled={selectedAddressId !== null}
+                className="input-field disabled:opacity-60"
               />
             </Field>
 
@@ -351,7 +422,8 @@ export default function CheckoutPage() {
                 value={complement}
                 onChange={(e) => setComplement(e.target.value)}
                 placeholder="Apto, bloco, referência..."
-                className="input-field"
+                disabled={selectedAddressId !== null}
+                className="input-field disabled:opacity-60"
               />
             </Field>
 

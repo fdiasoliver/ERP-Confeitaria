@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { validateOtp } from "@/lib/otpService";
+import { NEW_CUSTOMER_PLACEHOLDER_NAME } from "@/lib/constants/customer";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -62,14 +63,21 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const customer = await prisma.customer.upsert({
-          where: { phone },
-          update: {},
-          create: {
-            name: "Cliente",
-            phone,
-          },
-        });
+        // Decisão do arquiteto: `findUnique` + `create` condicional, não `upsert`.
+        // A janela de corrida teórica (duas chamadas concorrentes para o mesmo
+        // telefone) é mitigada porque `validateOtp()` (acima) já marca o código OTP
+        // como usado — uma segunda chamada concorrente falharia na validação do OTP
+        // antes de chegar aqui. Não "corrigir" de volta para `upsert` sem entender
+        // esse motivo.
+        let customer = await prisma.customer.findUnique({ where: { phone } });
+        if (!customer) {
+          customer = await prisma.customer.create({
+            data: {
+              name: NEW_CUSTOMER_PLACEHOLDER_NAME,
+              phone,
+            },
+          });
+        }
 
         return {
           id: customer.id,

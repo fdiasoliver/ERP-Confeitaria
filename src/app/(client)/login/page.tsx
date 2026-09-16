@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HeaderMinimal } from "@/components/layout/Header";
+import { getMyProfile } from "@/services/customerProfileApi";
 
 function LoginContent() {
   const router = useRouter();
@@ -59,6 +60,18 @@ function LoginContent() {
     if (result?.error) {
       setError("Código incorreto ou expirado. Tente novamente.");
       return;
+    }
+
+    try {
+      const profile = await getMyProfile();
+      if (!profile.isProfileComplete) {
+        router.push(`/cadastro?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+        return;
+      }
+    } catch (e) {
+      // Login já funcionou — não bloquear o fluxo por falha ao checar o
+      // cadastro complementar (ex: rede). Segue direto ao callbackUrl.
+      console.error("Erro ao verificar cadastro complementar:", e);
     }
 
     router.push(callbackUrl);
