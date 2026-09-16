@@ -1,12 +1,14 @@
 import { NextRequest } from "next/server";
 import { requireRole } from "@/lib/auth/requireRole";
-import { ok, badRequest, invalidBody, notFound, internalError } from "@/lib/http/responses";
+import { ok, badRequest, invalidBody, notFound, conflict, internalError } from "@/lib/http/responses";
 import type { CustomerNotesInput } from "@/lib/validators/customerValidator";
 import {
   getCustomerById,
   updateCustomerNotes,
+  deleteCustomer,
   CustomerNotFoundError,
   CustomerValidationFailedError,
+  CustomerInUseError,
 } from "@/lib/customerService";
 
 export async function GET(
@@ -54,6 +56,27 @@ export async function PATCH(
   } catch (err) {
     if (err instanceof CustomerValidationFailedError) return badRequest(err.errors);
     if (err instanceof CustomerNotFoundError) return notFound("Cliente não encontrado.");
+    return internalError();
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const denied = await requireRole(["ADMIN", "ATENDIMENTO"]);
+  if (denied) return denied;
+
+  const { id } = await params;
+
+  try {
+    await deleteCustomer(id);
+    return ok({ id });
+  } catch (err) {
+    if (err instanceof CustomerNotFoundError) return notFound("Cliente não encontrado.");
+    if (err instanceof CustomerInUseError) {
+      return conflict("CUSTOMER_IN_USE", err.message, { orderCount: err.orderCount });
+    }
     return internalError();
   }
 }

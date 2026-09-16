@@ -175,6 +175,7 @@ model Customer {
   email     String?
   birthDate DateTime? @db.Date // Cadastro complementar do cliente — base para futuro CRM (sem índice: não usado em WHERE/ORDER BY nesta missão)
   notes     String? // Notas internas da equipe
+  active    Boolean   @default(true)
   addresses Address[]
   orders    Order[]
   otpCodes  OtpCode[]

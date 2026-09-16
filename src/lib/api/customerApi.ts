@@ -12,6 +12,7 @@ export interface CustomerListItem {
   phone: string;
   ltv: number;
   lastOrderAt: string | null;
+  active: boolean;
 }
 
 export interface PagedCustomers {
@@ -25,6 +26,7 @@ export interface ListCustomersParams {
   page?: number;
   pageSize?: number;
   search?: string;
+  active?: boolean;
   orderBy?: "name" | "phone" | "createdAt";
   orderDirection?: "asc" | "desc";
 }
@@ -67,6 +69,7 @@ export interface Customer {
   phone: string;
   email: string | null;
   notes: string | null;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,6 +101,7 @@ function buildQuery(params: ListCustomersParams): string {
   if (params.page !== undefined) search.set("page", String(params.page));
   if (params.pageSize !== undefined) search.set("pageSize", String(params.pageSize));
   if (params.search !== undefined && params.search.trim() !== "") search.set("search", params.search);
+  if (params.active !== undefined) search.set("active", String(params.active));
   if (params.orderBy !== undefined) search.set("orderBy", params.orderBy);
   if (params.orderDirection !== undefined) search.set("orderDirection", params.orderDirection);
   const qs = search.toString();
@@ -124,4 +128,16 @@ export async function updateCustomerNotes(id: string, notes: string | null): Pro
 
 export async function getCustomerOrders(id: string): Promise<CustomerOrderHistoryItem[]> {
   return request<CustomerOrderHistoryItem[]>(`/api/admin/customers/${id}/orders`);
+}
+
+export async function activateCustomer(id: string): Promise<Customer> {
+  return request<Customer>(`/api/admin/customers/${id}/activate`, { method: "PATCH" });
+}
+
+export async function deactivateCustomer(id: string): Promise<Customer> {
+  return request<Customer>(`/api/admin/customers/${id}/deactivate`, { method: "PATCH" });
+}
+
+export async function deleteCustomer(id: string): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/admin/customers/${id}`, { method: "DELETE" });
 }

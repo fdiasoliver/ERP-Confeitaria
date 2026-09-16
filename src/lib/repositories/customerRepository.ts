@@ -7,6 +7,7 @@ export interface ListCustomersParams {
   page?: number;
   pageSize?: number;
   search?: string;
+  active?: boolean;
   orderBy?: "name" | "phone" | "createdAt";
   orderDirection?: "asc" | "desc";
 }
@@ -38,8 +39,9 @@ export type CustomerWithDetail = Prisma.CustomerGetPayload<{ include: typeof wit
 
 // ─── Helpers de query (não expostos — só formam o `where`) ────────────────────
 
-function buildWhere(params: Pick<ListCustomersParams, "search">): Prisma.CustomerWhereInput {
+function buildWhere(params: Pick<ListCustomersParams, "search" | "active">): Prisma.CustomerWhereInput {
   return {
+    ...(params.active !== undefined ? { active: params.active } : {}),
     ...(params.search
       ? {
           OR: [
@@ -138,4 +140,24 @@ export async function updateCustomerProfile(
   data: { name?: string; birthDate?: Date | null },
 ): Promise<Customer> {
   return prisma.customer.update({ where: { id }, data });
+}
+
+// ─── Uso/vínculo — exclusão protegida ──────────────────────────────────────────
+
+export async function countCustomerOrders(id: string): Promise<number> {
+  return prisma.order.count({ where: { customerId: id } });
+}
+
+// ─── Ciclo de vida — ativar/desativar/excluir ─────────────────────────────────
+
+export async function activateCustomer(id: string): Promise<Customer> {
+  return prisma.customer.update({ where: { id }, data: { active: true } });
+}
+
+export async function deactivateCustomer(id: string): Promise<Customer> {
+  return prisma.customer.update({ where: { id }, data: { active: false } });
+}
+
+export async function deleteCustomer(id: string): Promise<void> {
+  await prisma.customer.delete({ where: { id } });
 }

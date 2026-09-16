@@ -4,6 +4,10 @@ import {
   findAllCustomers,
   findCustomerById,
   updateCustomerNotes as dbUpdateCustomerNotes,
+  countCustomerOrders,
+  activateCustomer as activateCustomerInRepo,
+  deactivateCustomer as deactivateCustomerInRepo,
+  deleteCustomer as deleteCustomerInRepo,
   type ListCustomersParams,
   type CustomerRow,
   type CustomerWithDetail,
@@ -24,6 +28,15 @@ export class CustomerValidationFailedError extends Error {
   }
 }
 
+export class CustomerInUseError extends Error {
+  constructor(
+    public id: string,
+    public orderCount: number,
+  ) {
+    super(`Cliente não pode ser excluído: possui ${orderCount} pedido(s).`);
+  }
+}
+
 // ─── Mapeamento Prisma → domínio ──────────────────────────────────────────────
 
 export interface CustomerDTO {
@@ -32,6 +45,7 @@ export interface CustomerDTO {
   phone: string;
   email: string | null;
   notes: string | null;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +57,7 @@ function mapCustomerDTO(customer: Customer): CustomerDTO {
     phone: customer.phone,
     email: customer.email,
     notes: customer.notes,
+    active: customer.active,
     createdAt: customer.createdAt.toISOString(),
     updatedAt: customer.updatedAt.toISOString(),
   };
@@ -54,6 +69,7 @@ export interface CustomerListItemDTO {
   phone: string;
   ltv: number;
   lastOrderAt: string | null;
+  active: boolean;
 }
 
 function mapCustomerListItemDTO(row: CustomerRow): CustomerListItemDTO {
@@ -63,6 +79,7 @@ function mapCustomerListItemDTO(row: CustomerRow): CustomerListItemDTO {
     phone: row.phone,
     ltv: row.ltv,
     lastOrderAt: row.lastOrderAt ? row.lastOrderAt.toISOString() : null,
+    active: row.active,
   };
 }
 
@@ -242,4 +259,30 @@ export async function updateCustomerNotes(id: string, input: CustomerNotesInput)
 
   const updated = await dbUpdateCustomerNotes(id, input.notes ?? null);
   return mapCustomerDTO(updated);
+}
+
+// ─── Ativar/Desativar/Excluir ──────────────────────────────────────────────────
+
+export async function activateCustomer(id: string): Promise<CustomerDTO> {
+  const existing = await findCustomerById(id);
+  if (!existing) throw new CustomerNotFoundError(id);
+  const updated = await activateCustomerInRepo(id);
+  return mapCustomerDTO(updated);
+}
+
+export async function deactivateCustomer(id: string): Promise<CustomerDTO> {
+  const existing = await findCustomerById(id);
+  if (!existing) throw new CustomerNotFoundError(id);
+  const updated = await deactivateCustomerInRepo(id);
+  return mapCustomerDTO(updated);
+}
+
+export async function deleteCustomer(id: string): Promise<void> {
+  const existing = await findCustomerById(id);
+  if (!existing) throw new CustomerNotFoundError(id);
+
+  const orderCount = await countCustomerOrders(id);
+  if (orderCount > 0) throw new CustomerInUseError(id, orderCount);
+
+  await deleteCustomerInRepo(id);
 }

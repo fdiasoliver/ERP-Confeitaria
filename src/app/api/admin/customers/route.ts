@@ -22,6 +22,9 @@ function parseListParams(searchParams: URLSearchParams): ListCustomersParams {
   const search = searchParams.get("search");
   if (search !== null && search.trim().length > 0) params.search = search;
 
+  const active = searchParams.get("active");
+  if (active !== null) params.active = active === "true";
+
   const orderBy = searchParams.get("orderBy");
   if (orderBy === "name" || orderBy === "phone" || orderBy === "createdAt") params.orderBy = orderBy;
 
