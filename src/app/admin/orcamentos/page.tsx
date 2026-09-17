@@ -199,9 +199,19 @@ function OrcamentosAdminPageContent() {
 
   function closeModal() { setModal(null); setFormErrors({}); }
 
+  const ADDRESS_FIELD_KEYS = new Set(["street", "number", "complement", "neighborhood", "city", "state", "zipCode"]);
+
   function setField<K extends keyof Omit<OrderForm, "items">>(key: K, value: OrderForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
-    setFormErrors((prev) => { const n = { ...prev }; delete n[key]; return n; });
+    setFormErrors((prev) => {
+      const n = { ...prev };
+      delete n[key];
+      // Erro geral de "deliveryAddress" (ex.: DISTANCE_CALCULATION_FAILED) não é ligado a um
+      // campo específico do endereço — limpo junto quando qualquer campo do endereço muda,
+      // mesmo espírito de setItemField limpar `items` junto com `items[i].key` (linha acima).
+      if (ADDRESS_FIELD_KEYS.has(key as string) || key === "deliveryType") delete n.deliveryAddress;
+      return n;
+    });
   }
 
   function setItemField(index: number, key: keyof ItemRowForm, value: string) {
@@ -557,10 +567,10 @@ function OrcamentosAdminPageContent() {
             />
           </Field>
 
-          <Field label="Tipo de entrega" required htmlFor="order-delivery-type">
+          <Field label="Tipo de entrega" required htmlFor="order-delivery-type" error={formErrors.deliveryType}>
             <select
               id="order-delivery-type"
-              className="input-field"
+              className={`input-field ${formErrors.deliveryType ? "border-rose" : ""}`}
               value={form.deliveryType}
               onChange={(e) => setField("deliveryType", e.target.value as DeliveryType)}
               disabled={submitting}
@@ -590,6 +600,9 @@ function OrcamentosAdminPageContent() {
           {form.deliveryType !== "RETIRADA" && (
             <div className="space-y-3 rounded-xl border border-sand p-3">
               <p className="text-xs font-medium text-muted">Endereço de entrega</p>
+              {formErrors.deliveryAddress && (
+                <p className="rounded-lg bg-rose/10 px-3 py-2 text-xs text-rose">{formErrors.deliveryAddress}</p>
+              )}
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
                   <Field label="Rua" required htmlFor="order-street" error={formErrors.street}>
