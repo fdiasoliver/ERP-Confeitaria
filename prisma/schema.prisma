@@ -66,6 +66,13 @@ enum RescheduleStatus {
   RECUSADO
 }
 
+enum QuoteStatus {
+  PENDENTE
+  EM_REVISAO
+  APROVADO
+  RECUSADO
+}
+
 enum PriceSource {
   MANUAL
   CONAB_CEASA
@@ -526,6 +533,8 @@ model Order {
   orderNotes            String? // Observações gerais do pedido
   suggestedDeliveryDate DateTime?            @db.Date
   rescheduleStatus      RescheduleStatus     @default(NONE)
+  quoteStatus           QuoteStatus?
+  shareToken            String?              @unique
   createdById           String?
   createdBy             User?                @relation("OrderCreatedBy", fields: [createdById], references: [id])
   items                 OrderItem[]

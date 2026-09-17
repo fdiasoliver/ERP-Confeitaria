@@ -4,6 +4,76 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo Orçamentos] — 2026-09-17 — Front do admin para o ciclo de vida do orçamento
+
+**Tipo:** Segunda microtarefa da mesma entrega (ver entrada anterior, "Link público de aprovação de orçamento") — `/admin/orcamentos` e `orderAdminApi.ts` passam a consumir as rotas `send-quote`/`share-link`/`quote-status` construídas na microtarefa anterior, que até aqui não tinham nenhum consumidor no frontend.
+
+### Implementação
+
+- **`src/lib/api/orderAdminApi.ts`:** `OrderDTO` ganha `quoteStatus`/`shareToken`; novas funções `sendQuote`, `getOrCreateShareLink`, `updateQuoteStatus`.
+- **`src/app/admin/orcamentos/page.tsx`:** badge de `quoteStatus` (`QuoteStatusBadge`, cores por estado) no card e na coluna nova da tabela. Ações por estado, decisão explícita do Product Owner (ciclo completo, não o mínimo de só enviar/copiar link):
+  - `PENDENTE` → Enviar (dispara `sendQuote`, WhatsApp) / Link (copia a URL pública) / Cancelar (`ConfirmDialog`, `Order.status → CANCELADO`)
+  - `EM_REVISAO` → Link / Aprovar (`quote-status`, decisão administrativa sem a confirmação de segurança exigida no link público) / Recusar (`ConfirmDialog`, `quote-status → RECUSADO`, cascateia para `CANCELADO` no backend)
+  - `APROVADO` → Confirmar pedido (`Order.status → CONFIRMADO`, ação já existente)
+  - `quoteStatus` nulo (orçamento criado antes desta funcionalidade) → Aprovar/Cancelar exatamente como antes, sem alteração de comportamento
+
+**Arquivos alterados:**
+- `src/lib/api/orderAdminApi.ts`
+- `src/app/admin/orcamentos/page.tsx`
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros. Validação funcional end-to-end no navegador (Playwright, sessão admin real, dados reais no Supabase — 3 orçamentos de teste criados e removidos manualmente ao final): fluxo completo Enviar→Aprovar→Confirmar pedido (sai da lista), Cancelar em `PENDENTE` (`ConfirmDialog`, sai da lista), Recusar em `EM_REVISAO` (`ConfirmDialog`, cascateia e sai da lista) — todos os três caminhos confirmados na UI real, não só na API.
+
+### Escopo explicitamente não incluído
+
+Exibição do link público em si (ex.: campo copiável visível no card) não implementada — o botão "Link" copia direto para a área de transferência, sem mostrar a URL na tela.
+
+---
+
+## [Módulo Orçamentos] — 2026-09-17 — Link público de aprovação de orçamento (backend + página pública)
+
+**Tipo:** Extensão do fluxo de Orçamentos (`Order.status = RASCUNHO`, introduzido nos commits `7d862b8`/`f7ab1b2`) — novo mecanismo de aprovação do cliente via link público, sem exigir login. O consumo destas rotas pelo frontend de `/admin/orcamentos` é a microtarefa seguinte (ver entrada acima, "Front do admin para o ciclo de vida do orçamento").
+
+### Implementação
+
+- **Schema (`prisma/schema.prisma`):** novo enum `QuoteStatus` (`PENDENTE`, `EM_REVISAO`, `APROVADO`, `RECUSADO`); `Order` ganha `quoteStatus QuoteStatus?` e `shareToken String? @unique`.
+- **`src/lib/types.ts`:** `QuoteStatus`, `QUOTE_STATUS_LABELS`.
+- **`orderRepository.ts`:** `findOrderByShareToken`, `updateQuoteStatus`, `setShareToken`, `updateItemQuantityAndTotals`, `removeItemAndRecalculateTotals`; filtro `quotesOnly`/`quoteStatus` em `listOrders`.
+- **`orderService.ts`:** `decideQuote`, `sendQuote`, `ensureShareToken`, `getOrCreateShareLink`, `getPublicQuote`, `updatePublicQuoteItemQuantity`, `removePublicQuoteItem`, `resolveOrderIdByShareToken`; máquina de transição `QUOTE_VALID_TRANSITIONS` (`PENDENTE`→`EM_REVISAO`/`APROVADO`/`RECUSADO`; `EM_REVISAO`→`APROVADO`/`RECUSADO`). `RECUSADO` cascateia para `Order.status = CANCELADO` (reaproveita `VALID_TRANSITIONS` já existente); `APROVADO` não cascateia — confirmação do pedido continua ação administrativa separada. Confirmação de segurança na decisão pública: últimos 4 dígitos do telefone OU do CNPJ do cliente; erro sempre genérico ("Confirmação inválida"), nunca revela qual campo nem os dígitos corretos.
+- **`whatsappNotificationService.ts`:** `notifyQuoteShared` — envia `{NEXTAUTH_URL}/orcamento/{shareToken}` por WhatsApp, template `quote_shared`.
+- **Rotas admin** (atrás de `requireOrderAccess()`): `PATCH .../orders/[id]/quote-status`, `.../send-quote`, `.../share-link`.
+- **Rotas públicas** (sem autenticação — o token na URL é a única credencial): `GET /api/public/orcamento/[token]`, `PATCH .../decision`, `PATCH`/`DELETE .../items/[itemId]`.
+- **Frontend cliente:** `src/app/(client)/orcamento/[token]/page.tsx` — lista de itens com ajuste de quantidade e remoção (bloqueados quando `quoteStatus` não é mais `PENDENTE`/`EM_REVISAO`), resumo de valores, aprovação/recusa com modal de confirmação (últimos 4 dígitos); `src/lib/api/publicQuoteApi.ts` (cliente HTTP, mesmo padrão de `orderAdminApi.ts`).
+- **`ClientShell.tsx`:** `CartFab` ocultado em `/orcamento/*` (mesmo espírito do `/checkout`).
+
+### Correção aplicada durante a implementação
+
+`src/app/api/public/orcamento/[token]/decision/route.ts` retornava o `OrderDTO` completo de `decideQuote` (uso administrativo) diretamente a um chamador não autenticado — vazava `customerId`/`addressId`/etc. a quem só possui o token. Corrigido para reconsultar `getPublicQuote(token)` e retornar o DTO minimizado, mesmo princípio já declarado (mas não aplicado neste ponto) no comentário de `mapPublicQuoteDTO` em `orderService.ts`.
+
+**Arquivos alterados:**
+- `prisma/schema.prisma`
+- `src/lib/types.ts`
+- `src/lib/repositories/orderRepository.ts`
+- `src/lib/orderService.ts`
+- `src/lib/whatsappNotificationService.ts`
+- `src/app/api/admin/orders/route.ts`
+- `src/app/api/admin/orders/[id]/quote-status/route.ts` (novo)
+- `src/app/api/admin/orders/[id]/send-quote/route.ts` (novo)
+- `src/app/api/admin/orders/[id]/share-link/route.ts` (novo)
+- `src/app/api/public/orcamento/[token]/route.ts` (novo)
+- `src/app/api/public/orcamento/[token]/decision/route.ts` (novo)
+- `src/app/api/public/orcamento/[token]/items/[itemId]/route.ts` (novo)
+- `src/lib/api/publicQuoteApi.ts` (novo)
+- `src/app/(client)/orcamento/[token]/page.tsx` (novo)
+- `src/components/layout/ClientShell.tsx`
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros. `npx prisma db push --accept-data-loss` executado contra o Supabase real (coluna `Order.shareToken` nova, sem dado existente para colidir) — banco sincronizado; `npx prisma generate` regenerado em seguida. Validação funcional end-to-end com um orçamento real criado e removido manualmente no banco só para o teste: `GET` público, ajuste de quantidade (recalcula subtotal/total no servidor), bloqueio de remoção do último item (`QUOTE_MIN_ITEMS`), decisão com confirmação errada (`403 FORBIDDEN`, mensagem genérica) e correta (`200`, `quoteStatus: APROVADO`, `editable: false`), bloqueio de edição após decisão (`409 QUOTE_NOT_EDITABLE`) — todos confirmados via chamada real à API.
+
+---
+
 ## [Módulo P3.3] — 2026-09-15 — Calendário de produção: reagendamento negociado (conclusão, Épico 4)
 
 **Tipo:** Conclusão do Módulo P3.3 (Calendário de produção, Épico 4). A aba "Calendário" (visualização de pedidos por data de entrega com indicador de carga, alerta de sobreposição) já havia sido implementada e commitada anteriormente (commit `75c9f04`, "Add Módulo P3.3: Calendário de produção") sem entrada própria neste CHANGELOG — gap pré-existente, não resolvido retroativamente nesta entrada, fora do escopo desta sprint. Esta entrada documenta a entrega final que completa a lista de "Entregas" do módulo em `PLAN.md`: reagendamento negociado de pedidos.

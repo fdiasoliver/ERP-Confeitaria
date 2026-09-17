@@ -1,8 +1,15 @@
-import type { DeliveryType, DeliveryAddressInput, OrderStatus, PaymentMethod, PaymentStatus, RescheduleStatus, ValidationError } from "@/lib/types";
-import type { OrderStatus as PrismaOrderStatus, RescheduleStatus as PrismaRescheduleStatus } from "@prisma/client";
+import { randomBytes } from "node:crypto";
+import type { DeliveryType, DeliveryAddressInput, OrderStatus, PaymentMethod, PaymentStatus, QuoteStatus, RescheduleStatus, ValidationError } from "@/lib/types";
+import type {
+  OrderStatus as PrismaOrderStatus,
+  RescheduleStatus as PrismaRescheduleStatus,
+  QuoteStatus as PrismaQuoteStatus,
+  CustomerType,
+} from "@prisma/client";
 import {
   findByDateAndStatus,
   findOrderById,
+  findOrderByShareToken,
   countByDateAndStatus,
   sumItemQuantityByDateAndStatus,
   countByDateExcludingStatus,
@@ -11,15 +18,22 @@ import {
   updateStatusWithHistory,
   updateRescheduleFields,
   createOrderWithItems,
+  updateQuoteStatus,
+  setShareToken,
+  updateItemQuantityAndTotals,
+  removeItemAndRecalculateTotals,
   type OrderWithItems,
+  type OrderWithItemsAndCustomer,
+  type QuoteStatusFilter,
 } from "@/lib/repositories/orderRepository";
 import { resolveConversionFactor } from "@/lib/recipeService";
-import { notifyOrderStatus, notifyRescheduleSuggested } from "@/lib/whatsappNotificationService";
+import { notifyOrderStatus, notifyRescheduleSuggested, notifyQuoteShared } from "@/lib/whatsappNotificationService";
 import { findCustomerPhoneById, findCustomerById } from "@/lib/repositories/customerRepository";
 import { findAddressById, createAddress } from "@/lib/repositories/addressRepository";
 import { getStoreConfig } from "@/lib/storeConfigService";
 import { checkFreeDeliveryEligibility, DistanceCalculationFailedError } from "@/lib/deliveryService";
 import { CustomerNotFoundError } from "@/lib/customerService";
+import { env } from "@/lib/env";
 
 // ─── Erros de domínio ─────────────────────────────────────────────────────────
 
@@ -50,6 +64,43 @@ export class InvalidRescheduleStateError extends Error {
 export class CustomerPhoneMismatchError extends Error {
   constructor(public orderId: string) {
     super(`O telefone informado não corresponde ao cliente do pedido ${orderId}.`);
+  }
+}
+
+// ─── Erros de domínio — Orçamentos (Módulo Order.status = RASCUNHO) ───────────
+
+export class InvalidQuoteTransitionError extends Error {
+  constructor(
+    public from: QuoteStatus,
+    public to: QuoteStatus,
+  ) {
+    super(`Transição de status de orçamento inválida: ${from} → ${to}`);
+  }
+}
+
+export class QuoteNotEditableError extends Error {
+  constructor(public orderId: string) {
+    super(`O orçamento ${orderId} não pode mais ser editado.`);
+  }
+}
+
+export class CustomerHasNoPhoneError extends Error {
+  constructor(public orderId: string) {
+    super(`O cliente do pedido ${orderId} não possui telefone cadastrado.`);
+  }
+}
+
+export class QuoteMinItemsError extends Error {
+  constructor(public orderId: string) {
+    super(`O orçamento ${orderId} precisa ter ao menos um item.`);
+  }
+}
+
+// Mensagem propositalmente genérica — nunca revelar qual campo (telefone/CNPJ)
+// nem os dígitos corretos (ver orderService.ts, decideQuote).
+export class QuoteConfirmationMismatchError extends Error {
+  constructor() {
+    super("Confirmação inválida.");
   }
 }
 
@@ -89,6 +140,16 @@ export const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   CANCELADO: [],
 };
 
+// ─── Transições de status de Orçamento (Módulo Order.status = RASCUNHO) ───────
+// Nunca regressiva, mesmo espírito de VALID_TRANSITIONS acima — ver decideQuote.
+
+export const QUOTE_VALID_TRANSITIONS: Record<QuoteStatus, QuoteStatus[]> = {
+  PENDENTE: ["EM_REVISAO", "APROVADO", "RECUSADO"],
+  EM_REVISAO: ["APROVADO", "RECUSADO"],
+  APROVADO: [],
+  RECUSADO: [],
+};
+
 // ─── Mapeamento Prisma → domínio ──────────────────────────────────────────────
 
 export interface OrderItemDTO {
@@ -120,6 +181,11 @@ export interface OrderDTO {
   orderNotes: string | null;
   suggestedDeliveryDate: string | null;
   rescheduleStatus: RescheduleStatus;
+  // Não pedidos explicitamente no escopo desta microtarefa — adicionados por
+  // consistência: sem eles, o filtro novo de listOrders (quotesOnly/quoteStatus)
+  // não teria como o consumidor da API enxergar o status do orçamento retornado.
+  quoteStatus: QuoteStatus | null;
+  shareToken: string | null;
   items: OrderItemDTO[];
   createdAt: string;
   updatedAt: string;
@@ -145,6 +211,8 @@ function mapOrderDTO(order: OrderWithItems): OrderDTO {
     orderNotes: order.orderNotes,
     suggestedDeliveryDate: order.suggestedDeliveryDate ? order.suggestedDeliveryDate.toISOString().slice(0, 10) : null,
     rescheduleStatus: order.rescheduleStatus as RescheduleStatus,
+    quoteStatus: order.quoteStatus as QuoteStatus | null,
+    shareToken: order.shareToken,
     items: order.items.map((item) => ({
       id: item.id,
       productId: item.productId,
@@ -553,6 +621,14 @@ export async function createOrder(
     resolvedAddressId = addr.id;
   }
 
+  // Todo Order criado por este fluxo administrativo com status RASCUNHO é um
+  // orçamento — shareToken gerado já na criação (não lazy, ao contrário de
+  // ensureShareToken abaixo, que cobre o caso de reenvio de um orçamento
+  // criado antes desta sprint, sem token) e quoteStatus inicial PENDENTE
+  // (REGRAS_NEGOCIO — decisão do Product Owner, ver histórico completo em
+  // listOrders/QUOTE_VALID_TRANSITIONS mais abaixo).
+  const isQuote = status === "RASCUNHO";
+
   const createdOrder = await createOrderWithItems({
     customerId: customer.id,
     status: status as PrismaOrderStatus,
@@ -569,6 +645,8 @@ export async function createOrder(
     orderNotes: input.orderNotes ?? null,
     createdById,
     statusHistoryNotes: "Orçamento criado pela equipe",
+    shareToken: isQuote ? randomBytes(32).toString("base64url") : undefined,
+    quoteStatus: isQuote ? ("PENDENTE" as PrismaQuoteStatus) : undefined,
     items: input.items,
   });
 
@@ -578,12 +656,272 @@ export async function createOrder(
 // ─── Leitura — listagem simples por status (orçamentos pendentes) ─────────────
 // Reaproveita findByDateAndStatus (já usado pelo Kanban, acima) sem filtro de
 // data — não duplica uma segunda função de leitura no Repository.
+//
+// `quotesOnly`/`quoteStatus` (novos nesta sprint): decisão do Product Owner —
+// a tela /admin/orcamentos deve mostrar histórico completo de orçamentos
+// (todo Order com quoteStatus não nulo), independente do Order.status atual
+// (um orçamento aprovado e depois confirmado continua com quoteStatus
+// preenchido e visível). `quotesOnly: true` aplica exatamente esse filtro
+// (quoteStatus IS NOT NULL); `quoteStatus` restringe a um valor específico.
+// Nenhum dos dois altera o filtro `status` já existente, usado hoje por
+// src/app/api/admin/orders/route.ts sem nenhuma mudança de comportamento.
 
 export interface ListOrdersFilters {
   status?: OrderStatus;
+  quotesOnly?: boolean;
+  quoteStatus?: QuoteStatus;
 }
 
 export async function listOrders(filters: ListOrdersFilters = {}): Promise<OrderDTO[]> {
-  const orders = await findByDateAndStatus(undefined, filters.status as PrismaOrderStatus | undefined);
+  const quoteStatusFilter: QuoteStatusFilter | undefined = filters.quoteStatus
+    ? (filters.quoteStatus as PrismaQuoteStatus)
+    : filters.quotesOnly
+      ? "ANY"
+      : undefined;
+
+  const orders = await findByDateAndStatus(undefined, filters.status as PrismaOrderStatus | undefined, quoteStatusFilter);
   return orders.map(mapOrderDTO);
+}
+
+// ─── Orçamentos — link público (Módulo Order.status = RASCUNHO) ───────────────
+// Fluxo: admin cria orçamento (createOrder, acima, já grava shareToken +
+// quoteStatus: "PENDENTE") → sendQuote gera o link (lazy, via ensureShareToken,
+// para orçamentos criados antes desta sprint sem token) e notifica o cliente
+// por WhatsApp → cliente acessa /orcamento/[token] (getPublicQuote), pode
+// ajustar quantidade/remover item (updatePublicQuoteItemQuantity/
+// removePublicQuoteItem) e decidir (decideQuote, com confirmação de
+// segurança) → RECUSADO cascateia para Order.status = "CANCELADO";
+// APROVADO não cascateia — "Confirmar pedido" (updateOrderStatus →
+// "CONFIRMADO") continua uma ação administrativa separada.
+
+export interface PublicQuoteItemDTO {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+// DTO minimizado — nunca reaproveita OrderDTO inteiro (vazaria customerId e
+// outros dados internos a um destinatário não autenticado, que só possui o
+// token da URL).
+export interface PublicQuoteDTO {
+  orderNumber: number;
+  quoteStatus: QuoteStatus;
+  deliveryDate: string;
+  createdAt: string;
+  customer: {
+    name: string;
+    phone: string | null;
+    cnpj: string | null;
+    companyName: string | null;
+    type: CustomerType;
+  };
+  items: PublicQuoteItemDTO[];
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  paymentMethod: PaymentMethod;
+  orderNotes: string | null;
+  editable: boolean;
+}
+
+function mapPublicQuoteDTO(order: OrderWithItemsAndCustomer): PublicQuoteDTO {
+  // Garantido não-nulo por todo chamador desta função (getPublicQuote,
+  // updatePublicQuoteItemQuantity, removePublicQuoteItem já checam antes).
+  const quoteStatus = order.quoteStatus as QuoteStatus;
+
+  return {
+    orderNumber: order.orderNumber,
+    quoteStatus,
+    deliveryDate: order.deliveryDate.toISOString().slice(0, 10),
+    createdAt: order.createdAt.toISOString(),
+    customer: {
+      name: order.customer.name,
+      phone: order.customer.phone,
+      cnpj: order.customer.cnpj,
+      companyName: order.customer.companyName,
+      type: order.customer.type,
+    },
+    items: order.items.map((item) => ({
+      id: item.id,
+      productId: item.productId,
+      productName: item.productName,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice.toNumber(),
+      totalPrice: item.totalPrice.toNumber(),
+    })),
+    subtotal: order.subtotal.toNumber(),
+    deliveryFee: order.deliveryFee.toNumber(),
+    total: order.total.toNumber(),
+    paymentMethod: order.paymentMethod as PaymentMethod,
+    orderNotes: order.orderNotes,
+    editable: quoteStatus === "PENDENTE" || quoteStatus === "EM_REVISAO",
+  };
+}
+
+// Geração lazy — sem backfill de orçamentos antigos (decisão do Product Owner).
+export async function ensureShareToken(orderId: string): Promise<string> {
+  const existing = await findOrderById(orderId);
+  if (!existing) throw new OrderNotFoundError(orderId);
+  if (existing.shareToken) return existing.shareToken;
+
+  const token = randomBytes(32).toString("base64url");
+  await setShareToken(orderId, token);
+  return token;
+}
+
+export async function sendQuote(orderId: string): Promise<OrderDTO> {
+  const existing = await findOrderById(orderId);
+  if (!existing) throw new OrderNotFoundError(orderId);
+  if (!existing.quoteStatus) throw new OrderNotFoundError(orderId);
+
+  const phone = await findCustomerPhoneById(existing.customerId);
+  if (!phone) throw new CustomerHasNoPhoneError(orderId);
+
+  const shareToken = await ensureShareToken(orderId);
+
+  // Reenvio idempotente quanto ao status: só PENDENTE avança para EM_REVISAO;
+  // EM_REVISAO/APROVADO/RECUSADO permanecem como estão.
+  const updated =
+    existing.quoteStatus === "PENDENTE"
+      ? await updateQuoteStatus(orderId, "EM_REVISAO" as PrismaQuoteStatus)
+      : existing;
+  const dto = mapOrderDTO(updated);
+
+  // Best-effort — nunca bloqueia nem falha a função principal (mesmo padrão de
+  // updateOrderStatus/suggestReschedule acima; notifyQuoteShared já engole os
+  // próprios erros, ver whatsappNotificationService.ts).
+  const customer = await findCustomerById(existing.customerId).catch(() => null);
+  await notifyQuoteShared({
+    orderId: dto.id,
+    phone,
+    orderNumber: dto.orderNumber,
+    customerName: customer?.name ?? existing.receiverName,
+    shareToken,
+  });
+
+  return dto;
+}
+
+export async function decideQuote(
+  source: "ADMIN" | "PUBLIC_TOKEN",
+  orderId: string,
+  decision: "APROVADO" | "RECUSADO",
+  confirmation?: { last4: string },
+): Promise<OrderDTO> {
+  const existing = await findOrderById(orderId);
+  if (!existing) throw new OrderNotFoundError(orderId);
+
+  const currentQuoteStatus = existing.quoteStatus as QuoteStatus | null;
+  if (!currentQuoteStatus) throw new OrderNotFoundError(orderId);
+
+  const allowed = QUOTE_VALID_TRANSITIONS[currentQuoteStatus];
+  if (!allowed.includes(decision)) {
+    throw new InvalidQuoteTransitionError(currentQuoteStatus, decision);
+  }
+
+  if (source === "PUBLIC_TOKEN") {
+    if (!confirmation?.last4) throw new QuoteConfirmationMismatchError();
+
+    const customer = await findCustomerById(existing.customerId);
+    const phoneLast4 = customer?.phone ? customer.phone.replace(/\D/g, "").slice(-4) : null;
+    const cnpjLast4 = customer?.cnpj ? customer.cnpj.replace(/\D/g, "").slice(-4) : null;
+
+    const matches =
+      (phoneLast4 !== null && phoneLast4 === confirmation.last4) ||
+      (cnpjLast4 !== null && cnpjLast4 === confirmation.last4);
+    if (!matches) throw new QuoteConfirmationMismatchError();
+  }
+
+  await updateQuoteStatus(orderId, decision as PrismaQuoteStatus);
+
+  // APROVADO não cascateia Order.status (permanece RASCUNHO, aguardando
+  // "Confirmar pedido" administrativo separado). RECUSADO reaproveita a
+  // transição já válida RASCUNHO→CANCELADO de VALID_TRANSITIONS/updateOrderStatus
+  // — nunca duplicada aqui.
+  if (decision === "RECUSADO") {
+    return updateOrderStatus(orderId, "CANCELADO");
+  }
+
+  const updated = await findOrderById(orderId);
+  if (!updated) throw new OrderNotFoundError(orderId);
+  return mapOrderDTO(updated);
+}
+
+export async function getPublicQuote(token: string): Promise<PublicQuoteDTO> {
+  const order = await findOrderByShareToken(token);
+  if (!order || !order.quoteStatus) throw new OrderNotFoundError(token);
+  return mapPublicQuoteDTO(order);
+}
+
+// Resolve token → orderId para chamadores públicos que precisam operar sobre o
+// pedido (ex.: decideQuote, que exige orderId real) sem expor o id no DTO —
+// PublicQuoteDTO é deliberadamente minimizado (ver acima). Mesmo padrão de
+// checagem de getPublicQuote (order.quoteStatus não nulo).
+export async function resolveOrderIdByShareToken(token: string): Promise<string> {
+  const order = await findOrderByShareToken(token);
+  if (!order || !order.quoteStatus) throw new OrderNotFoundError(token);
+  return order.id;
+}
+
+export async function updatePublicQuoteItemQuantity(
+  token: string,
+  itemId: string,
+  quantity: number,
+): Promise<PublicQuoteDTO> {
+  const order = await findOrderByShareToken(token);
+  if (!order || !order.quoteStatus) throw new OrderNotFoundError(token);
+
+  if (order.quoteStatus !== "PENDENTE" && order.quoteStatus !== "EM_REVISAO") {
+    throw new QuoteNotEditableError(order.id);
+  }
+
+  const item = order.items.find((i) => i.id === itemId);
+  if (!item) throw new OrderNotFoundError(itemId);
+
+  // Recalculado no servidor — nunca confia em valor vindo do cliente.
+  const newItemTotal = item.unitPrice.toNumber() * quantity;
+  const otherItemsTotal = order.items
+    .filter((i) => i.id !== itemId)
+    .reduce((sum, i) => sum + i.totalPrice.toNumber(), 0);
+  const newSubtotal = otherItemsTotal + newItemTotal;
+  const newTotal = newSubtotal + order.deliveryFee.toNumber();
+
+  const updated = await updateItemQuantityAndTotals(order.id, itemId, quantity, newItemTotal, newSubtotal, newTotal);
+  return mapPublicQuoteDTO(updated);
+}
+
+export async function removePublicQuoteItem(token: string, itemId: string): Promise<PublicQuoteDTO> {
+  const order = await findOrderByShareToken(token);
+  if (!order || !order.quoteStatus) throw new OrderNotFoundError(token);
+
+  if (order.quoteStatus !== "PENDENTE" && order.quoteStatus !== "EM_REVISAO") {
+    throw new QuoteNotEditableError(order.id);
+  }
+
+  const item = order.items.find((i) => i.id === itemId);
+  if (!item) throw new OrderNotFoundError(itemId);
+
+  // Bloqueia remoção do último item restante — mínimo 1 item sempre, mesma
+  // regra de criação (decisão do Product Owner).
+  if (order.items.length <= 1) {
+    throw new QuoteMinItemsError(order.id);
+  }
+
+  const newSubtotal = order.items
+    .filter((i) => i.id !== itemId)
+    .reduce((sum, i) => sum + i.totalPrice.toNumber(), 0);
+  const newTotal = newSubtotal + order.deliveryFee.toNumber();
+
+  const updated = await removeItemAndRecalculateTotals(order.id, itemId, newSubtotal, newTotal);
+  return mapPublicQuoteDTO(updated);
+}
+
+// Ação administrativa "Copiar link" — sem enviar WhatsApp, sem mudar quoteStatus.
+export async function getOrCreateShareLink(orderId: string): Promise<{ shareToken: string; url: string }> {
+  const shareToken = await ensureShareToken(orderId);
+  const url = `${env.NEXTAUTH_URL}/orcamento/${shareToken}`;
+  return { shareToken, url };
 }

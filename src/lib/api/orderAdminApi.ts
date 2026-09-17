@@ -1,4 +1,4 @@
-import type { DeliveryAddressInput, DeliveryType, OrderStatus, PaymentMethod, PaymentStatus, RescheduleStatus } from "@/lib/types";
+import type { DeliveryAddressInput, DeliveryType, OrderStatus, PaymentMethod, PaymentStatus, QuoteStatus, RescheduleStatus } from "@/lib/types";
 
 // ── Tipos de exibição (DTO) ──────────────────────────────────────────────────
 // Espelham src/lib/orderService.ts (KanbanOrderDTO/KanbanDataDTO/OrderDTO), sem
@@ -99,6 +99,8 @@ export interface OrderDTO {
   orderNotes: string | null;
   suggestedDeliveryDate: string | null;
   rescheduleStatus: RescheduleStatus;
+  quoteStatus: QuoteStatus | null;
+  shareToken: string | null;
   items: OrderItemDTO[];
   createdAt: string;
   updatedAt: string;
@@ -191,6 +193,38 @@ export async function suggestReschedule(orderId: string, newDate: string): Promi
   return request<OrderDTO>(`/api/admin/orders/${orderId}/reschedule`, {
     method: "PATCH",
     body: JSON.stringify({ newDate }),
+  });
+}
+
+// ── Orçamentos — link público (ver src/lib/orderService.ts) ────────────────
+
+/** Gera (na primeira vez) o shareToken e notifica o cliente por WhatsApp.
+ * PENDENTE avança para EM_REVISAO; reenvio em EM_REVISAO é idempotente quanto
+ * ao status. Ver POST .../send-quote em orderService.ts (sendQuote). */
+export async function sendQuote(orderId: string): Promise<OrderDTO> {
+  return request<OrderDTO>(`/api/admin/orders/${orderId}/send-quote`, { method: "PATCH" });
+}
+
+/** Gera (se ainda não existir) e retorna o link público do orçamento, sem
+ * notificar o cliente — usado pelo botão "Copiar link". */
+export async function getOrCreateShareLink(orderId: string): Promise<{ shareToken: string; url: string }> {
+  return request<{ shareToken: string; url: string }>(`/api/admin/orders/${orderId}/share-link`, {
+    method: "PATCH",
+  });
+}
+
+/** Decisão administrativa em nome do cliente (ex.: confirmação por telefone),
+ * sem a confirmação de segurança exigida no link público (ver decideQuote em
+ * orderService.ts, source: "ADMIN"). RECUSADO cascateia para Order.status =
+ * CANCELADO no backend — a lista de orçamentos (RASCUNHO) reflete isso ao
+ * recarregar. */
+export async function updateQuoteStatus(
+  orderId: string,
+  quoteStatus: "APROVADO" | "RECUSADO",
+): Promise<OrderDTO> {
+  return request<OrderDTO>(`/api/admin/orders/${orderId}/quote-status`, {
+    method: "PATCH",
+    body: JSON.stringify({ quoteStatus }),
   });
 }
 

@@ -26,7 +26,9 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Checkout já mostra o carrinho inline (itens + resumo) — o FAB fica
   // redundante ali e, em mobile, sobrepõe o botão final de confirmação.
-  const showFab = pathname !== "/checkout";
+  // /orcamento/[token] é acessado por link direto (WhatsApp), sem sessão de
+  // compra em andamento — carrinho não faz sentido nesse fluxo.
+  const showFab = pathname !== "/checkout" && !pathname.startsWith("/orcamento/");
 
   return (
     <>

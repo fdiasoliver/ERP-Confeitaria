@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { requireOrderAccess } from "@/lib/auth/requireOrderAccess";
 import { ok, created, badRequest, invalidBody, notFound, internalError } from "@/lib/http/responses";
-import type { OrderStatus, ValidationError } from "@/lib/types";
+import type { OrderStatus, QuoteStatus, ValidationError } from "@/lib/types";
 import { CustomerNotFoundError } from "@/lib/customerService";
 import {
   getKanbanData,
@@ -12,6 +12,7 @@ import {
   OrderValidationFailedError,
   OrderInvalidAddressError,
   type CreateOrderInput,
+  type ListOrdersFilters,
 } from "@/lib/orderService";
 
 const VALID_ORDER_STATUSES: OrderStatus[] = [
@@ -24,29 +25,66 @@ const VALID_ORDER_STATUSES: OrderStatus[] = [
   "CANCELADO",
 ];
 
+const VALID_QUOTE_STATUSES: QuoteStatus[] = [
+  "PENDENTE",
+  "EM_REVISAO",
+  "APROVADO",
+  "RECUSADO",
+];
+
 export async function GET(request: NextRequest) {
   const denied = await requireOrderAccess();
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
 
-  // `status` (ex.: RASCUNHO — orçamentos pendentes) é um caminho de leitura
-  // separado do Kanban — quando presente, não aplica o filtro de `date` abaixo
-  // (listOrders só aceita status, ver orderService.ts). Sem `status`, o
-  // comportamento é idêntico ao de antes desta sprint.
+  // `status`/`quotesOnly`/`quoteStatus` (os dois últimos, novos nesta sprint —
+  // usados pela futura tela /admin/orcamentos) são um caminho de leitura
+  // separado do Kanban — quando qualquer um está presente, não aplica o
+  // filtro de `date` abaixo (listOrders não aceita `date`, ver
+  // orderService.ts). Sem nenhum deles, o comportamento é idêntico ao de
+  // antes desta sprint.
   const statusParam = searchParams.get("status");
-  if (statusParam !== null && statusParam.trim().length > 0) {
-    if (!VALID_ORDER_STATUSES.includes(statusParam as OrderStatus)) {
-      const error: ValidationError = {
-        field: "status",
-        code: "INVALID_STATUS",
-        message: "Status inválido.",
-      };
-      return badRequest([error]);
+  const quotesOnlyParam = searchParams.get("quotesOnly");
+  const quoteStatusParam = searchParams.get("quoteStatus");
+
+  const hasStatus = statusParam !== null && statusParam.trim().length > 0;
+  const hasQuotesOnly = quotesOnlyParam === "true";
+  const hasQuoteStatus = quoteStatusParam !== null && quoteStatusParam.trim().length > 0;
+
+  if (hasStatus || hasQuotesOnly || hasQuoteStatus) {
+    const filters: ListOrdersFilters = {};
+
+    if (hasStatus) {
+      if (!VALID_ORDER_STATUSES.includes(statusParam as OrderStatus)) {
+        const error: ValidationError = {
+          field: "status",
+          code: "INVALID_STATUS",
+          message: "Status inválido.",
+        };
+        return badRequest([error]);
+      }
+      filters.status = statusParam as OrderStatus;
+    }
+
+    if (hasQuotesOnly) {
+      filters.quotesOnly = true;
+    }
+
+    if (hasQuoteStatus) {
+      if (!VALID_QUOTE_STATUSES.includes(quoteStatusParam as QuoteStatus)) {
+        const error: ValidationError = {
+          field: "quoteStatus",
+          code: "INVALID_QUOTE_STATUS",
+          message: "Status de orçamento inválido.",
+        };
+        return badRequest([error]);
+      }
+      filters.quoteStatus = quoteStatusParam as QuoteStatus;
     }
 
     try {
-      const result = await listOrders({ status: statusParam as OrderStatus });
+      const result = await listOrders(filters);
       return ok(result);
     } catch {
       return internalError();

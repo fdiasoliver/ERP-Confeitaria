@@ -2,6 +2,7 @@ import type { DeliveryType, OrderStatus } from "@/lib/types";
 import { formatDate } from "@/lib/formatters/date";
 import { sendWhatsAppMessage } from "@/lib/clients/whatsappClient";
 import { logWhatsAppMessage } from "@/lib/repositories/whatsappLogRepository";
+import { env } from "@/lib/env";
 
 // Status que disparam notificação ao cliente — decisão do Product Owner,
 // Sprint 5.B (REGRAS_NEGOCIO.md 12.6). Templates são texto fixo aprovado
@@ -86,6 +87,37 @@ export async function notifyRescheduleSuggested(input: NotifyRescheduleSuggested
       phone: input.phone,
       message,
       template: "order_reschedule_suggested",
+      orderId: input.orderId,
+      success: result.success,
+      error: result.error,
+    });
+  } catch (err) {
+    console.error("[whatsappNotificationService] Falha inesperada:", err);
+  }
+}
+
+// ─── Orçamentos — envio do link público (Módulo Order.status = RASCUNHO) ──────
+// Texto fixo aprovado pelo Product Owner — não alterar sem nova decisão de
+// produto. Chamada por orderService.sendQuote (best-effort, mesmo padrão acima).
+
+interface NotifyQuoteSharedInput {
+  orderId: string;
+  phone: string;
+  orderNumber: number;
+  customerName: string;
+  shareToken: string;
+}
+
+export async function notifyQuoteShared(input: NotifyQuoteSharedInput): Promise<void> {
+  const url = `${env.NEXTAUTH_URL}/orcamento/${input.shareToken}`;
+  const message = `Olá, ${input.customerName}. Segue o orçamento solicitado à Doce Menina — Ateliê de Confeitaria Artesanal:\n\n${url}\n\nVocê pode revisar os itens e aprovar diretamente pelo link. Ficamos à disposição para qualquer ajuste.`;
+
+  try {
+    const result = await sendWhatsAppMessage(input.phone, message);
+    await logWhatsAppMessage({
+      phone: input.phone,
+      message,
+      template: "quote_shared",
       orderId: input.orderId,
       success: result.success,
       error: result.error,

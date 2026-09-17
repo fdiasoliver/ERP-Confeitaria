@@ -27,6 +27,12 @@ export type RescheduleStatus =
   | "ACEITO"
   | "RECUSADO";
 
+export type QuoteStatus =
+  | "PENDENTE"
+  | "EM_REVISAO"
+  | "APROVADO"
+  | "RECUSADO";
+
 export type PixKeyType = "CPF" | "CNPJ" | "EMAIL" | "TELEFONE" | "ALEATORIA";
 
 export interface ValidationError {
@@ -265,6 +271,13 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   SAIU_ENTREGA: "Saiu para entrega",
   ENTREGUE: "Entregue",
   CANCELADO: "Cancelado",
+};
+
+export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
+  PENDENTE: "Pendente",
+  EM_REVISAO: "Em Revisão",
+  APROVADO: "Aprovado",
+  RECUSADO: "Recusado",
 };
 
 export const PIX_KEY_TYPE_LABELS: Record<PixKeyType, string> = {

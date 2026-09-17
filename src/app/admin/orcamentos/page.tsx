@@ -16,11 +16,12 @@ import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
 import { ViewToggle } from "@/components/shared/ViewToggle";
+import { Badge } from "@/components/ui/badge";
 import { useViewMode } from "@/hooks/useViewMode";
 import { formatCurrency } from "@/lib/formatters/currency";
 import { formatDate } from "@/lib/formatters/date";
-import { DELIVERY_LABELS, PAYMENT_LABELS } from "@/lib/types";
-import type { DeliveryType, PaymentMethod, ValidationError } from "@/lib/types";
+import { DELIVERY_LABELS, PAYMENT_LABELS, QUOTE_STATUS_LABELS } from "@/lib/types";
+import type { DeliveryType, PaymentMethod, QuoteStatus, ValidationError } from "@/lib/types";
 import * as orderAdminApi from "@/lib/api/orderAdminApi";
 import { ApiRequestError, type OrderDTO, type CreateOrderInput } from "@/lib/api/orderAdminApi";
 import * as customerApi from "@/lib/api/customerApi";
@@ -59,6 +60,24 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Legado (quoteStatus null): orçamento criado antes da funcionalidade de link
+// público — sem badge, mantém só os botões Aprovar/Cancelar de sempre.
+const QUOTE_STATUS_BADGE_CLASS: Record<QuoteStatus, string> = {
+  PENDENTE: "border-transparent bg-sand text-muted",
+  EM_REVISAO: "border-transparent bg-caramel/10 text-caramel",
+  APROVADO: "border-transparent bg-sage/10 text-sage",
+  RECUSADO: "border-transparent bg-rose/10 text-rose",
+};
+
+function QuoteStatusBadge({ quoteStatus }: { quoteStatus: QuoteStatus | null }) {
+  if (!quoteStatus) return null;
+  return (
+    <Badge variant="outline" className={QUOTE_STATUS_BADGE_CLASS[quoteStatus]}>
+      {QUOTE_STATUS_LABELS[quoteStatus]}
+    </Badge>
+  );
+}
+
 const EMPTY_ORDER_FORM: OrderForm = {
   customerId: "",
   deliveryType: "RETIRADA",
@@ -79,7 +98,7 @@ const EMPTY_ORDER_FORM: OrderForm = {
 };
 
 interface ConfirmAction {
-  type: "cancel";
+  type: "cancel" | "recusar";
   order: OrderDTO;
 }
 
@@ -347,11 +366,13 @@ function OrcamentosAdminPageContent() {
     }
   }
 
-  // ── Aprovar/Cancelar ────────────────────────────────────────────────────────
-  // Aprovar (RASCUNHO → CONFIRMADO) é ação direta, sem confirmação — mesmo
-  // espírito de "Ativar" (4.7, frontend-pattern): constrói, não destrói. Cancelar
-  // (RASCUNHO → CANCELADO) sempre passa por ConfirmDialog — mesmo espírito de
-  // "Desativar"/"Excluir": remove o orçamento definitivamente desta fila.
+  // ── Ciclo de vida do orçamento ──────────────────────────────────────────────
+  // Ações constutivas (Enviar/Copiar link/Aprovar/Confirmar pedido) são diretas,
+  // sem confirmação — mesmo espírito de "Ativar" (4.7, frontend-pattern).
+  // Destrutivas (Cancelar/Recusar, ambas terminam em Order.status=CANCELADO)
+  // sempre passam por ConfirmDialog — mesmo espírito de "Desativar"/"Excluir".
+  // Legado (quoteStatus null, orçamento criado antes desta funcionalidade):
+  // handleApprove mantém o comportamento original (RASCUNHO → CONFIRMADO direto).
 
   async function handleApprove(order: OrderDTO) {
     setActionLoading(order.id);
@@ -361,32 +382,94 @@ function OrcamentosAdminPageContent() {
       toast.success(`Orçamento #${order.orderNumber} aprovado e confirmado.`, { id: toastId });
       await loadOrders(true);
     } catch (err) {
-      if (err instanceof ApiRequestError && err.code === "INVALID_STATUS_TRANSITION") {
-        toast.error(err.message, { id: toastId });
+      toast.error(err instanceof ApiRequestError ? err.message : "Erro ao aprovar orçamento.", { id: toastId });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleSendQuote(order: OrderDTO) {
+    setActionLoading(order.id);
+    const toastId = toast.loading("Enviando orçamento por WhatsApp…");
+    try {
+      await orderAdminApi.sendQuote(order.id);
+      toast.success(`Orçamento #${order.orderNumber} enviado.`, { id: toastId });
+      await loadOrders(true);
+    } catch (err) {
+      if (err instanceof ApiRequestError && Array.isArray(err.details) && err.details[0]?.message) {
+        toast.error(err.details[0].message, { id: toastId });
       } else {
-        toast.error(err instanceof Error ? err.message : "Erro ao aprovar orçamento.", { id: toastId });
+        toast.error(err instanceof ApiRequestError ? err.message : "Erro ao enviar orçamento.", { id: toastId });
       }
     } finally {
       setActionLoading(null);
     }
   }
 
-  async function handleConfirmCancel() {
-    if (!confirmAction) return;
-    const order = confirmAction.order;
-    setConfirmAction(null);
+  async function handleCopyLink(order: OrderDTO) {
     setActionLoading(order.id);
-    const toastId = toast.loading("Cancelando orçamento…");
     try {
-      await orderAdminApi.updateOrderStatus(order.id, "CANCELADO");
-      toast.success(`Orçamento #${order.orderNumber} cancelado.`, { id: toastId });
+      const { url } = await orderAdminApi.getOrCreateShareLink(order.id);
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copiado.");
+    } catch (err) {
+      toast.error(err instanceof ApiRequestError ? err.message : "Erro ao gerar o link.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  // Decisão administrativa em nome do cliente (ex.: confirmação por telefone) —
+  // sem a confirmação de segurança exigida no link público (decideQuote,
+  // source: "ADMIN", ver orderService.ts).
+  async function handleAdminApproveQuote(order: OrderDTO) {
+    setActionLoading(order.id);
+    const toastId = toast.loading("Aprovando orçamento…");
+    try {
+      await orderAdminApi.updateQuoteStatus(order.id, "APROVADO");
+      toast.success(`Orçamento #${order.orderNumber} aprovado.`, { id: toastId });
       await loadOrders(true);
     } catch (err) {
-      if (err instanceof ApiRequestError && err.code === "INVALID_STATUS_TRANSITION") {
-        toast.error(err.message, { id: toastId });
+      toast.error(err instanceof ApiRequestError ? err.message : "Erro ao aprovar orçamento.", { id: toastId });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleConfirmOrder(order: OrderDTO) {
+    setActionLoading(order.id);
+    const toastId = toast.loading("Confirmando pedido…");
+    try {
+      await orderAdminApi.updateOrderStatus(order.id, "CONFIRMADO");
+      toast.success(`Pedido #${order.orderNumber} confirmado.`, { id: toastId });
+      await loadOrders(true);
+    } catch (err) {
+      toast.error(err instanceof ApiRequestError ? err.message : "Erro ao confirmar pedido.", { id: toastId });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  // Cobre "cancel" (Order.status → CANCELADO direto, legado/PENDENTE) e
+  // "recusar" (quoteStatus → RECUSADO, cascateia para Order.status = CANCELADO
+  // no backend — ver decideQuote em orderService.ts).
+  async function handleConfirmDestructive() {
+    if (!confirmAction) return;
+    const { type, order } = confirmAction;
+    setConfirmAction(null);
+    setActionLoading(order.id);
+    const isCancel = type === "cancel";
+    const toastId = toast.loading(isCancel ? "Cancelando orçamento…" : "Recusando orçamento…");
+    try {
+      if (isCancel) {
+        await orderAdminApi.updateOrderStatus(order.id, "CANCELADO");
       } else {
-        toast.error(err instanceof Error ? err.message : "Erro ao cancelar orçamento.", { id: toastId });
+        await orderAdminApi.updateQuoteStatus(order.id, "RECUSADO");
       }
+      toast.success(`Orçamento #${order.orderNumber} ${isCancel ? "cancelado" : "recusado"}.`, { id: toastId });
+      await loadOrders(true);
+    } catch (err) {
+      toast.error(err instanceof ApiRequestError ? err.message : "Erro ao processar ação.", { id: toastId });
     } finally {
       setActionLoading(null);
     }
@@ -398,24 +481,57 @@ function OrcamentosAdminPageContent() {
         ? "flex-1 rounded-xl py-2 text-sm font-semibold"
         : "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold";
     const busy = actionLoading === order.id;
+    const approveClass = `${base} bg-sage/10 text-sage transition-colors hover:bg-sage/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-50`;
+    const dangerClass = `${base} border border-rose/40 text-rose transition-colors hover:bg-rose/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose disabled:opacity-50`;
+    const neutralClass = `${base} border border-sand text-chocolate transition-colors hover:bg-sand/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50`;
+
+    if (order.quoteStatus === "PENDENTE") {
+      return (
+        <>
+          <button type="button" onClick={() => handleSendQuote(order)} disabled={busy} aria-label={`Enviar orçamento ${order.orderNumber} por WhatsApp`} className={approveClass}>
+            {busy ? "…" : "Enviar"}
+          </button>
+          <button type="button" onClick={() => handleCopyLink(order)} disabled={busy} aria-label={`Copiar link do orçamento ${order.orderNumber}`} className={neutralClass}>
+            Link
+          </button>
+          <button type="button" onClick={() => setConfirmAction({ type: "cancel", order })} disabled={busy} aria-label={`Cancelar orçamento ${order.orderNumber}`} className={dangerClass}>
+            Cancelar
+          </button>
+        </>
+      );
+    }
+
+    if (order.quoteStatus === "EM_REVISAO") {
+      return (
+        <>
+          <button type="button" onClick={() => handleCopyLink(order)} disabled={busy} aria-label={`Copiar link do orçamento ${order.orderNumber}`} className={neutralClass}>
+            Link
+          </button>
+          <button type="button" onClick={() => handleAdminApproveQuote(order)} disabled={busy} aria-label={`Aprovar orçamento ${order.orderNumber}`} className={approveClass}>
+            {busy ? "…" : "Aprovar"}
+          </button>
+          <button type="button" onClick={() => setConfirmAction({ type: "recusar", order })} disabled={busy} aria-label={`Recusar orçamento ${order.orderNumber}`} className={dangerClass}>
+            Recusar
+          </button>
+        </>
+      );
+    }
+
+    if (order.quoteStatus === "APROVADO") {
+      return (
+        <button type="button" onClick={() => handleConfirmOrder(order)} disabled={busy} aria-label={`Confirmar pedido ${order.orderNumber}`} className={approveClass}>
+          {busy ? "…" : "Confirmar pedido"}
+        </button>
+      );
+    }
+
+    // quoteStatus null — orçamento criado antes desta funcionalidade.
     return (
       <>
-        <button
-          type="button"
-          onClick={() => handleApprove(order)}
-          disabled={busy}
-          aria-label={`Aprovar orçamento ${order.orderNumber}`}
-          className={`${base} bg-sage/10 text-sage transition-colors hover:bg-sage/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-50`}
-        >
+        <button type="button" onClick={() => handleApprove(order)} disabled={busy} aria-label={`Aprovar orçamento ${order.orderNumber}`} className={approveClass}>
           {busy ? "…" : "Aprovar"}
         </button>
-        <button
-          type="button"
-          onClick={() => setConfirmAction({ type: "cancel", order })}
-          disabled={busy}
-          aria-label={`Cancelar orçamento ${order.orderNumber}`}
-          className={`${base} border border-rose/40 text-rose transition-colors hover:bg-rose/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose disabled:opacity-50`}
-        >
+        <button type="button" onClick={() => setConfirmAction({ type: "cancel", order })} disabled={busy} aria-label={`Cancelar orçamento ${order.orderNumber}`} className={dangerClass}>
           Cancelar
         </button>
       </>
@@ -444,6 +560,11 @@ function OrcamentosAdminPageContent() {
       header: "Tipo",
       className: "hidden lg:table-cell",
       render: (o) => <span className="text-muted">{DELIVERY_LABELS[o.deliveryType].title}</span>,
+    },
+    {
+      key: "quoteStatus",
+      header: "Status",
+      render: (o) => <QuoteStatusBadge quoteStatus={o.quoteStatus} />,
     },
     {
       key: "total",
@@ -509,6 +630,7 @@ function OrcamentosAdminPageContent() {
                   <EntityCard
                     key={order.id}
                     title={`#${order.orderNumber} · ${order.receiverName}`}
+                    badges={<QuoteStatusBadge quoteStatus={order.quoteStatus} />}
                     actions={renderActions(order, "card")}
                   >
                     <p className="text-xs text-muted">
@@ -821,18 +943,19 @@ function OrcamentosAdminPageContent() {
 
       {confirmAction && (
         <ConfirmDialog
-          title="Cancelar orçamento?"
+          title={confirmAction.type === "cancel" ? "Cancelar orçamento?" : "Recusar orçamento?"}
           description={
             <>
-              O orçamento <strong className="text-chocolate">#{confirmAction.order.orderNumber}</strong> será cancelado
-              e sairá desta lista. Esta ação não pode ser desfeita.
+              O orçamento <strong className="text-chocolate">#{confirmAction.order.orderNumber}</strong> será{" "}
+              {confirmAction.type === "cancel" ? "cancelado" : "recusado e cancelado"} e sairá desta lista. Esta ação
+              não pode ser desfeita.
             </>
           }
           cancelLabel="Manter orçamento"
-          confirmLabel="Cancelar orçamento"
+          confirmLabel={confirmAction.type === "cancel" ? "Cancelar orçamento" : "Recusar orçamento"}
           busy={actionLoading === confirmAction.order.id}
           onCancel={() => setConfirmAction(null)}
-          onConfirm={handleConfirmCancel}
+          onConfirm={handleConfirmDestructive}
         />
       )}
     </PageContainer>
