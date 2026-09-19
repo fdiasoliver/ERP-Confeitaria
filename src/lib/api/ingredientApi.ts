@@ -87,3 +87,45 @@ export async function deactivateIngredient(id: string): Promise<Ingredient> {
 export async function getPriceHistory(id: string): Promise<IngredientPriceHistoryEntry[]> {
   return request<IngredientPriceHistoryEntry[]>(`/api/admin/ingredients/${id}/price-history`);
 }
+
+// ─── Importação via Excel ───────────────────────────────────────────────────
+// Fora do padrão `request<T>` acima: download retorna um binário (não o
+// envelope {success,data}), e o upload usa multipart/form-data — Content-Type
+// não pode ser forçado para "application/json" como o helper genérico faz.
+
+export interface ImportRowError {
+  row: number;
+  name: string;
+  message: string;
+}
+
+export interface ImportReport {
+  totalRows: number;
+  created: number;
+  updated: number;
+  failed: number;
+  errors: ImportRowError[];
+}
+
+export async function downloadImportTemplate(): Promise<void> {
+  const res = await fetch("/api/admin/ingredients/import-template");
+  if (!res.ok) throw new ApiRequestError("DOWNLOAD_FAILED", "Erro ao gerar o template.");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "ingredientes-template.xlsx";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function importIngredients(file: File): Promise<ImportReport> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("/api/admin/ingredients/import", { method: "POST", body: formData });
+  const json: ApiResponse<ImportReport> = await res.json();
+  if (!json.success) throw new ApiRequestError(json.error.code, json.error.message, json.error.details);
+  return json.data;
+}

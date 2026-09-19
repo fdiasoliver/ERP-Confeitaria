@@ -352,6 +352,9 @@ export default function IngredientesAdminPage() {
           <Link href="/admin/ingredientes/importar-nota" className="text-sm font-medium text-chocolate underline">
             Importar nota fiscal →
           </Link>
+          <Link href="/admin/ingredientes/importar-planilha" className="text-sm font-medium text-chocolate underline">
+            Importar planilha (Excel) →
+          </Link>
         </div>
 
         <div className="flex items-center justify-between">

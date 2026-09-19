@@ -4,6 +4,37 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo Ingredientes] — 2026-09-19 — Importação de ingredientes via planilha Excel
+
+**Tipo:** Nova funcionalidade em `/admin/ingredientes` — exportar um template `.xlsx`, preencher no Excel e importar de volta, como alternativa em lote ao cadastro manual e ao já existente "Importar nota fiscal" (QR Code, item a item).
+
+### Implementação
+
+- **Nova dependência:** `exceljs` ^4.4.0 (leitura/escrita de `.xlsx`) — preferida a `xlsx`/SheetJS pelo histórico de CVEs de prototype-pollution desse pacote, relevante aqui por processar arquivo enviado por usuário.
+- **`src/lib/ingredientImportService.ts` (novo):** `generateIngredientTemplate()` monta o `.xlsx` com a aba `Ingredientes` (cabeçalho + 1 linha de exemplo) e uma aba `Referência (não editar)` gerada a partir do banco real, listando Unidades e Categorias já cadastradas. `importIngredientsFromXlsx(buffer)` lê a planilha enviada, mapeia colunas pelo texto do cabeçalho (robusto a reordenação), e processa cada linha de forma independente — reaproveita `createIngredient`/`updateIngredient` (`ingredientService.ts`) já existentes, nenhuma regra de negócio duplicada. Nome já cadastrado (mesmo critério exato de `findIngredientByName`) atualiza o ingrediente (upsert, decisão do Product Owner); linha com erro nunca aborta as demais (decisão do Product Owner) — retorna `ImportReportDTO` (`totalRows/created/updated/failed/errors[]`, erro com número da linha e mensagem).
+- **Rotas** (atrás de `requireProductionChain()`, mesma proteção de `/api/admin/ingredients/**`): `GET /api/admin/ingredients/import-template` (download do `.xlsx`), `POST /api/admin/ingredients/import` (`multipart/form-data`, mesmo padrão de leitura de arquivo de `/api/admin/upload/route.ts`; limite 5 MB, extensão `.xlsx`).
+- **`src/lib/api/ingredientApi.ts`:** `downloadImportTemplate()` (dispara o download via blob) e `importIngredients(file)` — ambas fora do helper genérico `request<T>` (que força `Content-Type: application/json`, incompatível com binário/multipart).
+- **`src/app/admin/ingredientes/importar-planilha/page.tsx` (nova página):** mesmo padrão estrutural de `/admin/ingredientes/importar-nota` (`PageContainer`/`Card`/`Button`, link "← Voltar"). Botão de download do template, input de arquivo, botão de importar, e relatório final (contadores + lista de erros por linha). Link "Importar planilha (Excel) →" adicionado em `/admin/ingredientes/page.tsx`, ao lado do já existente "Importar nota fiscal →".
+
+**Arquivos alterados/criados:**
+- `package.json` (dependência `exceljs`)
+- `src/lib/ingredientImportService.ts` (novo)
+- `src/app/api/admin/ingredients/import-template/route.ts` (novo)
+- `src/app/api/admin/ingredients/import/route.ts` (novo)
+- `src/lib/api/ingredientApi.ts`
+- `src/app/admin/ingredientes/importar-planilha/page.tsx` (novo)
+- `src/app/admin/ingredientes/page.tsx`
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros (um cast `any` isolado e comentado em `ingredientImportService.ts` — divergência de tipos entre a declaração de `Buffer` usada por `exceljs` e a de `@types/node` deste projeto, mesmo objeto em runtime, sem checagem de tipo real evitada). Validação funcional end-to-end no navegador (Playwright, sessão admin real, banco Supabase real): template baixado e conferido (unidades/categorias reais listadas na aba de referência); planilha de teste com 3 linhas — 1 ingrediente novo, 1 nome já cadastrado (upsert confirmado via API: preço/estoque atualizados, novo registro em `IngredientPriceHistory`), 1 com unidade inexistente (rejeitada com mensagem clara, sem efeito colateral) — importada com relatório exato "3 linhas lidas · 1 criado · 1 atualizado · 1 com erro". Dados de teste revertidos/removidos do banco ao final.
+
+### Escopo explicitamente não incluído
+
+Import não cria Unidades ou Categorias novas — referencia só as já cadastradas (linha com nome de categoria/unidade inexistente é rejeitada, não criada automaticamente). `externalCode`/`externalSource` (campos de sincronização CONAB/CEASA) fora do template — são de outro fluxo.
+
+---
+
 ## [Módulo Orçamentos] — 2026-09-17 — Front do admin para o ciclo de vida do orçamento
 
 **Tipo:** Segunda microtarefa da mesma entrega (ver entrada anterior, "Link público de aprovação de orçamento") — `/admin/orcamentos` e `orderAdminApi.ts` passam a consumir as rotas `send-quote`/`share-link`/`quote-status` construídas na microtarefa anterior, que até aqui não tinham nenhum consumidor no frontend.
