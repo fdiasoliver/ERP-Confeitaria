@@ -134,7 +134,8 @@ function OrcamentosAdminPageContent() {
   const [view, setView] = useViewMode("orcamentos");
   const [statusTab, setStatusTab] = useState<"pendentes" | "recusados">("pendentes");
 
-  const [modal, setModal] = useState<"create" | null>(null);
+  const [modal, setModal] = useState<"create" | "edit" | null>(null);
+  const [editingOrder, setEditingOrder] = useState<OrderDTO | null>(null);
   const [form, setForm] = useState<OrderForm>(EMPTY_ORDER_FORM);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -218,10 +219,41 @@ function OrcamentosAdminPageContent() {
   function openCreate(customerId = "") {
     setForm({ ...EMPTY_ORDER_FORM, deliveryDate: todayISO(), customerId });
     setFormErrors({});
+    setEditingOrder(null);
     setModal("create");
   }
 
-  function closeModal() { setModal(null); setFormErrors({}); }
+  // Editor completo (itens + data + entrega + pagamento) — reaproveita o mesmo
+  // formulário/modal de "Novo orçamento". Preço unitário sempre recalculado do
+  // `basePrice` atual do produto (mesmo espírito da criação, nunca o preço
+  // histórico do item) — ver itemsSubtotal abaixo. Endereço vem de
+  // `order.address` (OrderAddressDTO); ausente (RETIRADA) cai nos defaults de
+  // EMPTY_ORDER_FORM.
+  function openEdit(order: OrderDTO) {
+    setForm({
+      customerId: order.customerId,
+      deliveryType: order.deliveryType,
+      deliveryDate: order.deliveryDate,
+      deliveryFee: String(order.deliveryFee),
+      street: order.address?.street ?? "",
+      number: order.address?.number ?? "",
+      complement: order.address?.complement ?? "",
+      neighborhood: order.address?.neighborhood ?? "",
+      city: order.address?.city ?? "São Paulo",
+      state: order.address?.state ?? "SP",
+      zipCode: order.address?.zipCode ?? "",
+      receiverName: order.receiverName ?? "",
+      receiverPhone: order.receiverPhone ?? "",
+      paymentMethod: order.paymentMethod,
+      orderNotes: order.orderNotes ?? "",
+      items: order.items.map((item) => ({ productId: item.productId, quantity: String(item.quantity) })),
+    });
+    setFormErrors({});
+    setEditingOrder(order);
+    setModal("edit");
+  }
+
+  function closeModal() { setModal(null); setEditingOrder(null); setFormErrors({}); }
 
   const ADDRESS_FIELD_KEYS = new Set(["street", "number", "complement", "neighborhood", "city", "state", "zipCode"]);
 
@@ -309,10 +341,11 @@ function OrcamentosAdminPageContent() {
     return true;
   }
 
-  async function handleCreateSubmit() {
+  async function handleSubmit() {
     if (!validateForm()) return;
+    const isEdit = modal === "edit" && editingOrder;
     setSubmitting(true);
-    const toastId = toast.loading("Criando orçamento…");
+    const toastId = toast.loading(isEdit ? "Salvando alterações…" : "Criando orçamento…");
     try {
       const items = form.items.map((item) => {
         const product = products.find((p) => p.id === item.productId);
@@ -354,17 +387,26 @@ function OrcamentosAdminPageContent() {
         };
       }
 
-      const created = await orderAdminApi.createOrder(input);
-      toast.success(`Orçamento #${created.orderNumber} criado.`, { id: toastId });
+      if (isEdit) {
+        const updated = await orderAdminApi.updateOrder(editingOrder.id, input);
+        toast.success(`Orçamento #${updated.orderNumber} atualizado.`, { id: toastId });
+      } else {
+        const created = await orderAdminApi.createOrder(input);
+        toast.success(`Orçamento #${created.orderNumber} criado.`, { id: toastId });
+      }
       closeModal();
       await loadOrders(true);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR" && applyServerValidationErrors(err.details)) {
         toast.error("Corrija os campos destacados.", { id: toastId });
+      } else if (err instanceof ApiRequestError && err.code === "QUOTE_NOT_EDITABLE") {
+        toast.error("Este orçamento não pode mais ser editado — o status mudou enquanto você editava.", { id: toastId });
+        closeModal();
+        await loadOrders(true);
       } else if (err instanceof ApiRequestError) {
         toast.error(err.message, { id: toastId });
       } else {
-        toast.error(err instanceof Error ? err.message : "Erro ao criar orçamento.", { id: toastId });
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar orçamento.", { id: toastId });
       }
     } finally {
       setSubmitting(false);
@@ -490,9 +532,20 @@ function OrcamentosAdminPageContent() {
     const dangerClass = `${base} border border-rose/40 text-rose transition-colors hover:bg-rose/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose disabled:opacity-50`;
     const neutralClass = `${base} border border-sand text-chocolate transition-colors hover:bg-sand/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chocolate disabled:opacity-50`;
 
+    // "Editar" (itens + data + entrega + pagamento) disponível em todo estado
+    // não-terminal — Order.status ainda é RASCUNHO em PENDENTE/EM_REVISAO/APROVADO
+    // e no legado (quoteStatus null); só RECUSADO (Order.status já CANCELADO) fica
+    // de fora, a API rejeitaria com QUOTE_NOT_EDITABLE de qualquer forma.
+    const editButton = (
+      <button type="button" onClick={() => openEdit(order)} disabled={busy} aria-label={`Editar orçamento ${order.orderNumber}`} className={neutralClass}>
+        Editar
+      </button>
+    );
+
     if (order.quoteStatus === "PENDENTE") {
       return (
         <>
+          {editButton}
           <button type="button" onClick={() => handleSendQuote(order)} disabled={busy} aria-label={`Enviar orçamento ${order.orderNumber} por WhatsApp`} className={approveClass}>
             {busy ? "…" : "Enviar"}
           </button>
@@ -509,6 +562,7 @@ function OrcamentosAdminPageContent() {
     if (order.quoteStatus === "EM_REVISAO") {
       return (
         <>
+          {editButton}
           <button type="button" onClick={() => handleCopyLink(order)} disabled={busy} aria-label={`Copiar link do orçamento ${order.orderNumber}`} className={neutralClass}>
             Link
           </button>
@@ -524,9 +578,12 @@ function OrcamentosAdminPageContent() {
 
     if (order.quoteStatus === "APROVADO") {
       return (
-        <button type="button" onClick={() => handleConfirmOrder(order)} disabled={busy} aria-label={`Confirmar pedido ${order.orderNumber}`} className={approveClass}>
-          {busy ? "…" : "Confirmar pedido"}
-        </button>
+        <>
+          {editButton}
+          <button type="button" onClick={() => handleConfirmOrder(order)} disabled={busy} aria-label={`Confirmar pedido ${order.orderNumber}`} className={approveClass}>
+            {busy ? "…" : "Confirmar pedido"}
+          </button>
+        </>
       );
     }
 
@@ -540,6 +597,7 @@ function OrcamentosAdminPageContent() {
     // quoteStatus null — orçamento criado antes desta funcionalidade.
     return (
       <>
+        {editButton}
         <button type="button" onClick={() => handleApprove(order)} disabled={busy} aria-label={`Aprovar orçamento ${order.orderNumber}`} className={approveClass}>
           {busy ? "…" : "Aprovar"}
         </button>
@@ -688,11 +746,11 @@ function OrcamentosAdminPageContent() {
 
       {modal && (
         <EntityForm
-          title="Novo orçamento"
+          title={modal === "create" ? "Novo orçamento" : `Editar orçamento #${editingOrder?.orderNumber}`}
           submitting={submitting}
-          submitLabel="Criar orçamento"
+          submitLabel={modal === "create" ? "Criar orçamento" : "Salvar alterações"}
           onClose={closeModal}
-          onSubmit={handleCreateSubmit}
+          onSubmit={handleSubmit}
         >
           <Field label="Cliente" required htmlFor="order-customer" error={formErrors.customerId}>
             <select
@@ -700,7 +758,8 @@ function OrcamentosAdminPageContent() {
               className={`input-field ${formErrors.customerId ? "border-rose" : ""}`}
               value={form.customerId}
               onChange={(e) => setField("customerId", e.target.value)}
-              disabled={submitting}
+              disabled={submitting || modal === "edit"}
+              title={modal === "edit" ? "O cliente do orçamento não pode ser alterado." : undefined}
             >
               <option value="">Selecione o cliente…</option>
               {customers.map((c) => (

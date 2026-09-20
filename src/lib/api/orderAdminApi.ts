@@ -80,6 +80,17 @@ export interface ProductionLoadDayDTO {
   isOverloaded: boolean;
 }
 
+// Espelha OrderAddressDTO de src/lib/orderService.ts.
+export interface OrderAddressDTO {
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+
 export interface OrderDTO {
   id: string;
   orderNumber: number;
@@ -89,6 +100,7 @@ export interface OrderDTO {
   deliveryDate: string;
   deliveryTimeSlot: string | null;
   addressId: string | null;
+  address: OrderAddressDTO | null;
   receiverName: string;
   receiverPhone: string | null;
   deliveryFee: number;
@@ -182,6 +194,16 @@ export async function listOrdersByQuoteStatus(quoteStatus: QuoteStatus): Promise
 export async function createOrder(input: CreateOrderInput): Promise<OrderDTO> {
   return request<OrderDTO>(`/api/admin/orders`, {
     method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/** Editor completo (itens + data + entrega + pagamento) — só permitido enquanto
+ * o orçamento está com `Order.status === "RASCUNHO"` (ver updateOrder em
+ * orderService.ts); fora disso a API responde 409 QUOTE_NOT_EDITABLE. */
+export async function updateOrder(orderId: string, input: CreateOrderInput): Promise<OrderDTO> {
+  return request<OrderDTO>(`/api/admin/orders/${orderId}`, {
+    method: "PATCH",
     body: JSON.stringify(input),
   });
 }

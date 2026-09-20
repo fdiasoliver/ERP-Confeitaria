@@ -3,8 +3,14 @@ import type { Prisma, OrderStatus, RescheduleStatus, DeliveryType, PaymentMethod
 
 // ─── Tipos e includes ──────────────────────────────────────────────────────────
 
+// `address` incluído desde a sprint do editor completo de orçamento (admin) —
+// necessário para pré-preencher o formulário de edição com o endereço atual do
+// pedido. Amplia o que já era retornado por toda função que usa `withItems`
+// (Kanban, listOrders, findOrderById etc.) sem quebrar nenhuma delas — nenhuma
+// depende de `address` estar ausente.
 const withItems = {
   items: true,
+  address: true,
 } satisfies Prisma.OrderInclude;
 
 export type OrderWithItems = Prisma.OrderGetPayload<{ include: typeof withItems }>;
@@ -334,6 +340,76 @@ export async function createOrderWithItems(data: CreateOrderWithItemsInput): Pro
           create: {
             status: data.status,
             notes: data.statusHistoryNotes ?? null,
+          },
+        },
+      },
+      include: withItems,
+    });
+  });
+}
+
+// ─── Escrita — edição completa de orçamento (admin) ────────────────────────────
+// Substitui todos os itens (delete + create, mesmo espírito de "editor completo"
+// pedido pelo Product Owner — não faz diff item a item) e os campos escalares de
+// entrega/pagamento/observações na mesma transação. `customerId` nunca muda
+// (fora do escopo pedido: "itens + data + entrega + pagamento") — só o Service
+// decide isso, esta função nem recebe o campo. Endereço já resolvido pelo
+// Service (novo Address criado ou null para RETIRADA — nunca muta um Address
+// existente aqui, ver comentário em orderService.ts, updateOrder).
+
+export interface UpdateOrderWithItemsInput {
+  deliveryType: DeliveryType;
+  deliveryDate: Date;
+  addressId: string | null;
+  receiverName: string;
+  receiverPhone?: string | null;
+  deliveryFee: number;
+  deliveryDistanceKm?: number | null;
+  subtotal: number;
+  total: number;
+  paymentMethod: PaymentMethod;
+  orderNotes?: string | null;
+  items: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    observation?: string | null;
+  }[];
+}
+
+export async function updateOrderWithItems(orderId: string, data: UpdateOrderWithItemsInput): Promise<OrderWithItems> {
+  return prisma.$transaction(async (tx) => {
+    await tx.orderItem.deleteMany({ where: { orderId } });
+    return tx.order.update({
+      where: { id: orderId },
+      data: {
+        deliveryType: data.deliveryType,
+        deliveryDate: data.deliveryDate,
+        addressId: data.addressId,
+        receiverName: data.receiverName,
+        receiverPhone: data.receiverPhone ?? null,
+        deliveryFee: data.deliveryFee,
+        deliveryDistanceKm: data.deliveryDistanceKm ?? null,
+        subtotal: data.subtotal,
+        total: data.total,
+        paymentMethod: data.paymentMethod,
+        orderNotes: data.orderNotes ?? null,
+        items: {
+          create: data.items.map((i) => ({
+            productId: i.productId,
+            productName: i.productName,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            totalPrice: i.totalPrice,
+            observation: i.observation ?? null,
+          })),
+        },
+        statusHistory: {
+          create: {
+            status: "RASCUNHO",
+            notes: "Orçamento editado pela equipe",
           },
         },
       },

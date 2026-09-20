@@ -4,6 +4,31 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo Orçamentos] — 2026-09-20 — Editor completo (itens, data, entrega, pagamento)
+
+**Tipo:** Nova funcionalidade — até esta sprint não existia nenhuma forma de editar um orçamento já criado (só criar, enviar, aprovar/recusar, cancelar); a única alternativa era cancelar e recriar do zero. Botão "Editar" em `/admin/orcamentos`, reaproveitando o mesmo formulário de "Novo orçamento", disponível enquanto `Order.status === "RASCUNHO"` (cobre PENDENTE/EM_REVISAO/APROVADO — nenhum desses ainda cascateia `status`; só RECUSADO, já `CANCELADO`, fica de fora).
+
+### Implementação
+
+- **`src/lib/repositories/orderRepository.ts`:** `withItems` ganha `address: true` (necessário para pré-preencher o endereço no editor); `updateOrderWithItems(orderId, data)` — substitui todos os itens (delete + create, sem diff item a item) e os campos escalares de entrega/pagamento/observações na mesma transação, com registro em `OrderStatusHistory` ("Orçamento editado pela equipe").
+- **`src/lib/orderService.ts`:** `OrderDTO` ganha `address` (novo `OrderAddressDTO`, compartilhado com `PublicQuoteDTO` — mesmo formato, agora incluindo `zipCode`, que faltava). `updateOrder(orderId, input)` — mesma validação/resolução de endereço e frete grátis de `createOrder`, nunca aceita trocar o cliente (fora do escopo pedido: "itens + data + entrega + pagamento"); bloqueia com `QuoteNotEditableError` (409) quando `status !== "RASCUNHO"`. Endereço sempre recriado quando a edição pede um (nunca muta o `Address` já vinculado ao pedido — evita corromper outro pedido que porventura reaproveitasse o mesmo registro).
+- **`src/app/api/admin/orders/[id]/route.ts`** (novo): `PATCH`, atrás de `requireOrderAccess()`.
+- **`src/lib/api/orderAdminApi.ts`:** `updateOrder(orderId, input)`; `OrderDTO` ganha `address`.
+- **`src/app/admin/orcamentos/page.tsx`:** botão "Editar" nas ações de PENDENTE/EM_REVISAO/APROVADO/legado; `openEdit()` pré-preenche o formulário a partir do pedido (itens, data, tipo de entrega, endereço, forma de pagamento, observações) — campo "Cliente" fica desabilitado no modo edição. Modal reaproveitado (`EntityForm`), título/rótulo do botão mudam conforme o modo.
+
+**Arquivos alterados/criados:**
+- `src/lib/repositories/orderRepository.ts`
+- `src/lib/orderService.ts`
+- `src/app/api/admin/orders/[id]/route.ts` (novo)
+- `src/lib/api/orderAdminApi.ts`
+- `src/app/admin/orcamentos/page.tsx`
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros. Validação funcional end-to-end no navegador (Playwright, sessão admin real, banco Supabase real): orçamento de teste criado e editado — tipo de entrega, endereço (novo `Address` criado, confirmado que o anterior não foi mutado), taxa de entrega, observações e itens (um removido) todos persistidos corretamente, refletidos na tela após reload. Tentativa de editar um orçamento já recusado (`CANCELADO`) via API confirmada bloqueada com `409 QUOTE_NOT_EDITABLE`. Layout de 4 botões (Editar/Enviar/Link/Cancelar) na visão de cards conferido visualmente por screenshot, sem quebra. Dados de teste removidos do banco ao final.
+
+---
+
 ## [Correções] — 2026-09-20 — Design do orçamento público, orçamentos recusados invisíveis, LTV com pedido cancelado
 
 **Tipo:** Três correções reportadas pelo Product Owner na mesma sessão — página pública do orçamento fora do design já aprovado, orçamentos recusados desaparecendo do admin, e valor de pedidos cancelados/orçamentos contando como "Total Gasto" do cliente.

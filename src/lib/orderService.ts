@@ -18,6 +18,7 @@ import {
   updateStatusWithHistory,
   updateRescheduleFields,
   createOrderWithItems,
+  updateOrderWithItems,
   updateQuoteStatus,
   setShareToken,
   updateItemQuantityAndTotals,
@@ -162,6 +163,18 @@ export interface OrderItemDTO {
   observation: string | null;
 }
 
+// Compartilhado por OrderDTO (abaixo) e PublicQuoteDTO (seção "Orçamentos —
+// link público", mais abaixo) — mesmo formato de endereço nos dois casos.
+export interface OrderAddressDTO {
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+
 export interface OrderDTO {
   id: string;
   orderNumber: number;
@@ -171,6 +184,7 @@ export interface OrderDTO {
   deliveryDate: string;
   deliveryTimeSlot: string | null;
   addressId: string | null;
+  address: OrderAddressDTO | null;
   receiverName: string;
   receiverPhone: string | null;
   deliveryFee: number;
@@ -201,6 +215,17 @@ function mapOrderDTO(order: OrderWithItems): OrderDTO {
     deliveryDate: order.deliveryDate.toISOString().slice(0, 10),
     deliveryTimeSlot: order.deliveryTimeSlot,
     addressId: order.addressId,
+    address: order.address
+      ? {
+          street: order.address.street,
+          number: order.address.number,
+          complement: order.address.complement,
+          neighborhood: order.address.neighborhood,
+          city: order.address.city,
+          state: order.address.state,
+          zipCode: order.address.zipCode,
+        }
+      : null,
     receiverName: order.receiverName,
     receiverPhone: order.receiverPhone,
     deliveryFee: order.deliveryFee.toNumber(),
@@ -653,6 +678,98 @@ export async function createOrder(
   return mapOrderDTO(createdOrder);
 }
 
+// ─── Edição completa de orçamento (admin) ──────────────────────────────────────
+// Editor completo pedido pelo Product Owner (itens + data + entrega +
+// pagamento) — só permitido enquanto `Order.status === "RASCUNHO"` (orçamento
+// ainda não confirmado; cobre PENDENTE/EM_REVISAO/APROVADO-mas-não-confirmado,
+// já que nenhum desses cascateia `status` — só RECUSADO/confirmação o fazem).
+// `customerId` nunca é aceito aqui — trocar o cliente do orçamento está fora do
+// escopo pedido ("itens + data + entrega + pagamento"). Mesma regra de
+// resolução de endereço/frete grátis de createOrder, deliberadamente repetida
+// (não extraída) — as duas únicas chamadoras, sem uma terceira no horizonte que
+// justifique a abstração agora.
+export async function updateOrder(orderId: string, input: CreateOrderInput): Promise<OrderDTO> {
+  const errors: ValidationError[] = [];
+  if (!input.items || input.items.length === 0) {
+    errors.push({ field: "items", code: "REQUIRED", message: "Pelo menos um item é obrigatório." });
+  }
+  if (errors.length > 0) throw new OrderValidationFailedError(errors);
+
+  const existing = await findOrderById(orderId);
+  if (!existing) throw new OrderNotFoundError(orderId);
+  if (existing.status !== "RASCUNHO") throw new QuoteNotEditableError(orderId);
+
+  const customer = await findCustomerById(existing.customerId);
+  if (!customer) throw new CustomerNotFoundError(existing.customerId);
+
+  let deliveryDistanceKm: number | null = null;
+  if (input.deliveryType === "ENTREGA_GRATIS" && input.deliveryAddress) {
+    try {
+      const eligibility = await checkFreeDeliveryEligibility(input.deliveryAddress);
+      if (!eligibility.isWithinFreeRadius) {
+        throw new OrderValidationFailedError([
+          {
+            field: "deliveryType",
+            code: "OUT_OF_FREE_RADIUS",
+            message: `Este endereço está a ${eligibility.distanceKm.toFixed(1)} km, fora do raio de entrega grátis (${eligibility.freeDeliveryRadiusKm} km). Escolha outra forma de entrega.`,
+          },
+        ]);
+      }
+      deliveryDistanceKm = eligibility.distanceKm;
+    } catch (err) {
+      if (err instanceof OrderValidationFailedError) throw err;
+      if (err instanceof DistanceCalculationFailedError) {
+        throw new OrderValidationFailedError([
+          { field: "deliveryAddress", code: "DISTANCE_CALCULATION_FAILED", message: err.message },
+        ]);
+      }
+      throw err;
+    }
+  }
+
+  // Endereço sempre recriado quando a edição pede um (nunca muta o Address já
+  // vinculado ao pedido) — mesma lógica de createOrder; o Address anterior, se
+  // existia, fica órfão (sem coleta em nenhum outro fluxo do projeto hoje,
+  // mesmo padrão de pedido cancelado).
+  let resolvedAddressId: string | null = null;
+  if (input.addressId) {
+    const address = await findAddressById(input.addressId);
+    if (!address || address.customerId !== customer.id) {
+      throw new OrderInvalidAddressError();
+    }
+    resolvedAddressId = address.id;
+  } else if (input.deliveryType !== "RETIRADA" && input.deliveryAddress) {
+    const addr = await createAddress(customer.id, {
+      label: "Entrega",
+      street: input.deliveryAddress.street,
+      number: input.deliveryAddress.number,
+      complement: input.deliveryAddress.complement ?? null,
+      neighborhood: input.deliveryAddress.neighborhood,
+      city: input.deliveryAddress.city,
+      state: input.deliveryAddress.state,
+      zipCode: input.deliveryAddress.zipCode,
+    });
+    resolvedAddressId = addr.id;
+  }
+
+  const updatedOrder = await updateOrderWithItems(orderId, {
+    deliveryType: input.deliveryType,
+    deliveryDate: new Date(input.deliveryDate + "T12:00:00"),
+    addressId: resolvedAddressId,
+    receiverName: input.receiverName ?? customer.name,
+    receiverPhone: input.receiverPhone ?? null,
+    deliveryFee: input.deliveryType === "ENTREGA_GRATIS" ? 0 : input.deliveryFee,
+    deliveryDistanceKm,
+    subtotal: input.subtotal,
+    total: input.total,
+    paymentMethod: input.paymentMethod,
+    orderNotes: input.orderNotes ?? null,
+    items: input.items,
+  });
+
+  return mapOrderDTO(updatedOrder);
+}
+
 // ─── Leitura — listagem simples por status (orçamentos pendentes) ─────────────
 // Reaproveita findByDateAndStatus (já usado pelo Kanban, acima) sem filtro de
 // data — não duplica uma segunda função de leitura no Repository.
@@ -705,16 +822,7 @@ export interface PublicQuoteItemDTO {
 
 // DTO minimizado — nunca reaproveita OrderDTO inteiro (vazaria customerId e
 // outros dados internos a um destinatário não autenticado, que só possui o
-// token da URL).
-export interface PublicQuoteAddressDTO {
-  street: string;
-  number: string;
-  complement: string | null;
-  neighborhood: string;
-  city: string;
-  state: string;
-}
-
+// token da URL). Endereço reaproveita OrderAddressDTO (topo do arquivo).
 export interface PublicQuoteDTO {
   orderNumber: number;
   quoteStatus: QuoteStatus;
@@ -725,7 +833,7 @@ export interface PublicQuoteDTO {
   receiverPhone: string | null;
   // null para DeliveryType.RETIRADA (sem Address associado, ver createOrder) —
   // ver seção "III. Entrega" do doc renderizado em orcamento/[token]/page.tsx.
-  address: PublicQuoteAddressDTO | null;
+  address: OrderAddressDTO | null;
   customer: {
     name: string;
     phone: string | null;
@@ -763,6 +871,7 @@ function mapPublicQuoteDTO(order: OrderWithItemsAndCustomer): PublicQuoteDTO {
           neighborhood: order.address.neighborhood,
           city: order.address.city,
           state: order.address.state,
+          zipCode: order.address.zipCode,
         }
       : null,
     customer: {
