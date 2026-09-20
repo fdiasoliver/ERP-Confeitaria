@@ -19,6 +19,8 @@ import {
   findAddressById,
   createAddress as dbCreateAddress,
   updateAddress as dbUpdateAddress,
+  deleteAddress as dbDeleteAddress,
+  countOrdersByAddressId,
 } from "@/lib/repositories/addressRepository";
 import {
   validateCustomerNotesUpdate,
@@ -80,6 +82,15 @@ export class AddressValidationFailedError extends Error {
 export class AddressNotFoundError extends Error {
   constructor(public id: string) {
     super(`Endereço não encontrado: ${id}`);
+  }
+}
+
+export class AddressInUseError extends Error {
+  constructor(
+    public id: string,
+    public orderCount: number,
+  ) {
+    super(`Endereço não pode ser excluído: usado em ${orderCount} pedido(s).`);
   }
 }
 
@@ -356,6 +367,22 @@ export async function updateCustomerAddress(
     zipCode: input.zipCode.trim(),
   });
   return mapAddressDTO(address);
+}
+
+// Bloqueia exclusão de endereço já usado em algum pedido — mesmo espírito de
+// CustomerInUseError (deleteCustomer, abaixo): histórico de pedidos nunca pode
+// ficar com uma referência quebrada.
+export async function deleteCustomerAddress(customerId: string, addressId: string): Promise<void> {
+  const customer = await findCustomerById(customerId);
+  if (!customer) throw new CustomerNotFoundError(customerId);
+
+  const existing = await findAddressById(addressId);
+  if (!existing || existing.customerId !== customerId) throw new AddressNotFoundError(addressId);
+
+  const orderCount = await countOrdersByAddressId(addressId);
+  if (orderCount > 0) throw new AddressInUseError(addressId, orderCount);
+
+  await dbDeleteAddress(addressId);
 }
 
 // ─── Atualização — apenas `notes` ──────────────────────────────────────────────

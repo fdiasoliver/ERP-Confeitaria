@@ -4,6 +4,31 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo Clientes] — 2026-09-20 — Excluir endereço
+
+**Tipo:** Extensão da entrega anterior ("Cadastro direto de endereços pela equipe") — botão "Excluir" ao lado de "Editar" em cada endereço de `/admin/clientes/[id]`.
+
+### Implementação
+
+- **`src/lib/repositories/addressRepository.ts`:** `deleteAddress(id)` e `countOrdersByAddressId(id)` — `Order.addressId` não tem `onDelete` configurado no schema, então a checagem de negócio evita o erro genérico de FK do banco.
+- **`src/lib/customerService.ts`:** `AddressInUseError` (mesmo espírito de `CustomerInUseError` já existente) e `deleteCustomerAddress(customerId, addressId)` — confirma posse do endereço, bloqueia exclusão se `countOrdersByAddressId > 0`.
+- **Rota:** `DELETE /api/admin/customers/[id]/addresses/[addressId]` (adicionada ao arquivo de rota já existente), mesma proteção `requireRole(["ADMIN","ATENDIMENTO"])`; retorna `409 ADDRESS_IN_USE` com a contagem de pedidos quando bloqueado.
+- **`src/lib/api/customerApi.ts`:** `deleteCustomerAddress`.
+- **`src/app/admin/clientes/[id]/page.tsx`:** botão "Excluir" com `ConfirmDialog` (mesmo padrão já usado em outras telas do admin) antes de excluir.
+
+**Arquivos alterados:**
+- `src/lib/repositories/addressRepository.ts`
+- `src/lib/customerService.ts`
+- `src/app/api/admin/customers/[id]/addresses/[addressId]/route.ts`
+- `src/lib/api/customerApi.ts`
+- `src/app/admin/clientes/[id]/page.tsx`
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros. Validação funcional end-to-end no navegador (Playwright, sessão admin real, banco Supabase real): tentativa de excluir um endereço já usado em 1 pedido real → bloqueada (`409`), endereço permanece intacto; endereço de teste criado sem nenhum pedido vinculado → excluído com sucesso, confirmado via API e após reload da página.
+
+---
+
 ## [Módulo Clientes] — 2026-09-20 — Cadastro direto de endereços pela equipe
 
 **Tipo:** Nova funcionalidade em `/admin/clientes/[id]` — até esta sprint, `Address` só existia como efeito colateral de um pedido (`createOrder`) ou do autoatendimento do próprio cliente (`/cadastro`, área do cliente); a seção "Endereços" do perfil no admin era somente leitura. Agora a equipe pode adicionar e editar endereços do cliente diretamente ali, sem precisar criar um pedido/orçamento primeiro.

@@ -207,3 +207,9 @@ export async function updateCustomerAddress(
     body: JSON.stringify(input),
   });
 }
+
+export async function deleteCustomerAddress(customerId: string, addressId: string): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/admin/customers/${customerId}/addresses/${addressId}`, {
+    method: "DELETE",
+  });
+}

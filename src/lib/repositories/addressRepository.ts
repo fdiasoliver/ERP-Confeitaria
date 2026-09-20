@@ -16,6 +16,14 @@ export async function findAddressById(id: string): Promise<Address | null> {
   return prisma.address.findUnique({ where: { id } });
 }
 
+// Usada antes de excluir — `Order.addressId` não tem onDelete configurado no
+// schema (Restrict, padrão do Prisma para relação opcional sem @relation
+// explícita), então a checagem de negócio evita o erro genérico de FK do banco
+// e dá uma mensagem clara (ver AddressInUseError em customerService.ts).
+export async function countOrdersByAddressId(addressId: string): Promise<number> {
+  return prisma.order.count({ where: { addressId } });
+}
+
 // ─── Escrita ────────────────────────────────────────────────────────────────
 
 export async function createAddress(
@@ -48,4 +56,8 @@ export async function updateAddress(
   },
 ): Promise<Address> {
   return prisma.address.update({ where: { id }, data });
+}
+
+export async function deleteAddress(id: string): Promise<void> {
+  await prisma.address.delete({ where: { id } });
 }

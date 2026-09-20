@@ -9,6 +9,7 @@ import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { StatCard } from "@/components/admin/shared/StatCard";
+import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { formatCurrency } from "@/lib/formatters/currency";
 import { formatDate } from "@/lib/formatters/date";
 import { STATUS_LABELS, PAYMENT_LABELS } from "@/lib/types";
@@ -216,6 +217,8 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   const [addressForm, setAddressForm] = useState<AddressForm>(EMPTY_ADDRESS_FORM);
   const [addressFormErrors, setAddressFormErrors] = useState<Record<string, string>>({});
   const [savingAddress, setSavingAddress] = useState(false);
+  const [confirmDeleteAddress, setConfirmDeleteAddress] = useState<Address | null>(null);
+  const [deletingAddress, setDeletingAddress] = useState(false);
 
   async function loadCustomer() {
     setLoading(true);
@@ -341,6 +344,27 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       }
     } finally {
       setSavingAddress(false);
+    }
+  }
+
+  async function handleConfirmDeleteAddress() {
+    if (!confirmDeleteAddress) return;
+    const address = confirmDeleteAddress;
+    setConfirmDeleteAddress(null);
+    setDeletingAddress(true);
+    const toastId = toast.loading("Excluindo endereço…");
+    try {
+      await customerApi.deleteCustomerAddress(id, address.id);
+      toast.success("Endereço excluído.", { id: toastId });
+      await loadCustomer();
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.code === "ADDRESS_IN_USE") {
+        toast.error(err.message, { id: toastId });
+      } else {
+        toast.error(err instanceof Error ? err.message : "Erro ao excluir endereço.", { id: toastId });
+      }
+    } finally {
+      setDeletingAddress(false);
     }
   }
 
@@ -502,14 +526,26 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                           <span className="rounded-full bg-sage/10 px-2 py-0.5 text-xs font-semibold text-sage">Padrão</span>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => openEditAddress(group.representative)}
-                        aria-label={`Editar endereço ${group.representative.street}, ${group.representative.number}`}
-                        className="shrink-0 rounded-lg border border-sand px-3 py-1.5 text-xs font-semibold text-chocolate"
-                      >
-                        Editar
-                      </button>
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditAddress(group.representative)}
+                          disabled={deletingAddress}
+                          aria-label={`Editar endereço ${group.representative.street}, ${group.representative.number}`}
+                          className="rounded-lg border border-sand px-3 py-1.5 text-xs font-semibold text-chocolate disabled:opacity-50"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteAddress(group.representative)}
+                          disabled={deletingAddress}
+                          aria-label={`Excluir endereço ${group.representative.street}, ${group.representative.number}`}
+                          className="rounded-lg border border-sand px-3 py-1.5 text-xs font-semibold text-rose disabled:opacity-50"
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </div>
                     {group.representative.complement && (
                       <p className="text-sm text-muted">{group.representative.complement}</p>
@@ -564,6 +600,25 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           onClose={closeAddressModal}
           onChange={setAddressField}
           onSubmit={handleSaveAddress}
+        />
+      )}
+
+      {confirmDeleteAddress && (
+        <ConfirmDialog
+          title="Excluir endereço?"
+          description={
+            <>
+              <strong className="text-chocolate">
+                {confirmDeleteAddress.street}, {confirmDeleteAddress.number}
+              </strong>{" "}
+              será excluído permanentemente. Endereços usados em algum pedido não podem ser excluídos.
+            </>
+          }
+          cancelLabel="Manter endereço"
+          confirmLabel="Excluir"
+          busy={deletingAddress}
+          onCancel={() => setConfirmDeleteAddress(null)}
+          onConfirm={handleConfirmDeleteAddress}
         />
       )}
     </PageContainer>
