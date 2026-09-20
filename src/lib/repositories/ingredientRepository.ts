@@ -37,6 +37,8 @@ export async function createIngredient(data: {
   categoryId?: string | null;
   unitId: string;
   currentPrice: number;
+  packageQuantity?: number | null;
+  packagePrice?: number | null;
   stockQuantity?: number;
   minStock?: number;
   supplier?: string | null;
@@ -53,6 +55,8 @@ export async function updateIngredient(
     categoryId?: string | null;
     unitId?: string;
     currentPrice?: number;
+    packageQuantity?: number | null;
+    packagePrice?: number | null;
     stockQuantity?: number;
     minStock?: number;
     supplier?: string | null;

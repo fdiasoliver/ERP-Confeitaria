@@ -9,6 +9,8 @@ export interface Ingredient {
   unitName: string;
   unitAbbreviation: string;
   currentPrice: number;
+  packageQuantity: number | null;
+  packagePrice: number | null;
   stockQuantity: number;
   minStock: number;
   isLowStock: boolean;
@@ -25,6 +27,8 @@ export interface IngredientInput {
   categoryId?: string | null;
   unitId: string;
   currentPrice: number;
+  packageQuantity?: number | null;
+  packagePrice?: number | null;
   stockQuantity?: number;
   minStock?: number;
   supplier?: string | null;

@@ -4,6 +4,34 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo Ingredientes] — 2026-09-20 — Preço por embalagem/pacote
+
+**Tipo:** Nova funcionalidade no cadastro de ingredientes (`/admin/ingredientes` e importação via Excel) — informar o preço e a quantidade da embalagem de compra (ex.: lata de leite condensado de 395 g a R$ 8,50) e o sistema calcula sozinho o preço por unidade de medida cadastrada (R$/g, R$/kg, R$/un etc.), sem o usuário fazer a divisão manualmente.
+
+### Implementação
+
+- **Schema (`prisma/schema.prisma`):** `Ingredient` ganha `packageQuantity Decimal? @db.Decimal(12,4)` e `packagePrice Decimal? @db.Decimal(12,4)`, ambos opcionais, mesma unidade já cadastrada do ingrediente (`Ingredient.unit`).
+- **`src/lib/validators/ingredientValidator.ts`:** `packageQuantity`/`packagePrice` em `IngredientInput`; regra de pareamento (um preenchido exige o outro) e positividade (`> 0`) em `validateShared`.
+- **`src/lib/ingredientService.ts`:** nova `resolvePriceFromPackage()` — quando os dois campos vêm preenchidos, `currentPrice` é **sempre recalculado no backend** (`packagePrice / packageQuantity`), nunca confiando em um `currentPrice` enviado pelo cliente nesse modo. Aplicado em `createIngredient` e `updateIngredient` (inclusive no registro de `IngredientPriceHistory`, que passa a guardar o preço unitário já calculado).
+- **`src/lib/repositories/ingredientRepository.ts`** e **`src/lib/api/ingredientApi.ts`:** os dois campos passam pelas assinaturas de create/update e pelo DTO exposto ao frontend.
+- **`src/app/admin/ingredientes/page.tsx`:** alternador "Tenho o preço da embalagem/pacote" no formulário — ligado, mostra "Quantidade por embalagem" (rotulada com a abreviação da unidade selecionada) e "Preço da embalagem", com o campo "Preço atual" virando somente leitura exibindo o valor calculado ao vivo; desligado, comportamento manual de sempre. Ao editar um ingrediente já cadastrado com embalagem, o alternador já abre ligado com os valores salvos.
+- **`src/lib/ingredientImportService.ts`** (Excel, entrega anterior): template ganha as colunas opcionais "Quantidade por embalagem" e "Preço da embalagem" (com uma segunda linha de exemplo); linha da planilha com as duas preenchidas dispensa a coluna "Preço atual" e é recalculada pelo mesmo caminho do formulário manual.
+
+**Arquivos alterados:**
+- `prisma/schema.prisma`
+- `src/lib/validators/ingredientValidator.ts`
+- `src/lib/ingredientService.ts`
+- `src/lib/repositories/ingredientRepository.ts`
+- `src/lib/api/ingredientApi.ts`
+- `src/app/admin/ingredientes/page.tsx`
+- `src/lib/ingredientImportService.ts`
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros. `npx prisma db push` executado contra o Supabase real (2 colunas novas opcionais, sem risco de perda de dado) — banco sincronizado. Validação funcional end-to-end no navegador (Playwright, sessão admin real): ingrediente criado com embalagem (395 g / R$ 8,50 → `currentPrice` salvo como `0.0215`, precisão de 4 casas preservada apesar do arredondamento a centavos na exibição); reajuste de preço da embalagem (R$ 8,50 → R$ 9,20) recalculado corretamente (`0.0233`) com novo registro em `IngredientPriceHistory`, mantendo o anterior; alternador desligado limpa `packageQuantity`/`packagePrice` (`null`) e aceita preço manual normalmente; importação via Excel com as duas colunas novas testada e confirmada (`1 criado`, preço calculado idêntico ao do formulário). Dados de teste removidos do banco ao final.
+
+---
+
 ## [Módulo Ingredientes] — 2026-09-19 — Importação de ingredientes via planilha Excel
 
 **Tipo:** Nova funcionalidade em `/admin/ingredientes` — exportar um template `.xlsx`, preencher no Excel e importar de volta, como alternativa em lote ao cadastro manual e ao já existente "Importar nota fiscal" (QR Code, item a item).

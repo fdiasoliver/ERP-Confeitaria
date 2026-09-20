@@ -310,6 +310,13 @@ model Ingredient {
   unitId         String
   unit           UnitOfMeasure            @relation(fields: [unitId], references: [id])
   currentPrice   Decimal                  @db.Decimal(12, 4)
+  // Preço por embalagem/pacote (ex.: lata de leite condensado, R$ 8,50 a
+  // unidade de 395 g) — mesma unidade de `unit` acima. Quando ambos
+  // preenchidos, `currentPrice` é sempre recalculado a partir deles
+  // (packagePrice / packageQuantity), nunca editado manualmente nesse modo —
+  // ver ingredientService.ts.
+  packageQuantity Decimal?                @db.Decimal(12, 4)
+  packagePrice    Decimal?                @db.Decimal(12, 4)
   stockQuantity  Decimal                  @default(0) @db.Decimal(12, 4)
   minStock       Decimal                  @default(0) @db.Decimal(12, 4)
   supplier       String?

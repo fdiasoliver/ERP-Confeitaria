@@ -32,6 +32,8 @@ export async function generateIngredientTemplate(): Promise<Buffer> {
     { header: "Categoria", key: "category", width: 22 },
     { header: "Unidade", key: "unit", width: 18 },
     { header: "Preço atual", key: "price", width: 14 },
+    { header: "Quantidade por embalagem", key: "packageQuantity", width: 20 },
+    { header: "Preço da embalagem", key: "packagePrice", width: 18 },
     { header: "Estoque atual", key: "stock", width: 14 },
     { header: "Estoque mínimo", key: "minStock", width: 14 },
     { header: "Fornecedor", key: "supplier", width: 24 },
@@ -45,6 +47,20 @@ export async function generateIngredientTemplate(): Promise<Buffer> {
     stock: 10,
     minStock: 2,
     supplier: "Distribuidora Central",
+  });
+  // Segunda linha de exemplo — mesmo ingrediente comprado por embalagem
+  // (Preço atual fica em branco propositalmente: é calculado a partir das
+  // duas colunas seguintes, mesmo espírito do alternador na tela de
+  // ingredientes). Nome distinto para não colidir por upsert com a linha 1.
+  sheet.addRow({
+    name: "Leite Condensado",
+    category: "",
+    unit: "g",
+    packageQuantity: 395,
+    packagePrice: 8.5,
+    stock: 0,
+    minStock: 0,
+    supplier: "",
   });
 
   const [units, categories] = await Promise.all([listActiveUnits(), listAllIngredientCategories()]);
@@ -125,9 +141,14 @@ export async function importIngredientsFromXlsx(buffer: Buffer): Promise<ImportR
   const columnIndex: Record<string, number> = {};
   headerRow.eachCell((cell, colNumber) => {
     const header = cellText(cell.value).toLowerCase();
+    // Ordem importa: variantes mais específicas de "preço"/"quantidade" (embalagem)
+    // são checadas antes das genéricas ("preço atual"), senão o startsWith genérico
+    // capturaria a coluna errada.
     if (header.startsWith("nome")) columnIndex.name = colNumber;
     else if (header.startsWith("categoria")) columnIndex.category = colNumber;
     else if (header.startsWith("unidade")) columnIndex.unit = colNumber;
+    else if (header.startsWith("quantidade por embalagem")) columnIndex.packageQuantity = colNumber;
+    else if (header.startsWith("preço da embalagem") || header.startsWith("preco da embalagem")) columnIndex.packagePrice = colNumber;
     else if (header.startsWith("preço") || header.startsWith("preco")) columnIndex.price = colNumber;
     else if (header.startsWith("estoque atual")) columnIndex.stock = colNumber;
     else if (header.startsWith("estoque mínimo") || header.startsWith("estoque minimo")) columnIndex.minStock = colNumber;
@@ -143,13 +164,18 @@ export async function importIngredientsFromXlsx(buffer: Buffer): Promise<ImportR
     const categoryName = columnIndex.category ? cellText(row.getCell(columnIndex.category).value) : "";
     const unitText = columnIndex.unit ? cellText(row.getCell(columnIndex.unit).value) : "";
     const priceRaw = columnIndex.price ? cellNumber(row.getCell(columnIndex.price).value) : null;
+    const packageQuantityRaw = columnIndex.packageQuantity ? cellNumber(row.getCell(columnIndex.packageQuantity).value) : null;
+    const packagePriceRaw = columnIndex.packagePrice ? cellNumber(row.getCell(columnIndex.packagePrice).value) : null;
     const stockRaw = columnIndex.stock ? cellNumber(row.getCell(columnIndex.stock).value) : null;
     const minStockRaw = columnIndex.minStock ? cellNumber(row.getCell(columnIndex.minStock).value) : null;
     const supplierText = columnIndex.supplier ? cellText(row.getCell(columnIndex.supplier).value) : "";
 
     // Linha inteiramente vazia (fim dos dados reais, ou espaço deixado no
     // template) — ignorada silenciosamente, nunca contada no relatório.
-    if (!name && !categoryName && !unitText && priceRaw === null && stockRaw === null && !supplierText) {
+    if (
+      !name && !categoryName && !unitText && priceRaw === null &&
+      packageQuantityRaw === null && packagePriceRaw === null && stockRaw === null && !supplierText
+    ) {
       continue;
     }
 
@@ -159,8 +185,22 @@ export async function importIngredientsFromXlsx(buffer: Buffer): Promise<ImportR
     try {
       if (!name) throw new Error("Nome é obrigatório.");
       if (!unitText) throw new Error("Unidade é obrigatória.");
-      if (priceRaw === null) throw new Error("Preço atual é obrigatório.");
-      if (Number.isNaN(priceRaw)) throw new Error("Preço atual não é um número válido.");
+
+      const hasPackage = packageQuantityRaw !== null || packagePriceRaw !== null;
+      if (hasPackage) {
+        if (packageQuantityRaw === null || packagePriceRaw === null) {
+          throw new Error("Informe quantidade e preço da embalagem juntos, ou nenhum dos dois.");
+        }
+        if (Number.isNaN(packageQuantityRaw) || packageQuantityRaw <= 0) {
+          throw new Error("Quantidade por embalagem deve ser maior que zero.");
+        }
+        if (Number.isNaN(packagePriceRaw) || packagePriceRaw <= 0) {
+          throw new Error("Preço da embalagem deve ser maior que zero.");
+        }
+      } else {
+        if (priceRaw === null) throw new Error("Preço atual é obrigatório (ou preencha as colunas de embalagem).");
+        if (Number.isNaN(priceRaw)) throw new Error("Preço atual não é um número válido.");
+      }
       if (stockRaw !== null && Number.isNaN(stockRaw)) throw new Error("Estoque atual não é um número válido.");
       if (minStockRaw !== null && Number.isNaN(minStockRaw)) throw new Error("Estoque mínimo não é um número válido.");
 
@@ -178,7 +218,14 @@ export async function importIngredientsFromXlsx(buffer: Buffer): Promise<ImportR
         name,
         categoryId,
         unitId: unit.id,
-        currentPrice: priceRaw,
+        // Recalculado de novo pelo Service a partir de packageQuantity/
+        // packagePrice quando presentes (ver resolvePriceFromPackage em
+        // ingredientService.ts) — calculado aqui também só para satisfazer a
+        // validação de "currentPrice > 0" (validateIngredientCreate/Update
+        // nunca sabem sobre o modo de embalagem).
+        currentPrice: hasPackage ? (packagePriceRaw as number) / (packageQuantityRaw as number) : (priceRaw as number),
+        packageQuantity: hasPackage ? packageQuantityRaw : null,
+        packagePrice: hasPackage ? packagePriceRaw : null,
         stockQuantity: stockRaw ?? 0,
         minStock: minStockRaw ?? 0,
         supplier: supplierText || null,

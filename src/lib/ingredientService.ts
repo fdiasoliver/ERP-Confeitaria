@@ -64,6 +64,8 @@ type IngredientDTO = {
   unitName: string;
   unitAbbreviation: string;
   currentPrice: number;
+  packageQuantity: number | null;
+  packagePrice: number | null;
   stockQuantity: number;
   minStock: number;
   /** Derivado de stockQuantity <= minStock — sinaliza o alerta previsto em REGRAS_NEGOCIO.md 3.3/7.3. */
@@ -88,6 +90,8 @@ function mapToIngredient(raw: IngredientWithRelations): IngredientDTO {
     unitName: raw.unit.name,
     unitAbbreviation: raw.unit.abbreviation,
     currentPrice: raw.currentPrice.toNumber(),
+    packageQuantity: raw.packageQuantity ? raw.packageQuantity.toNumber() : null,
+    packagePrice: raw.packagePrice ? raw.packagePrice.toNumber() : null,
     stockQuantity,
     minStock,
     isLowStock: stockQuantity <= minStock,
@@ -128,6 +132,16 @@ async function assertUnitExists(unitId: string): Promise<void> {
 async function assertCategoryExists(categoryId: string): Promise<void> {
   const category = await findIngredientCategoryById(categoryId);
   if (!category) throw new InvalidCategoryReferenceError(categoryId);
+}
+
+// `currentPrice` nunca é confiado do cliente quando packageQuantity/
+// packagePrice vêm preenchidos — sempre recalculado aqui, mesma unidade de
+// `Ingredient.unit` (ex.: lata de 395 g a R$ 8,50 → R$ 0,0215/g). Retorna
+// `undefined` quando nenhum dos dois foi informado (preço manual, sem mudança
+// de comportamento).
+function resolvePriceFromPackage(input: Partial<IngredientInput>): number | undefined {
+  if (input.packageQuantity == null || input.packagePrice == null) return undefined;
+  return input.packagePrice / input.packageQuantity;
 }
 
 // ─── Operações de leitura ─────────────────────────────────────────────────────
@@ -172,11 +186,15 @@ export async function createIngredient(input: IngredientInput): Promise<Ingredie
   await assertUnitExists(input.unitId);
   if (input.categoryId) await assertCategoryExists(input.categoryId);
 
+  const resolvedPrice = resolvePriceFromPackage(input) ?? input.currentPrice;
+
   const raw = await dbCreateIngredient({
     name: trimmedName,
     categoryId: input.categoryId ?? null,
     unitId: input.unitId,
-    currentPrice: input.currentPrice,
+    currentPrice: resolvedPrice,
+    packageQuantity: input.packageQuantity ?? null,
+    packagePrice: input.packagePrice ?? null,
     stockQuantity: input.stockQuantity,
     minStock: input.minStock,
     supplier: input.supplier ?? null,
@@ -186,7 +204,7 @@ export async function createIngredient(input: IngredientInput): Promise<Ingredie
 
   await addPriceHistoryEntry({
     ingredientId: raw.id,
-    price: input.currentPrice,
+    price: resolvedPrice,
     source: input.priceSource ?? "MANUAL",
   });
 
@@ -214,13 +232,16 @@ export async function updateIngredient(
   if (input.unitId !== undefined) await assertUnitExists(input.unitId);
   if (input.categoryId) await assertCategoryExists(input.categoryId);
 
-  const priceChanged = input.currentPrice !== undefined && input.currentPrice !== existing.currentPrice.toNumber();
+  const resolvedPrice = resolvePriceFromPackage(input) ?? input.currentPrice;
+  const priceChanged = resolvedPrice !== undefined && resolvedPrice !== existing.currentPrice.toNumber();
 
   const raw = await dbUpdateIngredient(id, {
     name: trimmedName,
     categoryId: input.categoryId,
     unitId: input.unitId,
-    currentPrice: input.currentPrice,
+    currentPrice: resolvedPrice,
+    packageQuantity: input.packageQuantity,
+    packagePrice: input.packagePrice,
     stockQuantity: input.stockQuantity,
     minStock: input.minStock,
     supplier: input.supplier,
@@ -231,7 +252,7 @@ export async function updateIngredient(
   if (priceChanged) {
     await addPriceHistoryEntry({
       ingredientId: id,
-      price: input.currentPrice as number,
+      price: resolvedPrice as number,
       source: input.priceSource ?? "MANUAL",
     });
   }

@@ -8,6 +8,12 @@ export interface IngredientInput {
   categoryId?: string | null;
   unitId: string;
   currentPrice: number;
+  /** Preço por embalagem/pacote (ex.: lata de 395 g), mesma unidade de `unitId`.
+   * Quando preenchido junto com `packagePrice`, `currentPrice` é sempre
+   * recalculado no Service (packagePrice / packageQuantity) — ver
+   * ingredientService.ts. */
+  packageQuantity?: number | null;
+  packagePrice?: number | null;
   stockQuantity?: number;
   minStock?: number;
   supplier?: string | null;
@@ -22,6 +28,23 @@ export interface IngredientInput {
 // óbvia do significado do campo, não citação literal de REGRAS_NEGOCIO.md.
 
 function validateShared(input: Partial<IngredientInput>, errors: ValidationError[]): void {
+  const hasQuantity = input.packageQuantity !== undefined && input.packageQuantity !== null;
+  const hasPrice = input.packagePrice !== undefined && input.packagePrice !== null;
+
+  if (hasQuantity !== hasPrice) {
+    errors.push({
+      field: hasQuantity ? "packagePrice" : "packageQuantity",
+      code: "REQUIRED",
+      message: "Informe a quantidade e o preço da embalagem juntos, ou nenhum dos dois.",
+    });
+  }
+  if (hasQuantity && (typeof input.packageQuantity !== "number" || Number.isNaN(input.packageQuantity) || input.packageQuantity <= 0)) {
+    errors.push({ field: "packageQuantity", code: "INVALID_VALUE", message: "Quantidade por embalagem deve ser maior que zero." });
+  }
+  if (hasPrice && (typeof input.packagePrice !== "number" || Number.isNaN(input.packagePrice) || input.packagePrice <= 0)) {
+    errors.push({ field: "packagePrice", code: "INVALID_VALUE", message: "Preço da embalagem deve ser maior que zero." });
+  }
+
   if (input.stockQuantity !== undefined) {
     if (typeof input.stockQuantity !== "number" || Number.isNaN(input.stockQuantity) || input.stockQuantity < 0) {
       errors.push({ field: "stockQuantity", code: "INVALID_VALUE", message: "Estoque atual deve ser um número maior ou igual a 0." });

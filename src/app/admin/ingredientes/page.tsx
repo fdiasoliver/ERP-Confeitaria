@@ -36,13 +36,20 @@ interface IngredientForm {
   categoryId: string;
   unitId: string;
   currentPrice: string;
+  /** Alternador "Tenho o preço da embalagem/pacote" — quando true, currentPrice
+   * vira somente leitura (calculado de packagePrice/packageQuantity). */
+  usePackagePrice: boolean;
+  packageQuantity: string;
+  packagePrice: string;
   stockQuantity: string;
   minStock: string;
   supplier: string;
   externalCode: string;
 }
 const EMPTY_FORM: IngredientForm = {
-  name: "", categoryId: "", unitId: "", currentPrice: "", stockQuantity: "0", minStock: "0", supplier: "", externalCode: "",
+  name: "", categoryId: "", unitId: "", currentPrice: "",
+  usePackagePrice: false, packageQuantity: "", packagePrice: "",
+  stockQuantity: "0", minStock: "0", supplier: "", externalCode: "",
 };
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -131,6 +138,9 @@ export default function IngredientesAdminPage() {
       categoryId: ingredient.categoryId ?? "",
       unitId: ingredient.unitId,
       currentPrice: String(ingredient.currentPrice),
+      usePackagePrice: ingredient.packageQuantity != null && ingredient.packagePrice != null,
+      packageQuantity: ingredient.packageQuantity != null ? String(ingredient.packageQuantity) : "",
+      packagePrice: ingredient.packagePrice != null ? String(ingredient.packagePrice) : "",
       stockQuantity: String(ingredient.stockQuantity),
       minStock: String(ingredient.minStock),
       supplier: ingredient.supplier ?? "",
@@ -148,6 +158,14 @@ export default function IngredientesAdminPage() {
     setFormErrors((prev) => { const n = { ...prev }; delete n[key]; return n; });
   }
 
+  const selectedUnitAbbreviation = units.find((u) => u.id === form.unitId)?.abbreviation;
+  const packageQuantityNum = parseFloat(form.packageQuantity);
+  const packagePriceNum = parseFloat(form.packagePrice);
+  const computedUnitPrice =
+    form.usePackagePrice && packageQuantityNum > 0 && !Number.isNaN(packagePriceNum)
+      ? packagePriceNum / packageQuantityNum
+      : null;
+
   function validateForm(): boolean {
     const errs: Record<string, string> = {};
     const name = form.name.trim();
@@ -157,9 +175,18 @@ export default function IngredientesAdminPage() {
 
     if (!form.unitId) errs.unitId = "Selecione a unidade de medida.";
 
-    const price = parseFloat(form.currentPrice);
-    if (form.currentPrice.trim() === "" || Number.isNaN(price)) errs.currentPrice = "Preço é obrigatório.";
-    else if (price <= 0) errs.currentPrice = "Preço deve ser maior que zero.";
+    if (form.usePackagePrice) {
+      if (form.packageQuantity.trim() === "" || Number.isNaN(packageQuantityNum) || packageQuantityNum <= 0) {
+        errs.packageQuantity = "Quantidade por embalagem deve ser maior que zero.";
+      }
+      if (form.packagePrice.trim() === "" || Number.isNaN(packagePriceNum) || packagePriceNum <= 0) {
+        errs.packagePrice = "Preço da embalagem deve ser maior que zero.";
+      }
+    } else {
+      const price = parseFloat(form.currentPrice);
+      if (form.currentPrice.trim() === "" || Number.isNaN(price)) errs.currentPrice = "Preço é obrigatório.";
+      else if (price <= 0) errs.currentPrice = "Preço deve ser maior que zero.";
+    }
 
     const stock = parseFloat(form.stockQuantity);
     if (form.stockQuantity.trim() !== "" && (Number.isNaN(stock) || stock < 0)) errs.stockQuantity = "Deve ser maior ou igual a 0.";
@@ -192,7 +219,9 @@ export default function IngredientesAdminPage() {
         name: form.name,
         categoryId: form.categoryId || null,
         unitId: form.unitId,
-        currentPrice: parseFloat(form.currentPrice),
+        currentPrice: form.usePackagePrice ? (computedUnitPrice as number) : parseFloat(form.currentPrice),
+        packageQuantity: form.usePackagePrice ? packageQuantityNum : null,
+        packagePrice: form.usePackagePrice ? packagePriceNum : null,
         stockQuantity: form.stockQuantity.trim() === "" ? undefined : parseFloat(form.stockQuantity),
         minStock: form.minStock.trim() === "" ? undefined : parseFloat(form.minStock),
         supplier: form.supplier.trim() || null,
@@ -525,19 +554,74 @@ export default function IngredientesAdminPage() {
             </select>
           </Field>
 
-          <Field label="Preço atual (por unidade)" required htmlFor="ing-price" error={formErrors.currentPrice}>
+          <label className="flex items-center gap-2 text-sm text-chocolate">
             <input
-              id="ing-price"
-              type="number"
-              step="any"
-              min={0}
-              className={`input-field ${formErrors.currentPrice ? "border-rose" : ""}`}
-              value={form.currentPrice}
-              onChange={(e) => setField("currentPrice", e.target.value)}
-              placeholder="Ex: 5.90"
+              type="checkbox"
+              checked={form.usePackagePrice}
+              onChange={(e) => setField("usePackagePrice", e.target.checked)}
               disabled={submitting}
             />
-          </Field>
+            Tenho o preço da embalagem/pacote (ex.: lata de 395 g)
+          </label>
+
+          {form.usePackagePrice ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Field
+                  label={`Quantidade por embalagem${selectedUnitAbbreviation ? ` (${selectedUnitAbbreviation})` : ""}`}
+                  required
+                  htmlFor="ing-package-quantity"
+                  error={formErrors.packageQuantity}
+                >
+                  <input
+                    id="ing-package-quantity"
+                    type="number"
+                    step="any"
+                    min={0}
+                    className={`input-field ${formErrors.packageQuantity ? "border-rose" : ""}`}
+                    value={form.packageQuantity}
+                    onChange={(e) => setField("packageQuantity", e.target.value)}
+                    placeholder="Ex: 395"
+                    disabled={submitting}
+                  />
+                </Field>
+                <Field label="Preço da embalagem" required htmlFor="ing-package-price" error={formErrors.packagePrice}>
+                  <input
+                    id="ing-package-price"
+                    type="number"
+                    step="any"
+                    min={0}
+                    className={`input-field ${formErrors.packagePrice ? "border-rose" : ""}`}
+                    value={form.packagePrice}
+                    onChange={(e) => setField("packagePrice", e.target.value)}
+                    placeholder="Ex: 8.50"
+                    disabled={submitting}
+                  />
+                </Field>
+              </div>
+              <p className="text-sm text-muted">
+                Preço atual calculado:{" "}
+                <span className="font-semibold text-chocolate">
+                  {computedUnitPrice !== null ? formatCurrency(computedUnitPrice) : "—"}
+                  {selectedUnitAbbreviation ? ` / ${selectedUnitAbbreviation}` : ""}
+                </span>
+              </p>
+            </>
+          ) : (
+            <Field label="Preço atual (por unidade)" required htmlFor="ing-price" error={formErrors.currentPrice}>
+              <input
+                id="ing-price"
+                type="number"
+                step="any"
+                min={0}
+                className={`input-field ${formErrors.currentPrice ? "border-rose" : ""}`}
+                value={form.currentPrice}
+                onChange={(e) => setField("currentPrice", e.target.value)}
+                placeholder="Ex: 5.90"
+                disabled={submitting}
+              />
+            </Field>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Estoque atual" htmlFor="ing-stock" error={formErrors.stockQuantity}>
