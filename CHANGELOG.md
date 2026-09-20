@@ -4,6 +4,23 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo Receitas] — 2026-09-20 — Duplicar receita
+
+**Tipo:** Nova ação "Duplicar" em `/admin/receitas`, ao lado de "Ver receita"/"Ativar"/"Desativar". Abre o mesmo modal de "Nova receita" (mesmo layout, decisão do Product Owner), pré-preenchido com nome (sufixo "(cópia)"), descrição, rendimento, tempo de preparo e todos os itens (ingrediente/quantidade/unidade) da receita de origem — usuário revisa/ajusta e confirma como uma criação normal.
+
+### Implementação
+
+- **`src/app/admin/receitas/page.tsx`:** `openDuplicate(recipe)` monta o `RecipeForm` a partir de um `Recipe` já carregado em memória (`listRecipes()` já retorna `items[]` completos — nenhuma chamada extra à API) e abre o modal existente; `isDuplicating` só controla o título do modal ("Duplicar receita" vs "Nova receita") e a mensagem de sucesso. Sem rota, Service ou schema novos — `handleSubmit` chama o mesmo `recipeApi.createRecipe()` de sempre, tratando a duplicata como uma receita nova qualquer.
+
+**Arquivos alterados:**
+- `src/app/admin/receitas/page.tsx`
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros. Validação funcional end-to-end no navegador (Playwright, sessão admin real, banco Supabase real): duplicado "Coroa de Cacau" (4 ingredientes) — modal abriu com nome "Coroa de Cacau (cópia)", descrição, rendimento (1 chocolate de 15g), tempo de preparo (30 min) e os 4 itens (Amêndoas/2g, Noz/3g, Chocolate meio amargo/15g, Uva-passa/2g) todos pré-preenchidos corretamente; ao confirmar, nova receita criada com id próprio, mesmos itens e custo total idêntico ao original (R$1,545). Registro de teste removido do banco ao final.
+
+---
+
 ## [Módulo Ingredientes] — 2026-09-20 — Preço por embalagem/pacote
 
 **Tipo:** Nova funcionalidade no cadastro de ingredientes (`/admin/ingredientes` e importação via Excel) — informar o preço e a quantidade da embalagem de compra (ex.: lata de leite condensado de 395 g a R$ 8,50) e o sistema calcula sozinho o preço por unidade de medida cadastrada (R$/g, R$/kg, R$/un etc.), sem o usuário fazer a divisão manualmente.

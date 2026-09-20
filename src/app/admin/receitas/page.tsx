@@ -68,6 +68,7 @@ export default function ReceitasAdminPage() {
   const [view, setView] = useViewMode("receitas");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [modalOpen, setModalOpen] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [form, setForm] = useState<RecipeForm>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -115,10 +116,37 @@ export default function ReceitasAdminPage() {
   function openCreate() {
     setForm(EMPTY_FORM);
     setFormErrors({});
+    setIsDuplicating(false);
     setModalOpen(true);
   }
 
-  function closeModal() { setModalOpen(false); setFormErrors({}); }
+  // Reaproveita o mesmo modal/layout de "Nova receita" (decisão do Product
+  // Owner) — pré-preenchido com os dados da receita de origem, inclusive os
+  // itens (ingrediente/quantidade/unidade já vêm completos de listRecipes()).
+  // createRecipe (mesmo endpoint de sempre) trata como uma receita nova
+  // qualquer; nenhuma rota/serviço dedicado a duplicação foi necessário.
+  function openDuplicate(recipe: Recipe) {
+    setForm({
+      name: `${recipe.name} (cópia)`,
+      description: recipe.description ?? "",
+      yieldQuantity: String(recipe.yieldQuantity),
+      yieldUnit: recipe.yieldUnit,
+      prepTimeMinutes: String(recipe.prepTimeMinutes),
+      items:
+        recipe.items.length > 0
+          ? recipe.items.map((item) => ({
+              ingredientId: item.ingredientId,
+              quantity: String(item.quantity),
+              unitId: item.unitId,
+            }))
+          : [{ ...EMPTY_ITEM_ROW }],
+    });
+    setFormErrors({});
+    setIsDuplicating(true);
+    setModalOpen(true);
+  }
+
+  function closeModal() { setModalOpen(false); setIsDuplicating(false); setFormErrors({}); }
 
   function setField<K extends keyof Omit<RecipeForm, "items">>(key: K, value: RecipeForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -194,7 +222,7 @@ export default function ReceitasAdminPage() {
   async function handleSubmit() {
     if (!validateForm()) return;
     setSubmitting(true);
-    const toastId = toast.loading("Criando receita…");
+    const toastId = toast.loading(isDuplicating ? "Duplicando receita…" : "Criando receita…");
     try {
       await recipeApi.createRecipe({
         name: form.name,
@@ -208,7 +236,7 @@ export default function ReceitasAdminPage() {
           unitId: item.unitId,
         })),
       });
-      toast.success("Receita criada com sucesso.", { id: toastId });
+      toast.success(isDuplicating ? "Receita duplicada com sucesso." : "Receita criada com sucesso.", { id: toastId });
       closeModal();
       await loadAll(true);
     } catch (err) {
@@ -271,6 +299,15 @@ export default function ReceitasAdminPage() {
         >
           Ver receita
         </Link>
+        <button
+          type="button"
+          onClick={() => openDuplicate(recipe)}
+          disabled={busy}
+          aria-label={`Duplicar receita ${recipe.name}`}
+          className={`${base} ${neutral} text-chocolate`}
+        >
+          Duplicar
+        </button>
         {recipe.active ? (
           <button
             type="button"
@@ -432,7 +469,7 @@ export default function ReceitasAdminPage() {
 
       {modalOpen && (
         <EntityForm
-          title="Nova receita"
+          title={isDuplicating ? "Duplicar receita" : "Nova receita"}
           submitting={submitting}
           submitLabel="Criar receita"
           onClose={closeModal}
