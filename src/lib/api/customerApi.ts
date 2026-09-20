@@ -61,6 +61,19 @@ export interface AddressGroup {
   addressIds: string[];
 }
 
+// Espelha AddressCreateInput de src/lib/validators/addressValidator.ts — mesmo
+// payload aceito na criação e na edição (PATCH reaproveita o mesmo Validator).
+export interface AddressInput {
+  label?: string | null;
+  street: string;
+  number: string;
+  complement?: string | null;
+  neighborhood: string;
+  city?: string;
+  state?: string;
+  zipCode: string;
+}
+
 export interface CustomerOrderHistoryItem {
   id: string;
   orderNumber: number;
@@ -175,4 +188,22 @@ export async function deactivateCustomer(id: string): Promise<Customer> {
 
 export async function deleteCustomer(id: string): Promise<{ id: string }> {
   return request<{ id: string }>(`/api/admin/customers/${id}`, { method: "DELETE" });
+}
+
+export async function createCustomerAddress(customerId: string, input: AddressInput): Promise<Address> {
+  return request<Address>(`/api/admin/customers/${customerId}/addresses`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateCustomerAddress(
+  customerId: string,
+  addressId: string,
+  input: AddressInput,
+): Promise<Address> {
+  return request<Address>(`/api/admin/customers/${customerId}/addresses/${addressId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
 }

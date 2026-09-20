@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { toast } from "sonner";
+import { Field } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
@@ -14,7 +15,23 @@ import { STATUS_LABELS, PAYMENT_LABELS } from "@/lib/types";
 import type { PaymentStatus } from "@/lib/types";
 import * as customerApi from "@/lib/api/customerApi";
 import { ApiRequestError, CUSTOMER_TYPE_LABELS } from "@/lib/api/customerApi";
-import type { CustomerDetail } from "@/lib/api/customerApi";
+import type { CustomerDetail, Address } from "@/lib/api/customerApi";
+
+// ── Local types ────────────────────────────────────────────────────────────────
+
+interface AddressForm {
+  label: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+const EMPTY_ADDRESS_FORM: AddressForm = {
+  label: "", street: "", number: "", complement: "", neighborhood: "", city: "São Paulo", state: "SP", zipCode: "",
+};
 
 const MAX_NOTES_LENGTH = 2000;
 
@@ -45,6 +62,145 @@ function LoadingState() {
   );
 }
 
+// Mesmo padrão de modal bottom-sheet de RecipeEditModal/AddItemModal em
+// admin/receitas/[id]/page.tsx — mesmo conjunto de campos do endereço já usado
+// no checkout público e no formulário de "Novo orçamento" (admin/orcamentos).
+function AddressModal({ mode, form, errors, submitting, onClose, onChange, onSubmit }: {
+  mode: "create" | "edit";
+  form: AddressForm;
+  errors: Record<string, string>;
+  submitting: boolean;
+  onClose: () => void;
+  onChange: <K extends keyof AddressForm>(key: K, value: AddressForm[K]) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-end bg-black/40"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-white pb-8 pt-5 px-5">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold text-chocolate">
+            {mode === "create" ? "Adicionar endereço" : "Editar endereço"}
+          </h2>
+          <button type="button" onClick={onClose} aria-label="Fechar" className="text-muted text-xl">✕</button>
+        </div>
+
+        <div className="space-y-4">
+          <Field label="Rótulo (opcional)" htmlFor="addr-label">
+            <input
+              id="addr-label"
+              className="input-field"
+              value={form.label}
+              onChange={(e) => onChange("label", e.target.value)}
+              placeholder="Ex: Casa, Trabalho"
+              maxLength={50}
+              disabled={submitting}
+            />
+          </Field>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2">
+              <Field label="Rua" required htmlFor="addr-street" error={errors.street}>
+                <input
+                  id="addr-street"
+                  className={`input-field ${errors.street ? "border-rose" : ""}`}
+                  value={form.street}
+                  onChange={(e) => onChange("street", e.target.value)}
+                  disabled={submitting}
+                />
+              </Field>
+            </div>
+            <Field label="Número" required htmlFor="addr-number" error={errors.number}>
+              <input
+                id="addr-number"
+                className={`input-field ${errors.number ? "border-rose" : ""}`}
+                value={form.number}
+                onChange={(e) => onChange("number", e.target.value)}
+                disabled={submitting}
+              />
+            </Field>
+          </div>
+
+          <Field label="Complemento (opcional)" htmlFor="addr-complement">
+            <input
+              id="addr-complement"
+              className="input-field"
+              value={form.complement}
+              onChange={(e) => onChange("complement", e.target.value)}
+              disabled={submitting}
+            />
+          </Field>
+
+          <Field label="Bairro" required htmlFor="addr-neighborhood" error={errors.neighborhood}>
+            <input
+              id="addr-neighborhood"
+              className={`input-field ${errors.neighborhood ? "border-rose" : ""}`}
+              value={form.neighborhood}
+              onChange={(e) => onChange("neighborhood", e.target.value)}
+              disabled={submitting}
+            />
+          </Field>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2">
+              <Field label="Cidade" required htmlFor="addr-city" error={errors.city}>
+                <input
+                  id="addr-city"
+                  className={`input-field ${errors.city ? "border-rose" : ""}`}
+                  value={form.city}
+                  onChange={(e) => onChange("city", e.target.value)}
+                  disabled={submitting}
+                />
+              </Field>
+            </div>
+            <Field label="UF" required htmlFor="addr-state" error={errors.state}>
+              <input
+                id="addr-state"
+                maxLength={2}
+                className={`input-field ${errors.state ? "border-rose" : ""}`}
+                value={form.state}
+                onChange={(e) => onChange("state", e.target.value.toUpperCase())}
+                disabled={submitting}
+              />
+            </Field>
+          </div>
+
+          <Field label="CEP" required htmlFor="addr-zip" error={errors.zipCode}>
+            <input
+              id="addr-zip"
+              className={`input-field ${errors.zipCode ? "border-rose" : ""}`}
+              value={form.zipCode}
+              onChange={(e) => onChange("zipCode", e.target.value)}
+              disabled={submitting}
+            />
+          </Field>
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 rounded-xl border border-sand py-3 text-sm font-semibold text-chocolate disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting}
+            className="flex-1 rounded-xl bg-chocolate py-3 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {submitting ? "Salvando…" : "Salvar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
@@ -54,6 +210,12 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
 
   const [notesInput, setNotesInput] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+
+  const [addressModal, setAddressModal] = useState<"create" | "edit" | null>(null);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [addressForm, setAddressForm] = useState<AddressForm>(EMPTY_ADDRESS_FORM);
+  const [addressFormErrors, setAddressFormErrors] = useState<Record<string, string>>({});
+  const [savingAddress, setSavingAddress] = useState(false);
 
   async function loadCustomer() {
     setLoading(true);
@@ -92,6 +254,93 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       }
     } finally {
       setSavingNotes(false);
+    }
+  }
+
+  // ── Endereços ────────────────────────────────────────────────────────────────
+
+  function openAddAddress() {
+    setAddressForm(EMPTY_ADDRESS_FORM);
+    setAddressFormErrors({});
+    setEditingAddressId(null);
+    setAddressModal("create");
+  }
+
+  function openEditAddress(address: Address) {
+    setAddressForm({
+      label: address.label ?? "",
+      street: address.street,
+      number: address.number,
+      complement: address.complement ?? "",
+      neighborhood: address.neighborhood,
+      city: address.city,
+      state: address.state,
+      zipCode: address.zipCode,
+    });
+    setAddressFormErrors({});
+    setEditingAddressId(address.id);
+    setAddressModal("edit");
+  }
+
+  function closeAddressModal() {
+    setAddressModal(null);
+    setEditingAddressId(null);
+    setAddressFormErrors({});
+  }
+
+  function setAddressField<K extends keyof AddressForm>(key: K, value: AddressForm[K]) {
+    setAddressForm((prev) => ({ ...prev, [key]: value }));
+    setAddressFormErrors((prev) => { const n = { ...prev }; delete n[key]; return n; });
+  }
+
+  function validateAddressForm(): boolean {
+    const errs: Record<string, string> = {};
+    if (!addressForm.street.trim()) errs.street = "Rua é obrigatória.";
+    if (!addressForm.number.trim()) errs.number = "Número é obrigatório.";
+    if (!addressForm.neighborhood.trim()) errs.neighborhood = "Bairro é obrigatório.";
+    if (!addressForm.city.trim()) errs.city = "Cidade é obrigatória.";
+    if (!addressForm.state.trim()) errs.state = "Estado é obrigatório.";
+    if (!addressForm.zipCode.trim()) errs.zipCode = "CEP é obrigatório.";
+    setAddressFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  async function handleSaveAddress() {
+    if (!validateAddressForm()) return;
+    setSavingAddress(true);
+    const toastId = toast.loading(addressModal === "create" ? "Adicionando endereço…" : "Salvando endereço…");
+    try {
+      const payload = {
+        label: addressForm.label.trim() || null,
+        street: addressForm.street.trim(),
+        number: addressForm.number.trim(),
+        complement: addressForm.complement.trim() || null,
+        neighborhood: addressForm.neighborhood.trim(),
+        city: addressForm.city.trim(),
+        state: addressForm.state.trim(),
+        zipCode: addressForm.zipCode.trim(),
+      };
+      if (addressModal === "create") {
+        await customerApi.createCustomerAddress(id, payload);
+        toast.success("Endereço adicionado.", { id: toastId });
+      } else if (editingAddressId) {
+        await customerApi.updateCustomerAddress(id, editingAddressId, payload);
+        toast.success("Endereço atualizado.", { id: toastId });
+      }
+      closeAddressModal();
+      await loadCustomer();
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.code === "VALIDATION_ERROR") {
+        const details = Array.isArray(err.details) ? (err.details as { field: string; message: string }[]) : [];
+        const errs: Record<string, string> = {};
+        details.forEach((d) => { errs[d.field] = d.message; });
+        if (Object.keys(errs).length > 0) setAddressFormErrors(errs);
+        toast.error("Corrija os campos destacados.", { id: toastId });
+      } else {
+        toast.error(err instanceof Error ? err.message : "Erro ao salvar endereço.", { id: toastId });
+      }
+    } finally {
+      setSavingAddress(false);
     }
   }
 
@@ -214,11 +463,22 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-semibold text-chocolate">Endereços ({customer.addressGroups.length})</p>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-semibold text-chocolate">Endereços ({customer.addressGroups.length})</p>
+            <button
+              type="button"
+              onClick={openAddAddress}
+              className="text-sm font-semibold text-chocolate underline"
+            >
+              + Adicionar endereço
+            </button>
+          </div>
           {customer.addressGroups.length === 0 ? (
             <EmptyState
               title="Nenhum endereço registrado"
-              description="Endereços aparecem aqui após o primeiro pedido com entrega."
+              description="Adicione um endereço acima, ou aguarde o primeiro pedido com entrega."
+              actionLabel="+ Adicionar endereço"
+              onAction={openAddAddress}
             />
           ) : (
             <div className="space-y-3">
@@ -228,13 +488,28 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                 ).length;
                 return (
                   <div key={group.representative.id} className="shadow-card rounded-2xl bg-white p-4">
-                    <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-chocolate">
-                        {group.representative.street}, {group.representative.number}
-                      </p>
-                      {group.representative.isDefault && (
-                        <span className="rounded-full bg-sage/10 px-2 py-0.5 text-xs font-semibold text-sage">Padrão</span>
-                      )}
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {group.representative.label && (
+                          <span className="rounded-full bg-sand px-2 py-0.5 text-xs font-semibold text-chocolate">
+                            {group.representative.label}
+                          </span>
+                        )}
+                        <p className="font-semibold text-chocolate">
+                          {group.representative.street}, {group.representative.number}
+                        </p>
+                        {group.representative.isDefault && (
+                          <span className="rounded-full bg-sage/10 px-2 py-0.5 text-xs font-semibold text-sage">Padrão</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openEditAddress(group.representative)}
+                        aria-label={`Editar endereço ${group.representative.street}, ${group.representative.number}`}
+                        className="shrink-0 rounded-lg border border-sand px-3 py-1.5 text-xs font-semibold text-chocolate"
+                      >
+                        Editar
+                      </button>
                     </div>
                     {group.representative.complement && (
                       <p className="text-sm text-muted">{group.representative.complement}</p>
@@ -279,6 +554,18 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           )}
         </div>
       </div>
+
+      {addressModal && (
+        <AddressModal
+          mode={addressModal}
+          form={addressForm}
+          errors={addressFormErrors}
+          submitting={savingAddress}
+          onClose={closeAddressModal}
+          onChange={setAddressField}
+          onSubmit={handleSaveAddress}
+        />
+      )}
     </PageContainer>
   );
 }

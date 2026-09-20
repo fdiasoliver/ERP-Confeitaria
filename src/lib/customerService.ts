@@ -16,11 +16,17 @@ import {
   type CustomerWithDetail,
 } from "@/lib/repositories/customerRepository";
 import {
+  findAddressById,
+  createAddress as dbCreateAddress,
+  updateAddress as dbUpdateAddress,
+} from "@/lib/repositories/addressRepository";
+import {
   validateCustomerNotesUpdate,
   validateCustomerCreate,
   type CustomerNotesInput,
   type CustomerCreateInput,
 } from "@/lib/validators/customerValidator";
+import { validateAddressCreate, resolveAddressDefaults, type AddressCreateInput } from "@/lib/validators/addressValidator";
 
 // ─── Erros de domínio ─────────────────────────────────────────────────────────
 
@@ -59,6 +65,21 @@ export class CustomerDuplicatePhoneError extends Error {
 export class CustomerDuplicateCnpjError extends Error {
   constructor(public cnpj: string) {
     super(`Já existe um cliente com o CNPJ "${cnpj}".`);
+  }
+}
+
+// Domínio próprio deste arquivo (equipe/admin) — mesmo nome de classe já existe
+// separadamente em customerProfileService.ts (autoatendimento do cliente),
+// mesmo padrão de CustomerNotFoundError duplicado entre os dois contextos.
+export class AddressValidationFailedError extends Error {
+  constructor(public errors: ValidationError[]) {
+    super("Dados inválidos.");
+  }
+}
+
+export class AddressNotFoundError extends Error {
+  constructor(public id: string) {
+    super(`Endereço não encontrado: ${id}`);
   }
 }
 
@@ -279,6 +300,62 @@ export async function getCustomerById(id: string): Promise<CustomerDetailDTO> {
     orders: customer.orders.map(mapOrderHistoryItemDTO),
     addressGroups: listAddressesGrouped(customer.addresses),
   };
+}
+
+// ─── Endereços — cadastro direto pela equipe ───────────────────────────────────
+//
+// Até esta sprint, endereços só existiam como efeito colateral de um pedido
+// (createOrder, orderService.ts) ou do autoatendimento do cliente
+// (customerProfileService.ts). Reaproveita o mesmo Validator/Repository dos
+// dois caminhos — nenhuma regra de endereço duplicada aqui.
+
+export async function createCustomerAddress(customerId: string, input: AddressCreateInput): Promise<AddressDTO> {
+  const customer = await findCustomerById(customerId);
+  if (!customer) throw new CustomerNotFoundError(customerId);
+
+  const errors = validateAddressCreate(input);
+  if (errors.length > 0) throw new AddressValidationFailedError(errors);
+
+  const { city, state } = resolveAddressDefaults(input);
+  const address = await dbCreateAddress(customerId, {
+    label: input.label ?? null,
+    street: input.street.trim(),
+    number: input.number.trim(),
+    complement: input.complement?.trim() || null,
+    neighborhood: input.neighborhood.trim(),
+    city,
+    state,
+    zipCode: input.zipCode.trim(),
+  });
+  return mapAddressDTO(address);
+}
+
+export async function updateCustomerAddress(
+  customerId: string,
+  addressId: string,
+  input: AddressCreateInput,
+): Promise<AddressDTO> {
+  const customer = await findCustomerById(customerId);
+  if (!customer) throw new CustomerNotFoundError(customerId);
+
+  const existing = await findAddressById(addressId);
+  if (!existing || existing.customerId !== customerId) throw new AddressNotFoundError(addressId);
+
+  const errors = validateAddressCreate(input);
+  if (errors.length > 0) throw new AddressValidationFailedError(errors);
+
+  const { city, state } = resolveAddressDefaults(input);
+  const address = await dbUpdateAddress(addressId, {
+    label: input.label ?? null,
+    street: input.street.trim(),
+    number: input.number.trim(),
+    complement: input.complement?.trim() || null,
+    neighborhood: input.neighborhood.trim(),
+    city,
+    state,
+    zipCode: input.zipCode.trim(),
+  });
+  return mapAddressDTO(address);
 }
 
 // ─── Atualização — apenas `notes` ──────────────────────────────────────────────

@@ -4,6 +4,51 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo Clientes] — 2026-09-20 — Cadastro direto de endereços pela equipe
+
+**Tipo:** Nova funcionalidade em `/admin/clientes/[id]` — até esta sprint, `Address` só existia como efeito colateral de um pedido (`createOrder`) ou do autoatendimento do próprio cliente (`/cadastro`, área do cliente); a seção "Endereços" do perfil no admin era somente leitura. Agora a equipe pode adicionar e editar endereços do cliente diretamente ali, sem precisar criar um pedido/orçamento primeiro.
+
+### Implementação
+
+- **`src/lib/repositories/addressRepository.ts`:** `updateAddress(id, data)`, ao lado do já existente `createAddress`.
+- **`src/lib/customerService.ts`:** `AddressValidationFailedError`/`AddressNotFoundError` (domínio próprio deste arquivo, mesmo padrão de `CustomerNotFoundError` já duplicado entre este arquivo e `customerProfileService.ts`); `createCustomerAddress`/`updateCustomerAddress` reaproveitam o `Validator`/defaults de endereço já existentes (`addressValidator.ts`, os mesmos usados pelo checkout e pelo autoatendimento) — nenhuma regra de endereço duplicada. `updateCustomerAddress` confirma que o endereço pertence ao cliente informado antes de alterar.
+- **Rotas** (atrás de `requireRole(["ADMIN","ATENDIMENTO"])`, mesmo padrão já usado em `/api/admin/customers/**`): `POST /api/admin/customers/[id]/addresses`, `PATCH /api/admin/customers/[id]/addresses/[addressId]`.
+- **`src/lib/api/customerApi.ts`:** `createCustomerAddress`/`updateCustomerAddress`.
+- **`src/app/admin/clientes/[id]/page.tsx`:** botão "+ Adicionar endereço" (no cabeçalho da seção e no estado vazio) e "Editar" em cada endereço já listado; modal bottom-sheet (`AddressModal`, mesmo padrão visual de `RecipeEditModal`/`AddItemModal` em `admin/receitas/[id]`) com os mesmos campos já usados no checkout público e no formulário de "Novo orçamento" (Rótulo opcional, Rua, Número, Complemento opcional, Bairro, Cidade, UF, CEP).
+
+**Arquivos alterados/criados:**
+- `src/lib/repositories/addressRepository.ts`
+- `src/lib/customerService.ts`
+- `src/app/api/admin/customers/[id]/addresses/route.ts` (novo)
+- `src/app/api/admin/customers/[id]/addresses/[addressId]/route.ts` (novo)
+- `src/lib/api/customerApi.ts`
+- `src/app/admin/clientes/[id]/page.tsx`
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros. Validação funcional end-to-end no navegador (Playwright, sessão admin real, banco Supabase real): cliente sem nenhum endereço (0 pedidos com entrega) → "+ Adicionar endereço" (rótulo "Trabalho", Av. Paulista 1000, Bela Vista, CEP 01310-100) → apareceu corretamente na lista com o rótulo; "Editar" reabriu o modal pré-preenchido, número alterado para 2000 e persistido, confirmado via API (`city`/`state` com os defaults corretos, `complement: null`). Endereço de teste removido do banco ao final.
+
+---
+
+## [Módulo Receitas] — 2026-09-20 — Duplicar receita também na tela de detalhe
+
+**Tipo:** Extensão da entrega anterior ("Duplicar receita") — a ação também fica disponível em `/admin/receitas/[id]`, ao lado de "Editar receita"/"Ativar"/"Desativar".
+
+### Implementação
+
+- **`src/app/admin/receitas/[id]/page.tsx`:** link "Duplicar" navega para `/admin/receitas?duplicate={id}`.
+- **`src/app/admin/receitas/page.tsx`:** novo `useEffect` lê `?duplicate=id`, busca a receita via `recipeApi.getRecipe(id)` (não depende da lista já estar carregada) e chama o mesmo `openDuplicate()` da entrega anterior; limpa o parâmetro da URL com `router.replace` depois de abrir. Mesma convenção de `?edit=id` já usada em `admin/produtos/page.tsx` — componente da página envolvido em `<Suspense>` (exigência de `useSearchParams()`).
+
+**Arquivos alterados:**
+- `src/app/admin/receitas/[id]/page.tsx`
+- `src/app/admin/receitas/page.tsx`
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros. Validação funcional no navegador (Playwright, sessão admin real): a partir do detalhe de "Coroa de Cacau", clique em "Duplicar" navega para `/admin/receitas` com o modal "Duplicar receita" já aberto e pré-preenchido (nome "Coroa de Cacau (cópia)"), e a URL volta limpa (sem `?duplicate=`) logo em seguida.
+
+---
+
 ## [Módulo Receitas] — 2026-09-20 — Duplicar receita
 
 **Tipo:** Nova ação "Duplicar" em `/admin/receitas`, ao lado de "Ver receita"/"Ativar"/"Desativar". Abre o mesmo modal de "Nova receita" (mesmo layout, decisão do Product Owner), pré-preenchido com nome (sufixo "(cópia)"), descrição, rendimento, tempo de preparo e todos os itens (ingrediente/quantidade/unidade) da receita de origem — usuário revisa/ajusta e confirma como uma criação normal.

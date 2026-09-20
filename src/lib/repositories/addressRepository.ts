@@ -33,3 +33,19 @@ export async function createAddress(
 ): Promise<Address> {
   return prisma.address.create({ data: { customerId, ...data } });
 }
+
+export async function updateAddress(
+  id: string,
+  data: {
+    label?: string | null;
+    street: string;
+    number: string;
+    complement?: string | null;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  },
+): Promise<Address> {
+  return prisma.address.update({ where: { id }, data });
+}
