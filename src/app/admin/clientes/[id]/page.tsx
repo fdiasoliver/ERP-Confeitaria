@@ -388,7 +388,14 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const totalSpent = customer.orders.reduce((sum, order) => sum + order.total, 0);
+  // RASCUNHO (orçamento ainda não decidido) e CANCELADO (inclui recusado pelo
+  // cliente) nunca contam como "gasto" — mesma correção de bug de
+  // customerRepository.ts (listCustomers/LTV), aplicada aqui ao total da tela
+  // de detalhe. O pedido continua listado em "Histórico de pedidos" abaixo,
+  // só não entra na soma.
+  const totalSpent = customer.orders
+    .filter((order) => order.status !== "RASCUNHO" && order.status !== "CANCELADO")
+    .reduce((sum, order) => sum + order.total, 0);
 
   return (
     <PageContainer>

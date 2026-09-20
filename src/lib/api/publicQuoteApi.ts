@@ -1,4 +1,4 @@
-import type { PaymentMethod } from "@/lib/types";
+import type { PaymentMethod, DeliveryType } from "@/lib/types";
 
 // ── Tipos de exibição (DTO) ──────────────────────────────────────────────────
 // Espelha src/lib/orderService.ts (PublicQuoteDTO/PublicQuoteItemDTO), sem
@@ -15,11 +15,24 @@ export interface PublicQuoteItemDTO {
   totalPrice: number;
 }
 
+export interface PublicQuoteAddressDTO {
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+}
+
 export interface PublicQuoteDTO {
   orderNumber: number;
   quoteStatus: "PENDENTE" | "EM_REVISAO" | "APROVADO" | "RECUSADO";
   deliveryDate: string;
   createdAt: string;
+  deliveryType: DeliveryType;
+  receiverName: string;
+  receiverPhone: string | null;
+  address: PublicQuoteAddressDTO | null;
   customer: {
     name: string;
     phone: string | null;

@@ -167,6 +167,15 @@ export async function listOrdersByStatus(status: OrderStatus): Promise<OrderDTO[
   return request<OrderDTO[]>(`/api/admin/orders?status=${status}`);
 }
 
+/** Orçamentos recusados pelo cliente — `Order.status` já cascateou para
+ * CANCELADO (ver decideQuote em orderService.ts), por isso não aparecem em
+ * listOrdersByStatus("RASCUNHO"); filtra por `quoteStatus` em vez de `status`
+ * (`GET /api/admin/orders?quoteStatus=`, já suportado desde a sprint de
+ * Orçamentos, só não tinha consumidor no frontend até agora). */
+export async function listOrdersByQuoteStatus(quoteStatus: QuoteStatus): Promise<OrderDTO[]> {
+  return request<OrderDTO[]>(`/api/admin/orders?quoteStatus=${quoteStatus}`);
+}
+
 /** Cria um orçamento (Order com status RASCUNHO) para um cliente já cadastrado —
  * contraparte administrativa de POST /api/orders (checkout público, não usado
  * aqui). Ver POST /api/admin/orders em src/app/api/admin/orders/route.ts. */

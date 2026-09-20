@@ -16,6 +16,7 @@ export type OrderWithItems = Prisma.OrderGetPayload<{ include: typeof withItems 
 const withItemsAndCustomer = {
   items: true,
   customer: true,
+  address: true,
 } satisfies Prisma.OrderInclude;
 
 export type OrderWithItemsAndCustomer = Prisma.OrderGetPayload<{ include: typeof withItemsAndCustomer }>;

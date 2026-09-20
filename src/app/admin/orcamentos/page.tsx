@@ -11,6 +11,7 @@ import { SearchBar } from "@/components/admin/shared/SearchBar";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
+import { FilterChips } from "@/components/admin/shared/FilterChips";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
@@ -131,6 +132,7 @@ function OrcamentosAdminPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [view, setView] = useViewMode("orcamentos");
+  const [statusTab, setStatusTab] = useState<"pendentes" | "recusados">("pendentes");
 
   const [modal, setModal] = useState<"create" | null>(null);
   const [form, setForm] = useState<OrderForm>(EMPTY_ORDER_FORM);
@@ -148,7 +150,10 @@ function OrcamentosAdminPageContent() {
       setError(null);
     }
     try {
-      const rows = await orderAdminApi.listOrdersByStatus("RASCUNHO");
+      const rows =
+        statusTab === "pendentes"
+          ? await orderAdminApi.listOrdersByStatus("RASCUNHO")
+          : await orderAdminApi.listOrdersByQuoteStatus("RECUSADO");
       setOrders(rows);
       hasLoadedOnce.current = true;
     } catch (err) {
@@ -163,8 +168,8 @@ function OrcamentosAdminPageContent() {
   }
 
   useEffect(() => {
-    loadOrders(); // eslint-disable-line react-hooks/set-state-in-effect
-  }, []);
+    loadOrders(false); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [statusTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dados de apoio (clientes e produtos ativos) — carregados uma única vez, usados
   // no formulário de criação. Mesmo padrão de embalagens/produtos (Promise.all).
@@ -525,6 +530,13 @@ function OrcamentosAdminPageContent() {
       );
     }
 
+    // Recusado pelo cliente — Order.status já cascateou para CANCELADO
+    // (decideQuote, orderService.ts), estado terminal: nenhuma ação disponível,
+    // só a aba "Recusados" (visibilidade), sem transição de status possível daqui.
+    if (order.quoteStatus === "RECUSADO") {
+      return <span className="text-xs text-muted">Recusado pelo cliente — pedido cancelado.</span>;
+    }
+
     // quoteStatus null — orçamento criado antes desta funcionalidade.
     return (
       <>
@@ -583,7 +595,9 @@ function OrcamentosAdminPageContent() {
           <p className="text-sm text-muted">
             {loading
               ? "Carregando…"
-              : `${orders.length} orçamento${orders.length !== 1 ? "s" : ""} pendente${orders.length !== 1 ? "s" : ""}`}
+              : statusTab === "pendentes"
+                ? `${orders.length} orçamento${orders.length !== 1 ? "s" : ""} pendente${orders.length !== 1 ? "s" : ""}`
+                : `${orders.length} orçamento${orders.length !== 1 ? "s" : ""} recusado${orders.length !== 1 ? "s" : ""}`}
           </p>
           <div className="flex items-center gap-2">
             {!loading && !error && <ViewToggle value={view} onChange={setView} />}
@@ -599,6 +613,16 @@ function OrcamentosAdminPageContent() {
           </div>
         </div>
 
+        <FilterChips
+          label="Status"
+          selected={statusTab}
+          onSelect={setStatusTab}
+          options={[
+            { value: "pendentes", label: "Pendentes" },
+            { value: "recusados", label: "Recusados" },
+          ]}
+        />
+
         {!error && (
           <SearchBar
             value={search}
@@ -612,14 +636,22 @@ function OrcamentosAdminPageContent() {
         {!loading && error && <ErrorState message={error} onRetry={() => loadOrders(false)} />}
         {!loading && !error && filtered.length === 0 && (
           <EmptyState
-            title={hasActiveFilter ? "Nenhum orçamento encontrado" : "Nenhum orçamento pendente"}
+            title={
+              hasActiveFilter
+                ? "Nenhum orçamento encontrado"
+                : statusTab === "pendentes"
+                  ? "Nenhum orçamento pendente"
+                  : "Nenhum orçamento recusado"
+            }
             description={
               hasActiveFilter
                 ? "Ajuste a pesquisa para ver todos os orçamentos."
-                : "Orçamentos aprovados ou cancelados saem desta lista automaticamente."
+                : statusTab === "pendentes"
+                  ? "Orçamentos aprovados e confirmados saem desta lista automaticamente."
+                  : "Orçamentos recusados pelo cliente aparecem aqui."
             }
-            actionLabel={hasActiveFilter || !canCreate ? undefined : "+ Criar orçamento"}
-            onAction={hasActiveFilter || !canCreate ? undefined : () => openCreate()}
+            actionLabel={hasActiveFilter || !canCreate || statusTab === "recusados" ? undefined : "+ Criar orçamento"}
+            onAction={hasActiveFilter || !canCreate || statusTab === "recusados" ? undefined : () => openCreate()}
           />
         )}
         {!loading && !error && filtered.length > 0 && (

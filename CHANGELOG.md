@@ -4,6 +4,49 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Correções] — 2026-09-20 — Design do orçamento público, orçamentos recusados invisíveis, LTV com pedido cancelado
+
+**Tipo:** Três correções reportadas pelo Product Owner na mesma sessão — página pública do orçamento fora do design já aprovado, orçamentos recusados desaparecendo do admin, e valor de pedidos cancelados/orçamentos contando como "Total Gasto" do cliente.
+
+### 1. Redesenho de `/orcamento/[token]`
+
+Reproduz o documento de orçamento em HTML já aprovado pelo Product Owner (arquivo de referência entregue fora do repositório) — folha estilo proposta impressa, paleta vinho/dourado/papel, tipografia serifada itálica, seções numeradas em algarismos romanos (I. Dados do cliente, II. Itens do pedido, III. Forma de pagamento, IV. Observações), Nº do orçamento, datas, total em destaque. Cores/fontes são específicas deste documento (não os tokens cream/chocolate/rose/sage do resto do app) — decisão deliberada de manter fidelidade ao arquivo de referência neste único ponto de contato externo. Nome, logo e contato (Instagram/telefone/e-mail) vêm de `StoreConfig` (`GET /api/config`, já público), nunca fixos no código.
+
+- **`src/lib/repositories/orderRepository.ts`:** `withItemsAndCustomer` ganha `address: true` — necessário para exibir a seção "Dados do cliente" (endereço de entrega) no documento.
+- **`src/lib/orderService.ts`:** `PublicQuoteDTO` ganha `deliveryType`, `receiverName`, `receiverPhone`, `address` (novo `PublicQuoteAddressDTO`, `null` para `RETIRADA`).
+- **`src/lib/api/publicQuoteApi.ts`:** mesmos campos espelhados no DTO do cliente HTTP.
+- **`src/app/(client)/orcamento/[token]/page.tsx`:** reescrita completa do layout/estilo; mantém toda a funcionalidade já existente (ajustar quantidade, remover item, aprovar/recusar com confirmação de segurança), só a apresentação visual muda. Botão "Imprimir / Salvar PDF" novo (`window.print()`), inexistente na versão anterior.
+
+### 2. Orçamentos recusados agora aparecem no admin
+
+`/admin/orcamentos` só listava `Order.status = RASCUNHO` — um orçamento recusado cascateia para `CANCELADO` (decideQuote, orderService.ts) e desaparecia da tela por completo, sem nenhuma visibilidade. Backend já suportava filtrar por `quoteStatus` desde a sprint original (sem consumidor no frontend até agora).
+
+- **`src/lib/api/orderAdminApi.ts`:** `listOrdersByQuoteStatus(quoteStatus)`.
+- **`src/app/admin/orcamentos/page.tsx`:** `FilterChips` "Pendentes"/"Recusados"; aba "Recusados" chama `listOrdersByQuoteStatus("RECUSADO")`. Novo branch em `renderActions` para `quoteStatus === "RECUSADO"` — estado terminal, só texto informativo ("Recusado pelo cliente — pedido cancelado."), sem botões de ação (evita chamar uma transição de status inválida sobre um pedido já `CANCELADO`).
+
+### 3. "Total Gasto" (LTV) não conta mais pedido cancelado/orçamento em aberto
+
+`RASCUNHO` (orçamento ainda não decidido) e `CANCELADO` (inclui recusado pelo cliente) somavam normalmente no total — o cliente nunca pagou nem se comprometeu com esse valor. Corrigido nos dois lugares onde o total é calculado; "Histórico de pedidos" continua mostrando todos os pedidos, inclusive os excluídos da soma (transparência, só a soma muda).
+
+- **`src/lib/repositories/customerRepository.ts`:** `groupBy` de LTV (lista de clientes) ganha `status: { notIn: ["RASCUNHO", "CANCELADO"] }`.
+- **`src/app/admin/clientes/[id]/page.tsx`:** `totalSpent` (tela de detalhe) filtra os mesmos dois status antes de somar.
+
+**Arquivos alterados:**
+- `src/lib/repositories/orderRepository.ts`
+- `src/lib/orderService.ts`
+- `src/lib/api/publicQuoteApi.ts`
+- `src/app/(client)/orcamento/[token]/page.tsx`
+- `src/lib/api/orderAdminApi.ts`
+- `src/app/admin/orcamentos/page.tsx`
+- `src/lib/repositories/customerRepository.ts`
+- `src/app/admin/clientes/[id]/page.tsx`
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros. Validação funcional end-to-end no navegador (Playwright, sessão admin real, banco Supabase real, screenshot conferida visualmente): orçamento de teste criado com endereço de entrega real → link público exibido no novo design (nome/logo/contato reais da loja, seção de endereço, tabela de itens com ajuste de quantidade funcionando, total em destaque) → recusado com confirmação de segurança → badge "Orçamento recusado — não pode mais ser alterado" exibido corretamente → passou a aparecer na aba "Recusados" do admin (junto com um orçamento recusado pré-existente, #18, que estava invisível antes desta correção) → "Total Gasto" do cliente confirmado em R$ 162,50 (excluindo os R$ 305,00 do pedido cancelado), tanto na lista de clientes quanto na tela de detalhe. Dados de teste removidos do banco ao final.
+
+---
+
 ## [Módulo Clientes] — 2026-09-20 — Excluir endereço
 
 **Tipo:** Extensão da entrega anterior ("Cadastro direto de endereços pela equipe") — botão "Excluir" ao lado de "Editar" em cada endereço de `/admin/clientes/[id]`.

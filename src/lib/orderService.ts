@@ -706,11 +706,26 @@ export interface PublicQuoteItemDTO {
 // DTO minimizado — nunca reaproveita OrderDTO inteiro (vazaria customerId e
 // outros dados internos a um destinatário não autenticado, que só possui o
 // token da URL).
+export interface PublicQuoteAddressDTO {
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+}
+
 export interface PublicQuoteDTO {
   orderNumber: number;
   quoteStatus: QuoteStatus;
   deliveryDate: string;
   createdAt: string;
+  deliveryType: DeliveryType;
+  receiverName: string;
+  receiverPhone: string | null;
+  // null para DeliveryType.RETIRADA (sem Address associado, ver createOrder) —
+  // ver seção "III. Entrega" do doc renderizado em orcamento/[token]/page.tsx.
+  address: PublicQuoteAddressDTO | null;
   customer: {
     name: string;
     phone: string | null;
@@ -737,6 +752,19 @@ function mapPublicQuoteDTO(order: OrderWithItemsAndCustomer): PublicQuoteDTO {
     quoteStatus,
     deliveryDate: order.deliveryDate.toISOString().slice(0, 10),
     createdAt: order.createdAt.toISOString(),
+    deliveryType: order.deliveryType as DeliveryType,
+    receiverName: order.receiverName,
+    receiverPhone: order.receiverPhone,
+    address: order.address
+      ? {
+          street: order.address.street,
+          number: order.address.number,
+          complement: order.address.complement,
+          neighborhood: order.address.neighborhood,
+          city: order.address.city,
+          state: order.address.state,
+        }
+      : null,
     customer: {
       name: order.customer.name,
       phone: order.customer.phone,

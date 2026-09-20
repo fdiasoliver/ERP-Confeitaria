@@ -76,11 +76,16 @@ export async function findAllCustomers(params: ListCustomersParams): Promise<Pag
 
   // Uma única query de agregação para a página inteira (evita N+1 — uma consulta por
   // cliente). Mesmo padrão já usado em orderRepository.findItemsGroupedByProduct.
+  //
+  // RASCUNHO (orçamento ainda não decidido) e CANCELADO (inclui orçamento recusado
+  // pelo cliente, que cascateia para CANCELADO — ver decideQuote em orderService.ts)
+  // nunca contam como "gasto" — o cliente não pagou nem se comprometeu com esse
+  // valor. Correção de bug: antes somava todos os pedidos, sem esse filtro.
   const aggregates =
     customerIds.length > 0
       ? await prisma.order.groupBy({
           by: ["customerId"],
-          where: { customerId: { in: customerIds } },
+          where: { customerId: { in: customerIds }, status: { notIn: ["RASCUNHO", "CANCELADO"] } },
           _sum: { total: true },
           _max: { createdAt: true },
         })
