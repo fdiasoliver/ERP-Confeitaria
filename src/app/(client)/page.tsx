@@ -5,6 +5,15 @@ import { Header } from "@/components/layout/Header";
 import { CategoryChips, ProductCard, ProductHero, ProductRow, ProductRowActions } from "@/components/vitrine/ProductCard";
 import { ProductDetailDialog } from "@/components/vitrine/ProductDetailDialog";
 import { VitrineSidebar } from "@/components/vitrine/VitrineSidebar";
+import {
+  AboutSection,
+  ContactSection,
+  FloatingWhatsApp,
+  HowItWorks,
+  ServiceLines,
+  SiteFooter,
+  VitrineHero,
+} from "@/components/vitrine/VitrineSections";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
 import { ViewToggle } from "@/components/shared/ViewToggle";
 import { useViewMode } from "@/hooks/useViewMode";
@@ -131,57 +140,68 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream md:flex">
-      <VitrineSidebar occasions={occasions} selected={occasion} onSelect={setOccasion} />
+    <div className="min-h-screen bg-cream">
+      <Header />
+      <VitrineHero />
+      <HowItWorks />
 
-      <div className="mx-auto w-full max-w-app pb-24 md:max-w-none md:flex-1 md:pb-8">
-        <Header />
-        <div className="md:hidden">
-          <CategoryChips
-            occasions={occasions}
-            selected={occasion}
-            onSelect={setOccasion}
-          />
-        </div>
+      <div id="cardapio" className="md:flex">
+        <VitrineSidebar occasions={occasions} selected={occasion} onSelect={setOccasion} />
 
-        <div className="md:mx-auto md:max-w-7xl md:px-6 md:py-6">
-          {filtered.length > 0 && (
-            <div className="flex justify-end px-5 pb-2 md:px-0">
-              <ViewToggle value={view} onChange={setView} />
-            </div>
-          )}
+        <div className="mx-auto w-full max-w-app pb-8 md:max-w-none md:flex-1">
+          <div className="md:hidden">
+            <CategoryChips
+              occasions={occasions}
+              selected={occasion}
+              onSelect={setOccasion}
+            />
+          </div>
 
-          {hero && (
-            <section className="px-5 pb-6 md:px-0">
-              <ProductHero
-                product={hero}
-                quantity={quantities[hero.id] ?? 0}
-                onOpenDetails={setSelectedProduct}
-              />
-            </section>
-          )}
+          <div className="md:mx-auto md:max-w-7xl md:px-6 md:py-6">
+            {filtered.length > 0 && (
+              <div className="flex justify-end px-5 pb-2 md:px-0">
+                <ViewToggle value={view} onChange={setView} />
+              </div>
+            )}
 
-          {featuredRest.length > 0 && (
-            <section className="px-5 pb-6 md:px-0">
-              <h2 className="font-display mb-3 text-lg font-semibold">Destaques</h2>
-              {renderCollection(featuredRest)}
-            </section>
-          )}
+            {hero && (
+              <section className="px-5 pb-6 md:px-0">
+                <ProductHero
+                  product={hero}
+                  quantity={quantities[hero.id] ?? 0}
+                  onOpenDetails={setSelectedProduct}
+                />
+              </section>
+            )}
 
-          {byCategory.map((cat) => (
-            <section key={cat.name} className="px-5 pb-6 md:px-0">
-              <h2 className="font-display mb-3 text-lg font-semibold">{cat.name}</h2>
-              {renderCollection(cat.products)}
-            </section>
-          ))}
+            {featuredRest.length > 0 && (
+              <section className="px-5 pb-6 md:px-0">
+                <h2 className="font-display mb-3 text-lg font-semibold">Destaques</h2>
+                {renderCollection(featuredRest)}
+              </section>
+            )}
 
-          {filtered.length === 0 && (
-            <p className="px-5 py-12 text-center text-muted md:px-0">
-              Nenhum produto nesta categoria.
-            </p>
-          )}
+            {byCategory.map((cat) => (
+              <section key={cat.name} className="px-5 pb-6 md:px-0">
+                <h2 className="font-display mb-3 text-lg font-semibold">{cat.name}</h2>
+                {renderCollection(cat.products)}
+              </section>
+            ))}
+
+            {filtered.length === 0 && (
+              <p className="px-5 py-12 text-center text-muted md:px-0">
+                Nenhum produto nesta categoria.
+              </p>
+            )}
+          </div>
         </div>
       </div>
+
+      <AboutSection />
+      <ServiceLines />
+      <ContactSection />
+      <SiteFooter />
+      <FloatingWhatsApp />
 
       <ProductDetailDialog
         product={selectedProduct}

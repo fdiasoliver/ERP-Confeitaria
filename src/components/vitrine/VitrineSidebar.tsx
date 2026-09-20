@@ -34,7 +34,7 @@ export function VitrineSidebar({ occasions, selected, onSelect }: VitrineSidebar
     >
       <div className={`flex items-center px-4 py-5 ${collapsed ? "justify-center" : "justify-between"}`}>
         {!collapsed && (
-          <span className="font-display text-lg font-semibold text-chocolate">Categorias</span>
+          <span className="font-serif text-lg font-semibold italic text-wine-deep">Categorias</span>
         )}
         <Button
           type="button"
@@ -61,7 +61,7 @@ export function VitrineSidebar({ occasions, selected, onSelect }: VitrineSidebar
               aria-current={isActive ? "true" : undefined}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 collapsed ? "justify-center" : ""
-              } ${isActive ? "bg-chocolate text-white" : "text-chocolate hover:bg-surface-2"}`}
+              } ${isActive ? "bg-wine text-white" : "text-chocolate hover:bg-surface-2"}`}
             >
               <Icon size={18} className="shrink-0" />
               {!collapsed && <span className="truncate">{occ.name}</span>}

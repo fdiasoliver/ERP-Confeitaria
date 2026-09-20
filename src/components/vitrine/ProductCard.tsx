@@ -43,18 +43,22 @@ export function ProductCard({ product, quantity, onOpenDetails }: ProductCardPro
       tabIndex={0}
       onClick={() => onOpenDetails(product)}
       onKeyDown={(e) => handleCardKeyDown(e, () => onOpenDetails(product))}
-      className="cursor-pointer overflow-hidden rounded-2xl border border-sand bg-card"
+      className="cursor-pointer overflow-hidden rounded-2xl border border-sand bg-card transition-shadow hover:shadow-card"
     >
       <div className="flex aspect-square items-center justify-center overflow-hidden bg-surface-2 text-5xl">
         <ProductImage product={product} />
       </div>
       <div className="p-3">
         <h3 className="text-sm font-semibold leading-tight">{product.name}</h3>
-        <p className="text-muted mt-1 text-xs">
-          {formatCurrency(product.basePrice)}
-          {product.basePrice < 10 ? "/un" : ""}
-          {" · "}
-          {product.leadTimeDays} {product.leadTimeDays === 1 ? "dia" : "dias"}
+        <p className="mt-1 text-xs">
+          <span className="font-serif italic text-wine">
+            {formatCurrency(product.basePrice)}
+            {product.basePrice < 10 ? "/un" : ""}
+          </span>
+          <span className="text-muted">
+            {" · "}
+            {product.leadTimeDays} {product.leadTimeDays === 1 ? "dia" : "dias"}
+          </span>
         </p>
         <div
           className="mt-2 flex items-center justify-between rounded-lg bg-sand p-1"
@@ -115,12 +119,12 @@ export function ProductHero({ product, quantity, onOpenDetails }: ProductHeroPro
         <ProductImage product={product} />
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="font-display text-lg font-semibold leading-tight">{product.name}</h3>
+        <h3 className="font-serif text-lg font-semibold italic leading-tight text-wine-deep">{product.name}</h3>
         {product.description && (
           <p className="text-muted mt-0.5 text-xs">{product.description}</p>
         )}
         <div className="mt-2 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-          <span className="text-sm font-semibold text-rose">
+          <span className="font-serif text-sm font-semibold italic text-wine">
             {formatCurrency(product.basePrice)}
             {product.basePrice < 10 ? "/un" : ""}
           </span>
@@ -242,7 +246,7 @@ export function CategoryChips({
           onClick={() => onSelect(occ.id)}
           className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
             selected === occ.id
-              ? "border-chocolate bg-chocolate text-white"
+              ? "border-wine bg-wine text-white"
               : "border-sand bg-card text-chocolate"
           }`}
         >

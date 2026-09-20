@@ -4,6 +4,44 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo Vitrine] — 2026-09-20 — Redesenho editorial da Vitrine do Cliente
+
+**Tipo:** Redesenho visual da página inicial da Vitrine (`/`), a partir de um preview HTML aprovado pelo Product Owner (misturando o material de referência entregue fora do repositório com o catálogo/carrinho/filtros reais existentes). Nenhuma funcionalidade foi removida ou alterada em comportamento — só a apresentação, mais quatro seções institucionais novas que não existiam antes.
+
+### Escopo e isolamento
+
+Redesenho aplicado só à página inicial (`/`) e aos componentes exclusivos dela (`Header` — variante sticky, `VitrineSidebar`, `ProductCard`/`ProductHero`/`ProductRow`/`CategoryChips`). Confirmado por grep que nenhum desses componentes é usado fora da Vitrine — `HeaderMinimal` (checkout/pedidos/login/cadastro) não foi tocado. Os 8 tokens de cor do design system (`cream`/`chocolate`/`rose`/`sage`/`caramel`/`sand`/`muted`/`surface-2`, ADR-025) e a fonte Manrope (Sprint DS.3) permanecem como estavam em todo o resto do app (admin, checkout, pedidos, login) — três tokens novos (`wine`, `wine-deep`, `gold`) e uma fonte de destaque (Fraunces, `font-serif`) foram *adicionados*, não substituíram nada, e a fonte só carrega dentro do route group `(client)`.
+
+### Implementação
+
+- **`src/app/globals.css`:** tokens `--wine`/`--wine-deep`/`--gold` + `--font-serif` no `@theme inline`.
+- **`src/app/(client)/layout.tsx`:** carrega `Fraunces` (next/font/google, itálico/normal, pesos 500/600) via variável CSS, escopada à área cliente.
+- **`src/components/layout/Header.tsx`:** variante `Header` (única usada na Vitrine) redesenhada — logo + nome reais vindos de `GET /api/config`, nav central (Início/Cardápio/Quem Somos/Fale Conosco) só em desktop, paleta wine/gold. `HeaderMinimal` inalterado.
+- **`src/components/vitrine/VitrineSidebar.tsx`** e **`ProductCard.tsx`:** troca pontual de classes de cor (chocolate→wine nos estados ativos, preço em serifa itálica) — nenhuma mudança de lógica/props.
+- **`src/components/vitrine/VitrineSections.tsx`** (novo): `VitrineHero`, `HowItWorks`, `AboutSection`, `ServiceLines`, `ContactSection`, `SiteFooter`, `FloatingWhatsApp`. Copy institucional (Quem Somos/Como Atendemos) é conteúdo de marca fixo, aprovado no preview; dados de contato (e-mail/Instagram/endereço/telefone) vêm de `GET /api/config` — CTA e botão flutuante de WhatsApp só aparecem quando há telefone cadastrado (hoje não há, `StoreConfig.phone` é `null`), sem número fixo no código.
+- **`src/app/(client)/page.tsx`:** seções novas encaixadas em volta do bloco existente (sidebar + filtro + grid/lista + destaques + categorias + modal de detalhes), que continua com a mesma lógica de fetch/filtro/carrinho de antes.
+
+### Achado corrigido durante a validação
+
+`GET /api/config` retorna o `StoreConfig` direto, sem envelope `{success,data}` (confirmado em `src/app/api/config/route.ts`) — o primeiro fetch escrito em `Header.tsx`/`VitrineSections.tsx` assumia o envelope errado e silenciosamente não preenchia nada (nome/logo ficavam no fallback, seção de contato ficava sem e-mail/Instagram/endereço). Corrigido antes da validação final.
+
+**Arquivos alterados/criados:**
+- `src/app/globals.css`
+- `src/app/(client)/layout.tsx`
+- `src/app/(client)/page.tsx`
+- `src/components/layout/Header.tsx`
+- `src/components/vitrine/VitrineSidebar.tsx`
+- `src/components/vitrine/ProductCard.tsx`
+- `src/components/vitrine/VitrineSections.tsx` (novo)
+
+### Validação
+
+`npx tsc --noEmit` e `npm run lint`: 0 erros. Validação funcional no navegador (Playwright, servidor dev real, banco Supabase real, desktop 1400px e mobile 390px): dados reais de produtos/ocasiões/config carregando; filtro por ocasião na sidebar funcionando (estado ativo, produtos filtrados); adicionar item ao carrinho refletindo no badge do Header e no `CartFab`; seção "Fale Conosco" exibindo e-mail/Instagram/endereço reais e ocultando corretamente o WhatsApp (telefone não cadastrado); logo real carregando no Header.
+
+**Achado registrado, fora do escopo desta sprint:** o produto "Bolo Chocolate 25cm" tem um `imageUrl` real no banco que aponta para uma imagem de clip-art (ícone de aranha), não uma foto do bolo — bug de dado pré-existente, não introduzido por este redesenho, sem correção aqui (precisa de um upload novo em `/admin/produtos`).
+
+---
+
 ## [Módulo Orçamentos] — 2026-09-20 — Editor completo (itens, data, entrega, pagamento)
 
 **Tipo:** Nova funcionalidade — até esta sprint não existia nenhuma forma de editar um orçamento já criado (só criar, enviar, aprovar/recusar, cancelar); a única alternativa era cancelar e recriar do zero. Botão "Editar" em `/admin/orcamentos`, reaproveitando o mesmo formulário de "Novo orçamento", disponível enquanto `Order.status === "RASCUNHO"` (cobre PENDENTE/EM_REVISAO/APROVADO — nenhum desses ainda cascateia `status`; só RECUSADO, já `CANCELADO`, fica de fora).

@@ -12,6 +12,13 @@
   --muted: #726A5F;
   --surface-2: #F5EFE1;
 
+  /* Acentos editoriais da Vitrine (redesign do Módulo Vitrine, 20/09/2026) —
+     aditivos, não substituem os 8 tokens do design system acima (ADR-025).
+     Usados só por src/app/(client)/page.tsx e src/components/vitrine/*. */
+  --wine: #7C3B41;
+  --wine-deep: #5E2B30;
+  --gold: #AD8A54;
+
   /* Mapeamento shadcn/ui -> tokens do design system (ADR-025, Sprint DS.5) */
   --background: var(--cream);
   --foreground: var(--chocolate);
@@ -43,6 +50,10 @@
   --color-surface-2: var(--surface-2);
   --font-display: var(--font-manrope);
   --font-sans: var(--font-manrope);
+  --font-serif: var(--font-fraunces);
+  --color-wine: var(--wine);
+  --color-wine-deep: var(--wine-deep);
+  --color-gold: var(--gold);
   --shadow-card: 0 4px 24px rgba(61, 43, 31, 0.08);
   --max-width-app: 480px;
 
