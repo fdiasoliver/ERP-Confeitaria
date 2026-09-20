@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { toast } from "sonner";
 import { Field } from "@/components/admin/config/FormPrimitives";
@@ -58,7 +59,21 @@ type StatusFilter = "all" | "active" | "inactive";
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
+// useSearchParams() (usado para reabrir o modal de duplicação via ?duplicate=id,
+// a partir de /admin/receitas/[id]) exige um limite de Suspense — mesma
+// convenção de ?edit=id em admin/produtos/page.tsx.
 export default function ReceitasAdminPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-muted">Carregando…</div>}>
+      <ReceitasAdminPageContent />
+    </Suspense>
+  );
+}
+
+function ReceitasAdminPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [units, setUnits] = useState<UnitOfMeasure[]>([]);
@@ -101,6 +116,25 @@ export default function ReceitasAdminPage() {
   }
 
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/set-state-in-effect
+
+  // Reabre o modal de duplicação a partir de /admin/receitas/[id] ("Duplicar")
+  // — mesma convenção de ?edit=id em admin/produtos/page.tsx. Busca a receita
+  // direto pela API (não depende da lista já carregada conter o item) e limpa
+  // o parâmetro da URL depois de abrir, para não reabrir em um refresh.
+  useEffect(() => {
+    const duplicateId = searchParams.get("duplicate");
+    if (!duplicateId) return;
+    (async () => {
+      try {
+        const recipe = await recipeApi.getRecipe(duplicateId);
+        openDuplicate(recipe);
+      } catch {
+        toast.error("Receita não encontrada.");
+      } finally {
+        router.replace("/admin/receitas");
+      }
+    })();
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();

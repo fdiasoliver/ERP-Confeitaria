@@ -739,6 +739,12 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
             >
               Editar receita
             </button>
+            <Link
+              href={`/admin/receitas?duplicate=${recipe.id}`}
+              className="flex-1 rounded-xl border border-sand py-2 text-center text-sm font-semibold text-chocolate"
+            >
+              Duplicar
+            </Link>
             <button
               type="button"
               onClick={handleToggleActive}
