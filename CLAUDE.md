@@ -26,10 +26,11 @@ Abrange dois domínios:
 | Estilização | Tailwind CSS | ^4 |
 | ORM | Prisma | ^6.9.0 |
 | Banco de dados | PostgreSQL | — |
-| Fonte (display + UI) | Manrope (Google Fonts) — fonte única desde a Sprint `DS.3` (10/08/2026), substituiu Fraunces+DM Sans; diferenciação display/corpo é só por peso (800 vs 400–600) | — |
-| Componentes UI | shadcn/ui (Radix + Tailwind) — desde a Sprint `DS.5` (ADR-025) | — |
+| Fonte (display + UI) | Manrope (Google Fonts) — fonte única desde a Sprint `DS.3` (10/08/2026), substituiu Fraunces+DM Sans; diferenciação display/corpo é só por peso (800 vs 400–600). **Exceção (20/09/2026):** a Vitrine (`/`) carrega também Fraunces (`font-serif`, itálico/normal, pesos 500/600), escopada ao route group `(client)` — não afeta o admin | — |
+| Componentes UI | shadcn/ui (Radix + Tailwind) — desde a Sprint `DS.5` (ADR-025); toasts via `sonner`, ícones via `lucide-react` | — |
+| Hospedagem | Vercel (app) + Supabase (PostgreSQL + Storage) + Hostgator (só DNS) — `app.confeitariadocemenina.com.br`, em produção com clientes reais desde a Sprint `I.4` (set/2026). Ver ADR-026 (divergência com a ADR-010, VPS Linux, ainda não reconciliada) | — |
 
-**Status atual:** Sprint 1.1 + 1.2 + 1.3 concluídas (30/06/2026). Módulo Configuração da Empresa (`/admin/config`) 100% implementado e refatorado: schema, tipos, validator, repositories, service, API (GET+PATCH), upload de imagens, página com 6 seções (171 linhas). Próximo: Dashboard de produção real (KI-04) ou outro módulo. Ver [KNOWN_ISSUES.md](KNOWN_ISSUES.md) e os documentos P1 abaixo. **Nota:** esta linha está desatualizada frente ao `CHANGELOG.md` (que já registra os Épicos 2/G/T) — não reescrita nesta sprint por estar fora do escopo da Sprint T.3 (Demo Environment); a Plataforma de Demonstração formalizada nesta sprint (16/07/2026, ver "Decisões arquiteturais tomadas", ADR-008) é infraestrutura de produto, não um novo módulo funcional.
+**Status atual (23/09/2026):** Épicos 1 e 2 encerrados (12 módulos do Épico 2, 2.A–2.L). Épico 3 (Inteligência Operacional) e Épico 4 (Expansão Operacional) com todos os itens originais entregues; Épico 5 (Integrações) com 5.A (Google Maps), 5.B (WhatsApp OTP + notificações) e 5.E (importador de NFC-e) concluídos — falta o 5.D (PIX). Módulos entregues depois do Épico 2, todos em `/admin/*` e registrados no `CHANGELOG.md`/`PLAN.md`: Precificação automática (P3.1), Relatórios financeiros (P3.2 — dashboard, centro de custo, fluxo de caixa, contas a pagar, DRE), Despesas, Canais de Venda, Usuários, Tema, Calendário de produção com reagendamento negociado (P3.3), PWA, Orçamentos (com link público de aprovação e editor completo), cadastro de cliente (pessoa física/corporativa) com endereços salvos, importação de ingredientes por Excel, preço por embalagem e duplicação de receita. A Vitrine foi redesenhada em 20/09/2026 (wine/gold + Fraunces). Nenhum módulo/sprint funcional em andamento. Ver [PROJECT_STATE.md](PROJECT_STATE.md) (fotografia executiva), [PLAN.md](PLAN.md) (roadmap) e [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ---
 
@@ -41,7 +42,12 @@ confeitaria-app/
 ├── DOMAIN_MODEL.md            # Modelo de domínio: 26+ entidades, relacionamentos, fluxos
 ├── MODULES.md                 # Evolução de módulos por fase (Fase 1–10) + dívida técnica
 ├── CHANGELOG.md               # Histórico de sprints
-├── KNOWN_ISSUES.md            # 16 problemas conhecidos (KI-01 a KI-16) com prioridade
+├── PROJECT_STATE.md           # Fotografia executiva do estado atual (sincronização de contexto entre IAs/sessões)
+├── PROJECT_GOVERNANCE.md      # Regras e políticas do processo (fluxo de sprint, ADRs, DoD)
+├── QUALITY_GUIDELINES.md      # Checklists por etapa, classificação de achados
+├── GOVERNANCE_DECISIONS.md    # Decisões metodológicas pendentes/resolvidas (GD-001…)
+├── MODULE_*_CLOSURE.md        # Um documento de encerramento por módulo do Épico 2 (2.D–2.L, G.8)
+├── KNOWN_ISSUES.md            # Problemas conhecidos (KI-01 a KI-19) com prioridade
 ├── PLAN.md                    # Plano de evolução e roadmap
 ├── REVIEW.md                  # Auditoria técnica e revisão de código
 ├── VISION.md                  # Visão estratégica do produto
@@ -50,7 +56,7 @@ confeitaria-app/
 ├── DEMO_DATASET.md            # Conteúdo oficial do ambiente de demonstração (Sprint T.3)
 ├── DEMO_GUIDE.md              # Guia de uso do ambiente de demonstração (Sprint T.3)
 ├── prisma/
-│   └── schema.prisma          # Esquema completo PostgreSQL (20+ modelos)
+│   └── schema.prisma          # Esquema completo PostgreSQL (30+ modelos)
 ├── docs/
 │   └── SCHEMA.md              # Documentação do modelo de dados
 ├── wireframes/                # Protótipos HTML/CSS estáticos (sem npm)
@@ -63,48 +69,61 @@ confeitaria-app/
 │   └── styles/wireframe.css
 ├── src/
 │   ├── app/                   # Páginas — Next.js App Router
-│   │   ├── layout.tsx         # Root layout: CartProvider + fontes
+│   │   ├── layout.tsx         # Root layout: Providers + fontes + ThemeStyleOverride + PwaServiceWorker
 │   │   ├── globals.css        # Tokens de design + utilitários Tailwind
-│   │   ├── page.tsx           # Vitrine (home)
-│   │   ├── checkout/page.tsx  # Fluxo de checkout
-│   │   ├── pedidos/page.tsx   # Histórico de pedidos
-│   │   ├── login/page.tsx     # Auth OTP (UI sem backend)
-│   │   ├── admin/page.tsx     # Hub administrativo
-│   │   ├── admin/login/page.tsx     # Login da equipe interna (NextAuth)
-│   │   ├── admin/producao/page.tsx  # Dashboard de produção
-│   │   ├── admin/em-construcao/page.tsx  # Placeholder para módulos não implementados
-│   │   ├── api/auth/[...nextauth]/route.ts  # NextAuth handler (admin + customer providers)
-│   │   ├── api/config/route.ts     # GET /api/config (StoreConfig)
-│   │   ├── api/occasions/route.ts  # GET /api/occasions (OccasionTag)
-│   │   ├── api/products/route.ts   # GET /api/products
-│   │   ├── api/orders/route.ts     # GET + POST /api/orders
-│   │   ├── api/orders/[id]/status/route.ts  # PATCH /api/orders/[id]/status
+│   │   ├── manifest.ts / icon.tsx  # PWA (manifest e ícone gerados a partir de StoreConfig)
+│   │   ├── (client)/          # Route group da área cliente (URLs inalteradas) — layout.tsx hospeda ClientShell
+│   │   │   ├── page.tsx       # Vitrine (home)
+│   │   │   ├── checkout/      # Fluxo de checkout
+│   │   │   ├── pedidos/       # Histórico de pedidos + resposta a reagendamento
+│   │   │   ├── login/         # Login OTP via WhatsApp
+│   │   │   ├── cadastro/      # Autocadastro do cliente (nome/endereço/nascimento)
+│   │   │   └── orcamento/[token]/  # Página pública de aprovação de orçamento (sem login)
+│   │   ├── admin/             # Backoffice (sidebar filtrada por papel) — 1 pasta por módulo:
+│   │   │   │                  #   producao, orcamentos, clientes, produtos, categorias, ocasioes,
+│   │   │   │                  #   unidades, ingredientes, receitas, embalagens, fornecedores,
+│   │   │   │                  #   despesas, canais-venda, relatorios, usuarios, tema, config, login
+│   │   │   └── em-construcao/ # Placeholder legado
+│   │   ├── api/               # Route Handlers (~100 rotas)
+│   │   │   ├── admin/**       # Rotas da equipe — protegidas por requireAdmin/requireRole/wrappers
+│   │   │   ├── public/orcamento/[token]/**  # Rotas públicas (o token é a única credencial)
+│   │   │   ├── auth/[...nextauth] · auth/otp/request
+│   │   │   ├── config · products · categories · occasions · units   # Leitura pública
+│   │   │   ├── orders · orders/[id]/reschedule-response             # Cliente autenticado
+│   │   │   ├── customers/me · customers/me/addresses                # Perfil do cliente
+│   │   │   └── delivery/distance                                    # Google Maps Routes API
 │   │   └── wireframes/page.tsx     # Links para wireframes HTML
 │   ├── components/
 │   │   ├── Providers.tsx      # SessionProvider + CartProvider (client wrapper para layout.tsx)
-│   │   ├── layout/
-│   │   │   ├── Header.tsx     # Header sticky + CartButton + HeaderMinimal
-│   │   │   └── CartDrawer.tsx # CartDrawer + CartFab + Toast
-│   │   └── vitrine/
-│   │       └── ProductCard.tsx  # ProductCard + CategoryChips
+│   │   ├── ui/                # shadcn/ui (button, dialog, alert-dialog, sheet, badge, card, input, label, sonner)
+│   │   ├── shared/            # EntityTable, ViewToggle (Cards/Lista)
+│   │   ├── admin/{config,producao,shared}/  # Componentes do backoffice (Sidebar, PageContainer, EntityForm…)
+│   │   ├── layout/            # Header, ClientShell, CartDrawer (+ CartFab)
+│   │   └── vitrine/           # ProductCard, ProductDetailDialog, VitrineSidebar, VitrineSections
 │   ├── context/
 │   │   └── CartContext.tsx    # Estado global do carrinho (CartProvider + useCart)
-│   ├── hooks/
-│   │   ├── useCurrentUser.ts  # Retorna Customer da sessão NextAuth (null se não autenticado ou se admin)
-│   │   └── useUserOrders.ts   # Retorna Order[] com loading/error/refetch; aceita phone: string | null
-│   ├── services/
-│   │   ├── orderService.ts    # createOrder, getOrdersByPhone, updateOrderStatus
-│   │   └── productService.ts  # getProducts
+│   ├── hooks/                 # useCurrentUser, useUserOrders, useViewMode
+│   ├── services/              # Clientes HTTP da área cliente (orderService, productService, customerProfileApi)
+│   ├── types/next-auth.d.ts   # Extensão dos tipos de sessão NextAuth
 │   └── lib/
 │       ├── types.ts           # Interfaces TypeScript e enums (fonte da verdade)
-│       ├── mock-data.ts       # Dados de demonstração (substituir progressivamente)
+│       ├── *Service.ts        # Camada Service (regra de negócio) — um por domínio
+│       ├── repositories/      # Camada Repository (Prisma)
+│       ├── validators/        # Camada Validator
+│       ├── api/               # Clientes HTTP do admin (`{recurso}Api.ts`)
+│       ├── auth/              # requireRole + wrappers (requireAdmin, requireOrderAccess, requireFinance, requireProductionChain, requireCustomer)
+│       ├── clients/           # I/O de serviço externo (ADR-023): whatsappClient, googleMapsClient, nfceClient
+│       ├── storage/ · address/ · formatters/ · constants/ · http/    # Utilitários por tema
+│       ├── mock-data.ts       # Dados de demonstração (fallback residual)
 │       ├── utils.ts           # formatCurrency, formatDate, getMinDeliveryDate
 │       ├── env.ts             # Validação de variáveis de ambiente no startup
 │       └── prisma.ts          # Singleton do Prisma Client
-│   └── proxy.ts               # Proteção de rotas /admin/* (Next.js 16 convention)
+│   └── proxy.ts               # Proteção de rotas /admin/* + mapa ROLE_REQUIRED (Next.js 16 convention)
+├── public/sw.js               # Service worker do PWA
 ├── prisma/
-│   ├── schema.prisma          # Esquema completo PostgreSQL (20+ modelos)
-│   ├── seed.ts                # Seed: produtos, categorias, admin, StoreConfig
+│   ├── schema.prisma          # Esquema completo PostgreSQL (30+ modelos)
+│   ├── seed.ts                # Seed: produtos, categorias, admin, StoreConfig (chama seeds/production-chain.ts)
+│   ├── seeds/production-chain.ts  # Seed idempotente da cadeia produtiva (Sprint I.2)
 │   └── demo-seeds/
 │       └── README.md          # Arquitetura da pasta de seed de demonstração (Sprint T.3 — sem dado real ainda)
 ├── .env.example               # Variáveis de ambiente necessárias
@@ -219,20 +238,30 @@ Todas as páginas clientes usam `mx-auto max-w-app` (480px). O dashboard de prod
   → "Confirmar pedido" → tela de confirmação + clearCart()
   → Link para /pedidos
 
+/login (OTP via WhatsApp) → /cadastro (1º acesso: nome/endereço/nascimento)
+
 /pedidos
-  → Lista MOCK_ORDERS com status
+  → Lista os pedidos reais do cliente (GET /api/orders) com status
+  → Banner Aceitar/Recusar quando há reagendamento sugerido pela equipe
   → "Pedir novamente" → loadFromOrder() → /
   → "Pedir e personalizar" → loadFromOrder() → /checkout
+
+/orcamento/[token]  (link público enviado por WhatsApp, sem login)
+  → Ajusta quantidade/remove itens, aprova ou recusa (confirmação: 4 últimos dígitos do telefone/CNPJ)
 ```
 
 ### Fluxo interno (equipe)
 
 ```
-/login → /admin → /admin/producao
+/admin/login → /admin → /admin/producao
   → Aba Hoje/Amanhã/Semana/Calendário
   → Seção Urgente (border vermelho)
-  → Kanban: Confirmado → Em prod. → Pronto → Entregue
-  → Consolidação batch (ingredientes agregados)
+  → Kanban: Confirmado → Em prod. → Pronto → Entregue (dados reais; WhatsApp automático em 4 status)
+  → "Sugerir novo dia" (reagendamento negociado com o cliente)
+  → Consolidação batch (ingredientes agregados) + CMV
+
+/admin/orcamentos → criar/editar → Enviar (WhatsApp) → cliente decide pelo link público → Confirmar pedido
+/admin/relatorios → faturamento, centro de custo, fluxo de caixa, contas a pagar, DRE (ADMIN+FINANCEIRO)
 ```
 
 ---
@@ -246,6 +275,13 @@ Todas as páginas clientes usam `mx-auto max-w-app` (480px). O dashboard de prod
 | `react` 19.2.4 | UI e hooks |
 | `react-dom` 19.2.4 | Renderização DOM |
 | `@prisma/client` ^6.9.0 | ORM para PostgreSQL |
+| `next-auth` ^4 · `bcryptjs` | Autenticação (admin por e-mail/senha, cliente por OTP) e hash de senha |
+| `radix-ui` · `shadcn` · `class-variance-authority` · `clsx` · `tailwind-merge` · `tw-animate-css` | Camada de componentes shadcn/ui (ADR-025) |
+| `sonner` | Toasts (carrinho e admin) |
+| `lucide-react` | Ícones (ADR-024) |
+| `next-themes` | Tema claro/escuro |
+| `exceljs` | Importação/exportação `.xlsx` de ingredientes (preferido a `xlsx`/SheetJS por CVEs de prototype-pollution) |
+| `cheerio` | Parsing do portal da SEFAZ-SP no importador de NFC-e (Módulo 5.E) |
 
 ### Desenvolvimento (`devDependencies`)
 | Pacote | Uso |
@@ -259,17 +295,18 @@ Todas as páginas clientes usam `mx-auto max-w-app` (480px). O dashboard de prod
 
 ### Variáveis de ambiente (`.env`)
 ```env
-DATABASE_URL              # PostgreSQL — obrigatório para rodar com banco real
+DATABASE_URL              # PostgreSQL usado pela aplicação em runtime — em produção, Transaction Pooler do Supabase (porta 6543, ?pgbouncer=true)
+DIRECT_URL                # Usada só por `prisma migrate`/`db push` — Session Pooler ou conexão direta (porta 5432)
 NEXTAUTH_SECRET           # Segredo de sessão
-NEXTAUTH_URL              # URL da aplicação (http://localhost:3000 em dev)
-WHATSAPP_API_URL          # Z-API ou Evolution API
-WHATSAPP_API_TOKEN        # Token de autenticação WhatsApp
+NEXTAUTH_URL              # URL da aplicação (http://localhost:3000 em dev; também base do link público de orçamento)
+WHATSAPP_API_URL          # Evolution API (whatsappClient.ts)
+WHATSAPP_API_TOKEN        # Token de autenticação WhatsApp (header apikey)
 WHATSAPP_INSTANCE_ID      # ID da instância do bot
-PIX_PROVIDER              # "asaas", "mercadopago", etc.
-PIX_API_KEY               # Chave da API do provedor PIX
-PIX_WEBHOOK_SECRET        # Segredo para verificar webhooks de pagamento
-GOOGLE_MAPS_API_KEY       # Distance Matrix API (raio de 3 km)
-STORAGE_BUCKET_URL        # Supabase Storage ou S3 para fotos de referência
+GOOGLE_MAPS_API_KEY       # Routes API (computeRouteMatrix) — distância real de entrega; projeto Google Cloud com faturamento ativo
+SUPABASE_URL              # Supabase Storage — upload de imagens (bucket público `store-assets`)
+SUPABASE_SERVICE_ROLE_KEY # Chave service_role do Supabase Storage
+PIX_PROVIDER / PIX_API_KEY / PIX_WEBHOOK_SECRET   # Reservadas para o Módulo 5.D (PIX) — ainda não usadas no código
+STORAGE_BUCKET_URL        # Legado — substituída por SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY
 ```
 
 ---
@@ -433,13 +470,18 @@ Apresentar ao final da Sprint:
 
 ---
 
-## Infraestrutura atual (Sprint 0.5)
+## Infraestrutura atual (Sprint 0.5, atualizada em 23/09/2026)
 
 ### Banco de dados
-- **Provedor:** Supabase PostgreSQL — projeto `vqootzdtkgcbltrlfgzq`
-- **Conexão:** porta 5432 (direta). **Nunca usar porta 6543 (pooler)** — quebra o Prisma Migrate
+- **Provedor:** Supabase PostgreSQL — projeto `vqootzdtkgcbltrlfgzq`. As validações funcionais recentes (`CHANGELOG.md`) rodam localmente contra o **banco Supabase real** — testes criam dados reais; remova-os ao final.
+- **Conexão (duas URLs, desde o commit `ca639d5`, 08/09/2026):** `DATABASE_URL` = Transaction Pooler (porta 6543, `?pgbouncer=true`) usada pela aplicação em runtime; `DIRECT_URL` = Session Pooler/direta (porta 5432) usada só por `prisma migrate`/`db push`. Motivo: em produção (Vercel serverless) o Session Pooler esgotava `pool_size: 15` (`EMAXCONNSESSION`), derrubando todas as rotas. **Nunca rodar `db push`/`migrate` via porta 6543** — DDL não funciona em modo transação. (A instrução anterior deste arquivo — "nunca usar 6543" — valia só antes dessa separação.)
 - **Senha contém `&`** — no `DATABASE_URL`, encode como `%26`
-- Credenciais de admin: `admin@doceatelier.com.br` / `admin123` (hash bcrypt no banco)
+- **Credenciais de admin:** a conta `admin@doceatelier.com.br` deste arquivo não existe mais no banco real (limpeza feita fora do Claude Code, coerente com o app estar em produção). Existem contas reais de `ADMIN`, gerenciadas pelo Product Owner — **não documentar e-mail/senha neste arquivo versionado**; peça as credenciais ao Product Owner quando precisar logar para validação funcional.
+
+### Produção (Sprint I.4)
+- Vercel (projeto `doce-menina/confeitaria-app`, GitHub conectado — push em `main` dispara redeploy automático), domínio `app.confeitariadocemenina.com.br` (Hostgator só como DNS), Supabase Storage (bucket público `store-assets`) para imagens.
+- Pendências de configuração em produção registradas em `PLAN.md` (Sprint I.4): PIX ainda não configurado; `MODULE_I4_CLOSURE.md` não criado.
+- **Divergência registrada, não resolvida (ADR-026):** a ADR-010 declara VPS Linux como ambiente oficial; a produção real é Vercel.
 
 ### Proxy (Next.js 16)
 - O arquivo de middleware chama-se `proxy.ts` (não `middleware.ts`) — convenção do Next.js 16
@@ -465,9 +507,10 @@ npm run db:generate   # obrigatório após npm install — gera o Prisma Client
 
 ### Autenticação
 - A autenticação da equipe interna usa `NEXTAUTH_SECRET`/`NEXTAUTH_URL` (já no `.env.example`)
-- A autenticação do cliente usa o provider `"customer"` do NextAuth (`id: "customer"`) — aceita `phone + name`, faz upsert de `Customer` no banco, armazena `phone` e `userType: "customer"` no JWT
-- OTP via WhatsApp (Fase 8): adicionar verificação de código na função `authorize()` do provider `"customer"` em `src/app/api/auth/[...nextauth]/route.ts` — sem alterar estrutura de sessão
-- As rotas `/admin/*` são protegidas em `src/proxy.ts` com verificação de `token.userType === "admin"`. Restrições por `UserRole` são configuradas no mapa `ROLE_REQUIRED` no mesmo arquivo
+- A autenticação do cliente usa o provider `"customer"` do NextAuth (`id: "customer"`) com **OTP real via WhatsApp** (Módulo 5.B): `POST /api/auth/otp/request` gera/envia o código (`otpService.ts`, `OtpCode` expira em 5 min, máx. 3 tentativas), `authorize()` valida o código, faz upsert de `Customer` e armazena `phone` e `userType: "customer"` no JWT
+- Rotas de cliente autenticado (ex.: `reschedule-response`, `customers/me`) usam `requireCustomer()` (`src/lib/auth/requireCustomer.ts`) — sessão NextAuth real, nunca telefone vindo do corpo da requisição
+- Rotas públicas por token (`/api/public/orcamento/[token]/**`) não têm sessão — o token é a única credencial; devolver sempre DTO minimizado (nunca o `OrderDTO` administrativo)
+- As rotas `/admin/*` são protegidas em `src/proxy.ts` com verificação de `token.userType === "admin"`. Restrições por `UserRole` ficam no mapa `ROLE_REQUIRED` (casa rota exata e sub-rotas por prefixo). Nas APIs, use `requireRole()` ou um wrapper: `requireAdmin` (só `ADMIN`), `requireOrderAccess` (`ADMIN`+`ATENDIMENTO`+`PRODUCAO`), `requireFinance` (`ADMIN`+`FINANCEIRO`), `requireProductionChain` (`ADMIN`+`PRODUCAO`). Clientes: `ADMIN`+`ATENDIMENTO`. Catálogo (categorias/ocasiões/produtos), Usuários, Tema, Config e Canais de Venda: `ADMIN`-only. **A lista de papéis em `src/components/admin/shared/Sidebar.tsx` é mantida à mão em paralelo a `ROLE_REQUIRED`** — ao alterar um, alterar o outro (ADR-020/021/022)
 - `useCurrentUser()` retorna `Customer | null` — null quando não autenticado OU quando autenticado como admin
 - Os tipos de sessão NextAuth são estendidos em `src/types/next-auth.d.ts`
 
@@ -481,7 +524,7 @@ npm run db:generate   # obrigatório após npm install — gera o Prisma Client
 
 ### Entrega
 - A lógica de entrega gratuita usa `freeDeliveryRadiusKm` da tabela `StoreConfig` (padrão: 3 km)
-- O cálculo de distância usa Google Maps Distance Matrix API (`GOOGLE_MAPS_API_KEY`)
+- O cálculo de distância usa a Google Maps **Routes API** (`computeRouteMatrix`, `googleMapsClient.ts` — a Distance Matrix API está em modo legado; `GOOGLE_MAPS_API_KEY`) e é sempre **recalculado no servidor** em `POST /api/orders` — pedido fora do raio de `ENTREGA_GRATIS` é rejeitado, nunca confia no cliente
 - `DeliveryType.ENTREGA_GRATIS` = confeitaria paga; `ENTREGA_APP` = cliente paga via Uber/99
 
 ### WhatsApp
@@ -494,15 +537,13 @@ npm run db:generate   # obrigatório após npm install — gera o Prisma Client
 - shadcn/ui é a camada de componentes oficial desde a Sprint `DS.5` (ADR-025) — não introduzir outra biblioteca de componentes (Material UI, Chakra, etc.) sem decisão explícita nova
 - Não usar `imageEmoji` como solução permanente — quando `imageUrl` estiver disponível (Supabase/S3), ele tem prioridade no modelo `Product`
 
-### Módulos admin ainda não implementados
-Os seguintes módulos existem no hub admin mas não têm páginas ainda:
-- Usuários (`/admin/usuarios`)
-- Clientes (`/admin/clientes`)
-- Insumos (`/admin/insumos`)
-- Receitas (`/admin/receitas`)
-- Produtos (`/admin/produtos`)
-- Unidades (`/admin/unidades`)
-- Tema (`/admin/tema`)
+### Módulos admin
+Todos os módulos do hub admin têm página implementada (23/09/2026): Produção, Orçamentos, Clientes, Produtos, Categorias, Ocasiões, Unidades, Ingredientes, Receitas, Embalagens, Fornecedores, Despesas, Canais de Venda, Relatórios, Usuários, Tema e Configuração. `/admin/em-construcao` é um placeholder legado. Nenhum módulo listado neste arquivo como "não implementado" permanece nessa condição.
+
+### Orçamentos
+- Orçamento é um `Order` com `status = RASCUNHO` e `quoteStatus` próprio (`PENDENTE` → `EM_REVISAO`/`APROVADO`/`RECUSADO`); `RECUSADO` cascateia para `Order.status = CANCELADO`, `APROVADO` não cascateia (confirmação do pedido é ação administrativa separada)
+- Editável só enquanto `status === "RASCUNHO"`; editar substitui todos os itens e recria o `Address` (nunca muta um `Address` já vinculado)
+- `RASCUNHO` e `CANCELADO` não entram no "Total Gasto" (LTV) do cliente
 
 ---
 
@@ -542,8 +583,8 @@ Registro permanente de decisões que já foram tomadas e não devem ser question
 
 - **Estratégia de cache:** Nenhuma estratégia de cache (React Query, SWR, Next.js `fetch` cache) foi definida para as futuras API Routes
 - **Testes:** Nenhum arquivo de teste existe no projeto. A estratégia de testes (unitário, integração, e2e) não foi definida
-- **PWA:** O README menciona PWA como próxima fase, mas não há configuração de service worker ou manifest
+- **PWA:** Implementado (`manifest.ts`, `icon.tsx`, `public/sw.js`, `PwaServiceWorker.tsx`) — só cache de assets estáticos; sem estratégia offline para dados
 - **Internacionalização:** O app está em pt-BR mas não há configuração de i18n
-- **Acessibilidade:** Sem auditoria formal; apenas `aria-label` pontual em ícones
-- **Rate limiting:** Sem estratégia definida para endpoints de OTP e pagamento
+- **Acessibilidade:** Sem auditoria formal; apenas `aria-label` pontual em ícones. Limitação de contraste conhecida de `text-xs text-muted` sobre `cream` (reincidente em Product Reviews — ver `PLAN.md`, Backlog Suggestions)
+- **Rate limiting:** Sem estratégia definida para `POST /api/auth/otp/request` (o limite de 3 tentativas cobre só a validação do código, não o envio) e para pagamento
 - **Variável `imageEmoji` vs `imageUrl`:** O modelo `Product` no Prisma tem `imageUrl` (String?), mas o tipo TypeScript usa `imageEmoji` (string) — a migração entre eles não está definida
