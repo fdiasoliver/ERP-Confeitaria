@@ -86,11 +86,11 @@ Ordem cronológica inversa (fonte: `git log`; itens com `CHANGELOG.md` marcados 
 **Técnicas:**
 - **Nenhum teste automatizado existe no projeto** — toda validação é manual/Playwright. Risco crescente com ~100 rotas de API e regras de negócio em cascata (orçamento, reagendamento, custos).
 - **Reagendamento (P3.3):** a validação funcional real dependia de `prisma db push` aplicar `suggestedDeliveryDate`/`rescheduleStatus`. Os `db push` posteriores (17–20/09) sincronizam o schema inteiro, então as colunas provavelmente já estão no banco — **não verificado diretamente**.
-- `POST /api/auth/otp/request` sem limite de envio (só há limite de 3 tentativas na validação) — custo/abuso de WhatsApp.
+- `KI-20` — `POST /api/auth/otp/request` sem limite de envio (só há limite de 3 tentativas na validação) — custo/abuso de WhatsApp.
 - `KI-19` — `storeConfigService.ts` autoriza dentro do Service (violação de camada, baixo risco).
 - `KI-10` — `POST /api/orders` cria `Address` novo a cada pedido; a deduplicação do Módulo 2.L é só de exibição. O autocadastro/endereços salvos (setembro) reduzem, mas não eliminam, a causa raiz — não reavaliado.
 - Lista de papéis em `Sidebar.tsx` mantida à mão em paralelo a `src/proxy.ts` `ROLE_REQUIRED`.
-- `KI-03` — só o PIX segue faltando (WhatsApp resolvido no `5.B`); revisar o texto do KI.
+- `KI-03` — parcial: WhatsApp resolvido no `5.B`; falta só o PIX (`5.D`).
 - Dado ruim em produção: produto "Bolo Chocolate 25cm" com `imageUrl` apontando para um clip-art (precisa de novo upload em `/admin/produtos`).
 - `StoreConfig.phone` vazio — botão de WhatsApp da Vitrine oculto até o cadastro do telefone em `/admin/config`.
 

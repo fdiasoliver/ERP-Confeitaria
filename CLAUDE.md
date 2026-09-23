@@ -47,7 +47,7 @@ confeitaria-app/
 ├── QUALITY_GUIDELINES.md      # Checklists por etapa, classificação de achados
 ├── GOVERNANCE_DECISIONS.md    # Decisões metodológicas pendentes/resolvidas (GD-001…)
 ├── MODULE_*_CLOSURE.md        # Um documento de encerramento por módulo do Épico 2 (2.D–2.L, G.8)
-├── KNOWN_ISSUES.md            # Problemas conhecidos (KI-01 a KI-19) com prioridade
+├── KNOWN_ISSUES.md            # Problemas conhecidos (KI-01 a KI-20) com prioridade
 ├── PLAN.md                    # Plano de evolução e roadmap
 ├── REVIEW.md                  # Auditoria técnica e revisão de código
 ├── VISION.md                  # Visão estratégica do produto

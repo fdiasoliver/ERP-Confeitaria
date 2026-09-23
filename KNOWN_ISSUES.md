@@ -3,6 +3,7 @@
 Registro de todos os problemas identificados, dívidas técnicas e pendências.
 Produzido na Sprint A1 — Revisão Arquitetural (29/06/2026).
 Atualizado na Sprint A2 — Consolidação da Arquitetura (29/06/2026).
+Atualizado em 23/09/2026: KI-03 (parcial), KI-20 (novo), PEN-03.
 
 ---
 
@@ -21,10 +22,11 @@ Atualizado na Sprint A2 — Consolidação da Arquitetura (29/06/2026).
 **Resolução:** Removido `MOCK_CUSTOMER`. O checkout usa `useCurrentUser()` + `useSession()`. Se não autenticado: exibe tela de login. Se autenticado: preenche dados do destinatário a partir da sessão via `useEffect` + `useRef` (inicialização única).
 
 ### KI-03 — WhatsApp e PIX ausentes
-**Status:** BLOQUEADO — requer integração com API externa (Fase 8)
-**Descrição:** Nenhuma notificação WhatsApp é enviada após pedido criado, status atualizado ou produto pronto. Nenhuma integração PIX existe — o pagamento é apenas um campo enum no banco.
-**Impacto:** Operação real do negócio não funciona sem notificações automáticas.
-**Resolução:** Fase 8 (Integrações) — WhatsApp OTP + Notificações + PIX integrado.
+**Status:** PARCIAL — WhatsApp ✅ resolvido pelo Módulo `5.B` (05/08/2026); PIX ainda ausente (Módulo `5.D`, planejado)
+**Descrição original:** Nenhuma notificação WhatsApp era enviada após pedido criado, status atualizado ou produto pronto. Nenhuma integração PIX existe — o pagamento é apenas um campo enum no banco.
+**Resolvido (WhatsApp):** `whatsappClient.ts` (Evolution API), `whatsappNotificationService.ts` (4 status disparam mensagem: Confirmado/Pronto/Saiu para entrega/Entregue), OTP de login, envio de orçamento (`quote_shared`) e sugestão de reagendamento (`order_reschedule_suggested`) — ver `CHANGELOG.md`, Módulo 5.B e Módulo P3.3.
+**Pendente (PIX):** geração de cobrança, QR Code e webhook de confirmação; `paymentStatus` só muda manualmente. Variáveis `PIX_*` do `.env.example` ainda não são usadas no código.
+**Resolução:** Módulo `5.D` (`PLAN.md`, Épico 5).
 **Prioridade:** Alta (para uso em produção)
 
 ---
@@ -134,6 +136,14 @@ Atualizado na Sprint A2 — Consolidação da Arquitetura (29/06/2026).
 **Resolução:** Mover a checagem para `PATCH /api/config` via `requireAdmin()`/`requireRole()`, e o Service voltar a assumir que quem o chama já validou autorização — decisão explícita do Product Owner de tratar em sprint técnica dedicada, fora do escopo de `PRIV.2` (ADR-021, `CLAUDE.md`).
 **Prioridade:** Baixa
 
+### KI-20 — `POST /api/auth/otp/request` sem limite de envio
+**Status:** ABERTO — achado em 23/09/2026 ao atualizar a documentação; confirmado por leitura de `src/lib/otpService.ts` (só existem `OTP_EXPIRATION_MINUTES = 5` e `OTP_MAX_ATTEMPTS = 3`, ambos sobre a validação do código)
+**Arquivo:** `src/app/api/auth/otp/request/route.ts`, `src/lib/otpService.ts`
+**Descrição:** A rota pública que gera e envia o código por WhatsApp não tem limite de requisições por telefone nem por IP. O limite de 3 tentativas aplica-se só à validação do código já enviado.
+**Impacto:** Qualquer chamador pode disparar mensagens de WhatsApp reais (instância Evolution API em produção) para qualquer número, sem freio.
+**Resolução:** Não definida — estratégia de rate limiting consta em `CLAUDE.md` ("A definir").
+**Prioridade:** Média
+
 ---
 
 ## Bug Crítico (introduzido na Sprint A2)
@@ -154,7 +164,7 @@ Atualizado na Sprint A2 — Consolidação da Arquitetura (29/06/2026).
 |----|-----------|--------|--------|
 | PEN-01 | Checkout não persistia pedidos | ✅ Resolvido (Sprint 0.6) | — |
 | PEN-02 | /pedidos usava MOCK_ORDERS | ✅ Resolvido (Sprint 0.6) | — |
-| PEN-03 | /admin/producao usa dados hardcoded | 🔲 Aberto — Sprint 1 | KI-04 |
+| PEN-03 | /admin/producao usa dados hardcoded | ✅ Resolvido — Módulo 2.K (02/08/2026) | KI-04 |
 | PEN-04 | Auth OTP cliente sem backend | ✅ Resolvido — Módulo 5.B | KI-05 |
 | PEN-05 | Produtos têm imageUrl=null, vitrine usa imageEmoji | ✅ Tipo alinhado — upload pendente Fase 8 | KI-06 |
 
