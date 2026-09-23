@@ -41,7 +41,7 @@
 
 **Épico 1 e Épico 2:** encerrados.
 **Épico 3:** P3.1 e P3.2 concluídos.
-**Épico 4:** Usuários, Calendário (P3.3), PWA e Tema entregues (não há entrada de "concluído" formal do épico em `PLAN.md`; a tabela de épicos ainda o lista como "Planejado").
+**Épico 4:** itens originais entregues (Usuários, Calendário P3.3, PWA, Tema e Cálculo de distância via `5.A`); sem documento de encerramento do épico.
 **Épico 5:** `5.A`, `5.B`, `5.E` concluídos; `5.D` (PIX) planejado — depende de confirmar domínio/HTTPS público para o webhook (em produção o domínio já existe, então o bloqueio original provavelmente caiu, mas não foi reavaliado).
 **Épico 6 (Experiência do Cliente):** planejado — detalhe de pedido (`/pedidos/[id]`), fotos de referência.
 **Sprint `I.4`:** 🟡 ainda marcada "em andamento" em `PLAN.md` (PIX e Google Maps sem configuração confirmada em produção; `MODULE_I4_CLOSURE.md` não criado).
@@ -95,7 +95,7 @@ Ordem cronológica inversa (fonte: `git log`; itens com `CHANGELOG.md` marcados 
 - `StoreConfig.phone` vazio — botão de WhatsApp da Vitrine oculto até o cadastro do telefone em `/admin/config`.
 
 **Documentais:**
-- `CHANGELOG.md` sem entradas para vários módulos de setembro (lista acima); `PLAN.md` com a tabela de épicos desatualizada (Épico 4 "Planejado", Épico 6) e Sprint `I.4` ainda "em andamento".
+- `CHANGELOG.md` sem entradas para vários módulos de setembro (lista acima); Sprint `I.4` ainda "em andamento" em `PLAN.md`. `PLAN.md` e `KNOWN_ISSUES.md` atualizados em 23/09/2026.
 - `CLAUDE.md` atualizado nesta mesma sessão (estrutura, stack, infraestrutura, autenticação, status); a credencial de admin antiga foi removida do arquivo por segurança.
 - `MENU_STRUCTURE.md`/`SCREENS.md` desatualizados desde a Sprint P1 para praticamente todos os módulos.
 - Backlog de Product Review de 13/09 (8 itens de UX/UI/acessibilidade em `/admin/relatorios`) e "Vitrine com layout errado" (13/09, possivelmente superado pelo redesenho de 20/09) em `PLAN.md`.
