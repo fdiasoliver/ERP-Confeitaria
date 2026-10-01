@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
+import { EntityForm } from "@/components/admin/shared/EntityForm";
 import { toast } from "sonner";
 import type { ValidationError } from "@/lib/types";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
@@ -111,99 +112,68 @@ function RecipeEditModal({ form, errors, submitting, onClose, onChange, onSubmit
   onSubmit: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-end bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-white pb-8 pt-5 px-5">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-chocolate">Editar receita</h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="text-muted text-xl">✕</button>
-        </div>
+    <EntityForm title="Editar receita" submitting={submitting} submitLabel="Salvar" onClose={onClose} onSubmit={onSubmit}>
+      <Field label="Nome" required htmlFor="rec-edit-name" error={errors.name}>
+        <input
+          id="rec-edit-name"
+          className={`input-field ${errors.name ? "border-rose" : ""}`}
+          value={form.name}
+          onChange={(e) => onChange("name", e.target.value)}
+          maxLength={150}
+          disabled={submitting}
+        />
+      </Field>
 
-        <div className="space-y-4">
-          <Field label="Nome" required htmlFor="rec-edit-name" error={errors.name}>
-            <input
-              id="rec-edit-name"
-              className={`input-field ${errors.name ? "border-rose" : ""}`}
-              value={form.name}
-              onChange={(e) => onChange("name", e.target.value)}
-              maxLength={150}
-              disabled={submitting}
-            />
-          </Field>
+      <Field label="Descrição (opcional)" htmlFor="rec-edit-description" error={errors.description}>
+        <textarea
+          id="rec-edit-description"
+          className={`input-field ${errors.description ? "border-rose" : ""}`}
+          value={form.description}
+          onChange={(e) => onChange("description", e.target.value)}
+          maxLength={500}
+          rows={2}
+          disabled={submitting}
+        />
+      </Field>
 
-          <Field label="Descrição (opcional)" htmlFor="rec-edit-description" error={errors.description}>
-            <textarea
-              id="rec-edit-description"
-              className={`input-field ${errors.description ? "border-rose" : ""}`}
-              value={form.description}
-              onChange={(e) => onChange("description", e.target.value)}
-              maxLength={500}
-              rows={2}
-              disabled={submitting}
-            />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Rendimento" required htmlFor="rec-edit-yield-qty" error={errors.yieldQuantity}>
-              <input
-                id="rec-edit-yield-qty"
-                type="number"
-                step="any"
-                min={0}
-                className={`input-field ${errors.yieldQuantity ? "border-rose" : ""}`}
-                value={form.yieldQuantity}
-                onChange={(e) => onChange("yieldQuantity", e.target.value)}
-                disabled={submitting}
-              />
-            </Field>
-            <Field label="Unidade de rendimento" required htmlFor="rec-edit-yield-unit" error={errors.yieldUnit}>
-              <input
-                id="rec-edit-yield-unit"
-                className={`input-field ${errors.yieldUnit ? "border-rose" : ""}`}
-                value={form.yieldUnit}
-                onChange={(e) => onChange("yieldUnit", e.target.value)}
-                maxLength={60}
-                disabled={submitting}
-              />
-            </Field>
-          </div>
-
-          <Field label="Tempo de preparo (minutos)" htmlFor="rec-edit-prep-time" error={errors.prepTimeMinutes}>
-            <input
-              id="rec-edit-prep-time"
-              type="number"
-              step="1"
-              min={0}
-              className={`input-field ${errors.prepTimeMinutes ? "border-rose" : ""}`}
-              value={form.prepTimeMinutes}
-              onChange={(e) => onChange("prepTimeMinutes", e.target.value)}
-              disabled={submitting}
-            />
-          </Field>
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Rendimento" required htmlFor="rec-edit-yield-qty" error={errors.yieldQuantity}>
+          <input
+            id="rec-edit-yield-qty"
+            type="number"
+            step="any"
+            min={0}
+            className={`input-field ${errors.yieldQuantity ? "border-rose" : ""}`}
+            value={form.yieldQuantity}
+            onChange={(e) => onChange("yieldQuantity", e.target.value)}
             disabled={submitting}
-            className="flex-1 rounded-xl border border-sand py-3 text-sm font-semibold text-chocolate disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
+          />
+        </Field>
+        <Field label="Unidade de rendimento" required htmlFor="rec-edit-yield-unit" error={errors.yieldUnit}>
+          <input
+            id="rec-edit-yield-unit"
+            className={`input-field ${errors.yieldUnit ? "border-rose" : ""}`}
+            value={form.yieldUnit}
+            onChange={(e) => onChange("yieldUnit", e.target.value)}
+            maxLength={60}
             disabled={submitting}
-            className="flex-1 rounded-xl bg-chocolate py-3 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {submitting ? "Salvando…" : "Salvar"}
-          </button>
-        </div>
+          />
+        </Field>
       </div>
-    </div>
+
+      <Field label="Tempo de preparo (minutos)" htmlFor="rec-edit-prep-time" error={errors.prepTimeMinutes}>
+        <input
+          id="rec-edit-prep-time"
+          type="number"
+          step="1"
+          min={0}
+          className={`input-field ${errors.prepTimeMinutes ? "border-rose" : ""}`}
+          value={form.prepTimeMinutes}
+          onChange={(e) => onChange("prepTimeMinutes", e.target.value)}
+          disabled={submitting}
+        />
+      </Field>
+    </EntityForm>
   );
 }
 
@@ -218,82 +188,51 @@ function AddItemModal({ form, errors, submitting, ingredients, units, onClose, o
   onSubmit: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-end bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="w-full rounded-t-3xl bg-white pb-8 pt-5 px-5">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-chocolate">Adicionar ingrediente</h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="text-muted text-xl">✕</button>
-        </div>
+    <EntityForm title="Adicionar ingrediente" size="compact" submitting={submitting} submitLabel="Adicionar" onClose={onClose} onSubmit={onSubmit}>
+      <Field label="Ingrediente" required htmlFor="add-item-ingredient" error={errors.ingredientId}>
+        <select
+          id="add-item-ingredient"
+          className={`input-field ${errors.ingredientId ? "border-rose" : ""}`}
+          value={form.ingredientId}
+          onChange={(e) => onChange("ingredientId", e.target.value)}
+          disabled={submitting}
+        >
+          <option value="">Selecione…</option>
+          {ingredients.map((i) => (
+            <option key={i.id} value={i.id}>{i.name}</option>
+          ))}
+        </select>
+      </Field>
 
-        <div className="space-y-4">
-          <Field label="Ingrediente" required htmlFor="add-item-ingredient" error={errors.ingredientId}>
-            <select
-              id="add-item-ingredient"
-              className={`input-field ${errors.ingredientId ? "border-rose" : ""}`}
-              value={form.ingredientId}
-              onChange={(e) => onChange("ingredientId", e.target.value)}
-              disabled={submitting}
-            >
-              <option value="">Selecione…</option>
-              {ingredients.map((i) => (
-                <option key={i.id} value={i.id}>{i.name}</option>
-              ))}
-            </select>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Quantidade" required htmlFor="add-item-qty" error={errors.quantity}>
-              <input
-                id="add-item-qty"
-                type="number"
-                step="any"
-                min={0}
-                className={`input-field ${errors.quantity ? "border-rose" : ""}`}
-                value={form.quantity}
-                onChange={(e) => onChange("quantity", e.target.value)}
-                disabled={submitting}
-              />
-            </Field>
-            <Field label="Unidade" required htmlFor="add-item-unit" error={errors.unitId}>
-              <select
-                id="add-item-unit"
-                className={`input-field ${errors.unitId ? "border-rose" : ""}`}
-                value={form.unitId}
-                onChange={(e) => onChange("unitId", e.target.value)}
-                disabled={submitting}
-              >
-                <option value="">Selecione…</option>
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
-                ))}
-              </select>
-            </Field>
-          </div>
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Quantidade" required htmlFor="add-item-qty" error={errors.quantity}>
+          <input
+            id="add-item-qty"
+            type="number"
+            step="any"
+            min={0}
+            className={`input-field ${errors.quantity ? "border-rose" : ""}`}
+            value={form.quantity}
+            onChange={(e) => onChange("quantity", e.target.value)}
             disabled={submitting}
-            className="flex-1 rounded-xl border border-sand py-3 text-sm font-semibold text-chocolate disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
+          />
+        </Field>
+        <Field label="Unidade" required htmlFor="add-item-unit" error={errors.unitId}>
+          <select
+            id="add-item-unit"
+            className={`input-field ${errors.unitId ? "border-rose" : ""}`}
+            value={form.unitId}
+            onChange={(e) => onChange("unitId", e.target.value)}
             disabled={submitting}
-            className="flex-1 rounded-xl bg-chocolate py-3 text-sm font-semibold text-white disabled:opacity-50"
           >
-            {submitting ? "Adicionando…" : "Adicionar"}
-          </button>
-        </div>
+            <option value="">Selecione…</option>
+            {units.map((u) => (
+              <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
+            ))}
+          </select>
+        </Field>
       </div>
-    </div>
+    </EntityForm>
   );
 }
 
@@ -308,64 +247,35 @@ function EditItemModal({ item, form, errors, submitting, units, onClose, onChang
   onSubmit: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-end bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="w-full rounded-t-3xl bg-white pb-8 pt-5 px-5">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-chocolate">Editar {item.ingredientName}</h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="text-muted text-xl">✕</button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Quantidade" required htmlFor="edit-item-qty" error={errors.quantity}>
-            <input
-              id="edit-item-qty"
-              type="number"
-              step="any"
-              min={0}
-              className={`input-field ${errors.quantity ? "border-rose" : ""}`}
-              value={form.quantity}
-              onChange={(e) => onChange("quantity", e.target.value)}
-              disabled={submitting}
-            />
-          </Field>
-          <Field label="Unidade" required htmlFor="edit-item-unit" error={errors.unitId}>
-            <select
-              id="edit-item-unit"
-              className={`input-field ${errors.unitId ? "border-rose" : ""}`}
-              value={form.unitId}
-              onChange={(e) => onChange("unitId", e.target.value)}
-              disabled={submitting}
-            >
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
+    <EntityForm title={`Editar ${item.ingredientName}`} size="compact" submitting={submitting} submitLabel="Salvar" onClose={onClose} onSubmit={onSubmit}>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Quantidade" required htmlFor="edit-item-qty" error={errors.quantity}>
+          <input
+            id="edit-item-qty"
+            type="number"
+            step="any"
+            min={0}
+            className={`input-field ${errors.quantity ? "border-rose" : ""}`}
+            value={form.quantity}
+            onChange={(e) => onChange("quantity", e.target.value)}
             disabled={submitting}
-            className="flex-1 rounded-xl border border-sand py-3 text-sm font-semibold text-chocolate disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
+          />
+        </Field>
+        <Field label="Unidade" required htmlFor="edit-item-unit" error={errors.unitId}>
+          <select
+            id="edit-item-unit"
+            className={`input-field ${errors.unitId ? "border-rose" : ""}`}
+            value={form.unitId}
+            onChange={(e) => onChange("unitId", e.target.value)}
             disabled={submitting}
-            className="flex-1 rounded-xl bg-chocolate py-3 text-sm font-semibold text-white disabled:opacity-50"
           >
-            {submitting ? "Salvando…" : "Salvar"}
-          </button>
-        </div>
+            {units.map((u) => (
+              <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
+            ))}
+          </select>
+        </Field>
       </div>
-    </div>
+    </EntityForm>
   );
 }
 

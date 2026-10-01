@@ -16,16 +16,19 @@ export function Field({
   required,
   error,
   htmlFor,
+  className,
   children,
 }: {
   label: string;
   required?: boolean;
   error?: string;
   htmlFor?: string;
+  /** Classes extras no wrapper — ex.: `md:col-span-2` para ocupar a linha toda no EntityForm de 2 colunas. */
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div className={className}>
       <Label htmlFor={htmlFor} className="mb-1 text-sm font-medium text-chocolate">
         {label}
         {required && <span className="ml-0.5 text-rose">*</span>}
@@ -42,13 +45,15 @@ export function inputClass(field: string, errors: Record<string, string>): strin
 
 export function Section({
   title,
+  className,
   children,
 }: {
   title: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <Card className="shadow-card gap-0 rounded-2xl p-5">
+    <Card className={`shadow-card gap-0 rounded-2xl p-5${className ? ` ${className}` : ""}`}>
       <h2 className="font-display mb-4 text-base font-semibold text-chocolate">{title}</h2>
       <div className="space-y-4">{children}</div>
     </Card>

@@ -843,7 +843,7 @@ function ProdutosAdminPageContent() {
             />
           </Section>
 
-          <Section title="Receitas vinculadas">
+          <Section title="Receitas vinculadas" className="md:col-span-2">
             <div className="-mt-1 flex items-center justify-between">
               <p className="text-xs text-muted">Opcional — usado para calcular o custo do produto.</p>
               <button

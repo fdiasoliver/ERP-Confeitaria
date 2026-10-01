@@ -573,7 +573,7 @@ function ReceitasAdminPageContent() {
             />
           </Field>
 
-          <div>
+          <div className="md:col-span-2">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-medium text-chocolate">
                 Ingredientes <span className="text-rose">*</span>

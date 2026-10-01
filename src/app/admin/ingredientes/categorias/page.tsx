@@ -254,7 +254,7 @@ export default function IngredientCategoriasAdminPage() {
       </div>
 
       {modal && (
-        <EntityForm
+        <EntityForm size="compact"
           title={modal === "create" ? "Nova categoria" : "Editar categoria"}
           submitting={submitting}
           submitLabel={modal === "create" ? "Criar" : "Salvar"}

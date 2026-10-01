@@ -811,10 +811,10 @@ function OrcamentosAdminPageContent() {
           )}
 
           {form.deliveryType !== "RETIRADA" && (
-            <div className="space-y-3 rounded-xl border border-sand p-3">
-              <p className="text-xs font-medium text-muted">Endereço de entrega</p>
+            <div className="space-y-3 rounded-xl border border-sand p-3 md:col-span-2 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
+              <p className="text-xs font-medium text-muted md:col-span-2">Endereço de entrega</p>
               {formErrors.deliveryAddress && (
-                <p className="rounded-lg bg-rose/10 px-3 py-2 text-xs text-rose">{formErrors.deliveryAddress}</p>
+                <p className="rounded-lg bg-rose/10 px-3 py-2 text-xs text-rose md:col-span-2">{formErrors.deliveryAddress}</p>
               )}
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
@@ -891,7 +891,7 @@ function OrcamentosAdminPageContent() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:col-span-2">
             <Field label="Destinatário (opcional)" htmlFor="order-receiver-name">
               <input
                 id="order-receiver-name"
@@ -938,7 +938,7 @@ function OrcamentosAdminPageContent() {
             />
           </Field>
 
-          <div>
+          <div className="md:col-span-2">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-medium text-chocolate">
                 Itens <span className="text-rose">*</span>
@@ -954,7 +954,7 @@ function OrcamentosAdminPageContent() {
             </div>
             {formErrors.items && <p className="mb-2 text-xs text-rose">{formErrors.items}</p>}
 
-            <div className="space-y-3">
+            <div className="space-y-3 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
               {form.items.map((item, index) => {
                 const product = products.find((p) => p.id === item.productId);
                 return (
@@ -1015,7 +1015,7 @@ function OrcamentosAdminPageContent() {
             </div>
           </div>
 
-          <div className="rounded-xl bg-sand/40 p-3">
+          <div className="rounded-xl bg-sand/40 p-3 md:col-span-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted">Itens</span>
               <span className="text-chocolate">{formatCurrency(itemsSubtotal)}</span>

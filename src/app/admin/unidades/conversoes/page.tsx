@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
+import { EntityForm } from "@/components/admin/shared/EntityForm";
 import { toast } from "sonner";
 import type { ValidationError } from "@/lib/types";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
@@ -101,96 +102,63 @@ function ConversionModal({ mode, form, errors, submitting, units, onClose, onCha
   onSubmit: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-end bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="w-full rounded-t-3xl bg-white pb-8 pt-5 px-5">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-chocolate">
-            {mode === "create" ? "Nova conversão" : "Editar conversão"}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="text-muted text-xl">✕</button>
-        </div>
+    <EntityForm title={mode === "create" ? "Nova conversão" : "Editar conversão"} submitting={submitting} submitLabel={mode === "create" ? "Criar" : "Salvar"} onClose={onClose} onSubmit={onSubmit}>
+      <Field label="Unidade de origem" required htmlFor="conv-from" error={errors.fromUnitId}>
+        <select
+          id="conv-from"
+          className={`input-field ${errors.fromUnitId ? "border-rose" : ""}`}
+          value={form.fromUnitId}
+          onChange={(e) => onChange("fromUnitId", e.target.value)}
+          disabled={submitting}
+        >
+          <option value="">Selecione…</option>
+          {units.map((u) => (
+            <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
+          ))}
+        </select>
+      </Field>
 
-        <div className="space-y-4">
-          <Field label="Unidade de origem" required htmlFor="conv-from" error={errors.fromUnitId}>
-            <select
-              id="conv-from"
-              className={`input-field ${errors.fromUnitId ? "border-rose" : ""}`}
-              value={form.fromUnitId}
-              onChange={(e) => onChange("fromUnitId", e.target.value)}
-              disabled={submitting}
-            >
-              <option value="">Selecione…</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
-              ))}
-            </select>
-          </Field>
+      <Field label="Unidade de destino" required htmlFor="conv-to" error={errors.toUnitId}>
+        <select
+          id="conv-to"
+          className={`input-field ${errors.toUnitId ? "border-rose" : ""}`}
+          value={form.toUnitId}
+          onChange={(e) => onChange("toUnitId", e.target.value)}
+          disabled={submitting}
+        >
+          <option value="">Selecione…</option>
+          {units.map((u) => (
+            <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
+          ))}
+        </select>
+      </Field>
 
-          <Field label="Unidade de destino" required htmlFor="conv-to" error={errors.toUnitId}>
-            <select
-              id="conv-to"
-              className={`input-field ${errors.toUnitId ? "border-rose" : ""}`}
-              value={form.toUnitId}
-              onChange={(e) => onChange("toUnitId", e.target.value)}
-              disabled={submitting}
-            >
-              <option value="">Selecione…</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
-              ))}
-            </select>
-          </Field>
+      <Field label="Fator (1 origem = quantos destino)" required htmlFor="conv-factor" error={errors.factor}>
+        <input
+          id="conv-factor"
+          type="number"
+          step="any"
+          min={0}
+          className={`input-field ${errors.factor ? "border-rose" : ""}`}
+          value={form.factor}
+          onChange={(e) => onChange("factor", e.target.value)}
+          placeholder="Ex: 1000"
+          disabled={submitting}
+        />
+      </Field>
 
-          <Field label="Fator (1 origem = quantos destino)" required htmlFor="conv-factor" error={errors.factor}>
-            <input
-              id="conv-factor"
-              type="number"
-              step="any"
-              min={0}
-              className={`input-field ${errors.factor ? "border-rose" : ""}`}
-              value={form.factor}
-              onChange={(e) => onChange("factor", e.target.value)}
-              placeholder="Ex: 1000"
-              disabled={submitting}
-            />
-          </Field>
-
-          <Field label="Descrição (opcional)" htmlFor="conv-description" error={errors.description}>
-            <input
-              id="conv-description"
-              className={`input-field ${errors.description ? "border-rose" : ""}`}
-              value={form.description}
-              onChange={(e) => onChange("description", e.target.value)}
-              placeholder="Ex: 1 kg = 1000 g"
-              maxLength={200}
-              disabled={submitting}
-            />
-          </Field>
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 rounded-xl border border-sand py-3 text-sm font-semibold text-chocolate disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={submitting}
-            className="flex-1 rounded-xl bg-chocolate py-3 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {submitting ? "Salvando…" : mode === "create" ? "Criar" : "Salvar"}
-          </button>
-        </div>
-      </div>
-    </div>
+      <Field label="Descrição (opcional)" htmlFor="conv-description" error={errors.description}>
+        <input
+          id="conv-description"
+          className={`input-field ${errors.description ? "border-rose" : ""}`}
+          value={form.description}
+          onChange={(e) => onChange("description", e.target.value)}
+          placeholder="Ex: 1 kg = 1000 g"
+          maxLength={200}
+          disabled={submitting}
+        />
+      </Field>
+    </EntityForm>
   );
 }
 

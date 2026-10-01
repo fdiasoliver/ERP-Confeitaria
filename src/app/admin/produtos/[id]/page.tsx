@@ -86,7 +86,7 @@ function AddPackagingModal({ form, errors, submitting, packagings, onClose, onCh
   onSubmit: () => void;
 }) {
   return (
-    <EntityForm title="Adicionar embalagem" submitting={submitting} submitLabel="Adicionar" onClose={onClose} onSubmit={onSubmit}>
+    <EntityForm size="compact" title="Adicionar embalagem" submitting={submitting} submitLabel="Adicionar" onClose={onClose} onSubmit={onSubmit}>
       <Field label="Embalagem" required htmlFor="add-packaging-id" error={errors.packagingId}>
         <select
           id="add-packaging-id"
@@ -128,7 +128,7 @@ function EditPackagingQuantityModal({ link, quantity, error, submitting, onClose
   onSubmit: () => void;
 }) {
   return (
-    <EntityForm title={`Editar ${link.packagingName}`} submitting={submitting} submitLabel="Salvar" onClose={onClose} onSubmit={onSubmit}>
+    <EntityForm size="compact" title={`Editar ${link.packagingName}`} submitting={submitting} submitLabel="Salvar" onClose={onClose} onSubmit={onSubmit}>
       <Field label="Quantidade" required htmlFor="edit-packaging-qty" error={error}>
         <input
           id="edit-packaging-qty"

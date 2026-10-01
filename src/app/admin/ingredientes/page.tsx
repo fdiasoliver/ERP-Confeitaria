@@ -554,7 +554,7 @@ export default function IngredientesAdminPage() {
             </select>
           </Field>
 
-          <label className="flex items-center gap-2 text-sm text-chocolate">
+          <label className="flex items-center gap-2 text-sm text-chocolate md:col-span-2">
             <input
               type="checkbox"
               checked={form.usePackagePrice}

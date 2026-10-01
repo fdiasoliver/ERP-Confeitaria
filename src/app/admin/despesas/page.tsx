@@ -577,7 +577,7 @@ export default function DespesasAdminPage() {
             </select>
           </Field>
 
-          <Field label="Observações (opcional)" htmlFor="exp-notes" error={formErrors.notes}>
+          <Field label="Observações (opcional)" htmlFor="exp-notes" error={formErrors.notes} className="md:col-span-2">
             <textarea
               id="exp-notes"
               className={`input-field ${formErrors.notes ? "border-rose" : ""}`}
