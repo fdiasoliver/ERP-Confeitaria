@@ -711,6 +711,16 @@ Envio best-effort — falha de envio (provedor indisponível, etc.) nunca bloque
 - **Sem histórico dedicado:** diferente da regra geral da Seção 12.1 (toda mudança de `OrderStatus` registrada em `OrderStatusHistory`), mudanças de `rescheduleStatus` não são registradas ali — `OrderStatusHistory` é tipado estritamente para `OrderStatus`, não para `RescheduleStatus`. A trilha de auditoria mínima vem do `WhatsAppLog`.
 - **Reagendamentos múltiplos/consecutivos no mesmo pedido:** A definir (schema guarda só a sugestão pendente atual, sem histórico).
 
+## 12.12 Desconto no orçamento (definido em 01/10/2026)
+
+- A equipe pode aplicar um desconto ao criar ou editar um orçamento (`/admin/orcamentos`), em **R$** (`DiscountType.VALOR`) ou **%** (`DiscountType.PERCENTUAL`). O valor digitado fica em `Order.discountValue`; o valor em reais já calculado fica em `Order.discountAmount`.
+- **Base de cálculo:** só o subtotal dos itens — nunca a taxa de entrega. `total = subtotal − discountAmount + deliveryFee`.
+- **Limites:** desconto não pode ser negativo; percentual até 100%; valor em R$ até o subtotal dos itens. Violação é rejeitada com erro de validação (`discountValue`).
+- **Cálculo sempre no servidor** (`resolveQuoteTotals`, `src/lib/orderService.ts`): subtotal, desconto e total são recalculados a partir dos itens — valores de subtotal/total enviados pelo front são ignorados.
+- **Ajuste pelo cliente no link público** (`/orcamento/[token]`, quantidade/remoção de itens): percentual é reaplicado sobre o novo subtotal; valor em R$ é mantido, limitado ao novo subtotal.
+- **Relatórios:** faturamento, ticket médio, Fluxo de caixa e DRE usam `Order.total` (já com desconto). A quebra por categoria de produto soma `OrderItem.totalPrice` (sem desconto) — pode não fechar com o faturamento total quando houver pedido com desconto.
+- Pedidos do checkout público não têm desconto (`discountType = null`, `discountAmount = 0`).
+
 ---
 
 # 13. Financeiro

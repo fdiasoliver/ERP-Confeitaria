@@ -4,6 +4,64 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Módulo Orçamentos] — 2026-10-01 — Desconto no orçamento (R$ ou %)
+
+**Tipo:** Nova funcionalidade em `/admin/orcamentos` e no orçamento público (`/orcamento/[token]`). Regra registrada em `REGRAS_NEGOCIO.md` Seção 12.12.
+
+### Implementação
+
+- **Schema:** enum `DiscountType` (`VALOR`, `PERCENTUAL`); `Order` ganha `discountType DiscountType?`, `discountValue Decimal(10,2) @default(0)`, `discountAmount Decimal(10,2) @default(0)`.
+- **`src/lib/orderService.ts`:** `resolveQuoteTotals` recalcula subtotal (soma dos itens), desconto e total (`subtotal − desconto + entrega`) em `createOrder`/`updateOrder` — `subtotal`/`total` do payload passam a ser ignorados; validação `discountValue` (não negativo, % ≤ 100, R$ ≤ subtotal). `recalculateDiscountAmount` reaplica o desconto em `updatePublicQuoteItemQuantity`/`removePublicQuoteItem` (% reaplicado; R$ limitado ao novo subtotal). `OrderDTO` e `PublicQuoteDTO` ganham `discountType`, `discountValue`, `discountAmount`.
+- **`src/lib/repositories/orderRepository.ts`:** campos de desconto em `createOrderWithItems`/`updateOrderWithItems`; `updateItemQuantityAndTotals`/`removeItemAndRecalculateTotals` recebem `newDiscountAmount`.
+- **`src/lib/types.ts`:** `DiscountType` e `DISCOUNT_TYPE_LABELS`.
+- **`/admin/orcamentos`:** campo "Desconto (opcional)" com seletor R$/% (criação e edição), validação no formulário e linha "Desconto" no resumo de totais.
+- **`/orcamento/[token]`:** linhas "Subtotal" e "Desconto" acima do total quando há desconto.
+- **Clientes HTTP:** `orderAdminApi.ts` e `publicQuoteApi.ts` com os campos novos.
+
+**Arquivos alterados:** `prisma/schema.prisma`, `src/lib/orderService.ts`, `src/lib/repositories/orderRepository.ts`, `src/lib/types.ts`, `src/lib/api/orderAdminApi.ts`, `src/lib/api/publicQuoteApi.ts`, `src/app/admin/orcamentos/page.tsx`, `src/app/(client)/orcamento/[token]/page.tsx`, `REGRAS_NEGOCIO.md`.
+
+### Validação
+
+- `npx prisma migrate diff` antes do push: só `CREATE TYPE "DiscountType"` e 3 colunas novas em `Order`. `npx prisma db push --skip-generate` aplicado ao Supabase real (autorizado pelo Product Owner); diff posterior vazio. `npx prisma generate` executado.
+- `npx tsc --noEmit` e `npx eslint`: 0 erros.
+- API real (sessão admin, banco Supabase real): criação com 10% sobre subtotal R$ 285,00 → desconto R$ 28,50, total R$ 256,50 (subtotal/total enviados como 999999 ignorados); edição com R$ acima do subtotal → `400` (`discountValue`, `MAX`); 150% → `400`; edição para R$ 5,00 → total R$ 280,00; link público, quantidade 2 → 1 → subtotal R$ 190,00, desconto R$ 19,00, total R$ 171,00.
+- Navegador (Playwright, 1400px): formulário de edição exibindo R$/%, 10% e resumo com desconto; orçamento público exibindo Subtotal/Desconto/Total.
+- Orçamentos de teste (#28, #29) removidos do banco ao final.
+
+---
+
+## [Admin — Formulários] — 2026-10-01 — Cadastro e edição com o mesmo formulário largo
+
+**Tipo:** Mudança de layout em todas as telas de cadastro/edição do admin.
+
+### Implementação
+
+- **`src/components/admin/shared/EntityForm.tsx`:** prop `size` — `"wide"` (padrão): `md:max-w-4xl`, filhos em grade de 2 colunas a partir de `md`, botões alinhados à direita; `"compact"`: `md:max-w-lg`, 1 coluna. Mobile (bottom sheet) inalterado.
+- **`src/components/admin/config/FormPrimitives.tsx`:** `Field` e `Section` aceitam `className` opcional.
+- **Itens com linha inteira (`md:col-span-2`):** bloco de endereço, destinatário, itens e totais (`orcamentos`); "Receitas vinculadas" (`produtos`); ingredientes (`receitas`); observações (`despesas`); opção de preço por embalagem (`ingredientes`).
+- **`size="compact"`:** `embalagens/categorias`, `ingredientes/categorias`, `produtos/[id]` (vínculo de embalagem).
+- **Modais escritos à mão substituídos por `EntityForm`:** editar receita, adicionar/editar ingrediente da receita (`receitas/[id]`), adicionar/editar endereço (`clientes/[id]`), nova/editar conversão (`unidades/conversoes`).
+
+**Arquivos alterados:** `src/components/admin/shared/EntityForm.tsx`, `src/components/admin/config/FormPrimitives.tsx`, `src/app/admin/orcamentos/page.tsx`, `src/app/admin/produtos/page.tsx`, `src/app/admin/produtos/[id]/page.tsx`, `src/app/admin/receitas/page.tsx`, `src/app/admin/receitas/[id]/page.tsx`, `src/app/admin/despesas/page.tsx`, `src/app/admin/ingredientes/page.tsx`, `src/app/admin/ingredientes/categorias/page.tsx`, `src/app/admin/embalagens/categorias/page.tsx`, `src/app/admin/clientes/[id]/page.tsx`, `src/app/admin/unidades/conversoes/page.tsx`, `DESIGN_SYSTEM.md`.
+
+### Validação
+
+`npx tsc --noEmit` e `npx eslint`: 0 erros. Navegador (Playwright, sessão admin real): "Novo produto", "Novo orçamento", "Nova despesa", "Novo cliente" em 1400px (2 colunas) e "Novo produto" em 390px (bottom sheet, 1 coluna); 0 erros de console.
+
+---
+
+## [Admin + Área do cliente] — 2026-10-01 — Lista como visão padrão
+
+**Tipo:** Mudança de padrão de exibição.
+
+- **`src/hooks/useViewMode.ts`:** padrão passa de `"grid"` (Cards) para `"list"` (Lista) nas 17 telas com `ViewToggle` (admin, Vitrine e Meus Pedidos). Prefixo do `localStorage` trocado de `admin-view:` para `admin-view-v2:`; as chaves antigas são removidas na leitura — escolhas salvas anteriormente foram descartadas, por decisão do Product Owner.
+
+### Validação
+
+`npx tsc --noEmit`: 0 erros. Navegador: `/admin/produtos`, `/admin/orcamentos`, `/admin/despesas`, `/admin/clientes` abrindo em Lista.
+
+---
+
 ## [Governança — ADR-027] — 2026-10-01 — Vercel declarada ambiente oficial de produção
 
 **Tipo:** Decisão arquitetural do Product Owner — resolve a divergência registrada na ADR-026 (06/09/2026), opção (a). Nenhum código alterado.

@@ -1318,10 +1318,12 @@ Eliminar a duplicação identificada na Sprint 2.E.6 (`MODULE_2E_UX_REVIEW.md`) 
 - **Implementação (Sprint `DS.5`, ADR-025):** construído sobre `Card` do shadcn/ui.
 
 ### `EntityForm`
-- **Responsabilidade:** shell de modal de criação/edição — bottom sheet em mobile (`< 768px`), centralizado em desktop (`≥ 768px`, `max-w-lg`), conforme `DESIGN_SYSTEM.md` #7. Trap de foco, fechamento por `Escape`/clique no overlay, foco automático no primeiro campo.
-- **Propriedades:** `title`, `submitting`, `submitLabel`, `cancelLabel?` (default "Cancelar"), `onClose`, `onSubmit`, `children` (campos do formulário).
+- **Responsabilidade:** shell de modal de criação/edição — bottom sheet em mobile (`< 768px`), centralizado em desktop (`≥ 768px`), conforme `DESIGN_SYSTEM.md` #7. Trap de foco, fechamento por `Escape`/clique no overlay, foco automático no primeiro campo.
+- **Propriedades:** `title`, `submitting`, `submitLabel`, `cancelLabel?` (default "Cancelar"), `size?` (`"wide"` padrão | `"compact"`), `onClose`, `onSubmit`, `children` (campos do formulário).
+- **Largura (01/10/2026 — cadastro e edição com o mesmo layout):** `size="wide"` (padrão) vai até `max-w-4xl` (896px) e organiza os filhos em **grade de 2 colunas** a partir de `md`; um filho que precisa da linha inteira (observações, listas de itens, bloco de endereço, totais) usa `md:col-span-2` — `Field` e `Section` aceitam `className` para isso. `size="compact"` (`max-w-lg`, 1 coluna) só para formulários de 1–2 campos (categorias de ingrediente/embalagem, vínculo produto↔embalagem, itens de receita). Todo formulário de criação e de edição do admin usa `EntityForm` — não há mais bottom sheet escrito à mão.
 - **Caso de uso:** qualquer criação/edição em modal (não substitui formulários de página própria — `UX_GUIDELINES.md` Seção 2, formulários maiores que 1-3 campos "merecem página própria"; `EntityForm` é para o caso modal).
-- **Restrição:** usa `max-w-lg` (levemente maior que o `max-w-md` documentado no componente 7), para acomodar formulários agrupados em `Section` sem ficar apertado — desvio pequeno e documentado, não uma nova convenção livre.
+- **Restrição:** larguras limitadas às duas variantes acima (`max-w-4xl`/`max-w-lg`) — maiores que o `max-w-md` documentado no componente 7, desvio documentado, não uma convenção livre.
+- **Visão Cards/Lista:** telas com `ViewToggle` abrem em **Lista** por padrão (`useViewMode`, admin e área do cliente, 01/10/2026); a escolha manual continua salva por tela no navegador.
 - **Implementação (Sprint `DS.5`, ADR-025):** construído diretamente sobre as primitivas Radix `Dialog` (via `radix-ui`, mesmo motor do `Sheet` do shadcn/ui) — a alternância bottom-sheet↔dialog é resolvida com Tailwind responsivo escrito à mão, já que nenhuma primitiva shadcn cobre os dois modos sozinha. Ganha trap de foco, `Escape` e clique-fora do Radix, que a implementação anterior (hand-rolled) não tinha de forma completa.
 
 ### Reaproveitados sem alteração de responsabilidade (não recriados)
