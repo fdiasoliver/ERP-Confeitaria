@@ -1,4 +1,4 @@
-import type { PaymentMethod, DeliveryType } from "@/lib/types";
+import type { PaymentMethod, DeliveryType, DiscountType } from "@/lib/types";
 
 // ── Tipos de exibição (DTO) ──────────────────────────────────────────────────
 // Espelha src/lib/orderService.ts (PublicQuoteDTO/PublicQuoteItemDTO), sem
@@ -42,6 +42,9 @@ export interface PublicQuoteDTO {
   };
   items: PublicQuoteItemDTO[];
   subtotal: number;
+  discountType: DiscountType | null;
+  discountValue: number;
+  discountAmount: number;
   deliveryFee: number;
   total: number;
   paymentMethod: PaymentMethod;

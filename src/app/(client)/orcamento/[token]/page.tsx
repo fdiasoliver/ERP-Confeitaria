@@ -303,6 +303,20 @@ export default function OrcamentoPublicoPage({ params }: { params: Promise<{ tok
             </tbody>
           </table>
 
+          {quote.discountAmount > 0 && (
+            <div className="mt-5 space-y-1 pt-4 text-sm" style={{ borderTop: `1px solid ${COLORS.line}` }}>
+              <div className="flex justify-end gap-7">
+                <span style={{ color: COLORS.inkSoft }}>Subtotal</span>
+                <span className="w-28 text-right" style={{ color: COLORS.ink }}>{formatCurrency(quote.subtotal)}</span>
+              </div>
+              <div className="flex justify-end gap-7">
+                <span style={{ color: COLORS.inkSoft }}>
+                  Desconto{quote.discountType === "PERCENTUAL" ? ` (${quote.discountValue}%)` : ""}
+                </span>
+                <span className="w-28 text-right" style={{ color: COLORS.wineDeep }}>− {formatCurrency(quote.discountAmount)}</span>
+              </div>
+            </div>
+          )}
           <div
             className="mt-5 flex items-center justify-end gap-7 pt-4"
             style={{ borderTop: `1px solid ${COLORS.line}` }}

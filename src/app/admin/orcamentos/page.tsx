@@ -21,8 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import { useViewMode } from "@/hooks/useViewMode";
 import { formatCurrency } from "@/lib/formatters/currency";
 import { formatDate } from "@/lib/formatters/date";
-import { DELIVERY_LABELS, PAYMENT_LABELS, QUOTE_STATUS_LABELS } from "@/lib/types";
-import type { DeliveryType, PaymentMethod, QuoteStatus, ValidationError } from "@/lib/types";
+import { DELIVERY_LABELS, DISCOUNT_TYPE_LABELS, PAYMENT_LABELS, QUOTE_STATUS_LABELS } from "@/lib/types";
+import type { DeliveryType, DiscountType, PaymentMethod, QuoteStatus, ValidationError } from "@/lib/types";
 import * as orderAdminApi from "@/lib/api/orderAdminApi";
 import { ApiRequestError, type OrderDTO, type CreateOrderInput } from "@/lib/api/orderAdminApi";
 import * as customerApi from "@/lib/api/customerApi";
@@ -54,6 +54,8 @@ interface OrderForm {
   receiverPhone: string;
   paymentMethod: PaymentMethod;
   orderNotes: string;
+  discountType: DiscountType;
+  discountValue: string;
   items: ItemRowForm[];
 }
 
@@ -95,6 +97,8 @@ const EMPTY_ORDER_FORM: OrderForm = {
   receiverPhone: "",
   paymentMethod: "PIX_ENTREGA",
   orderNotes: "",
+  discountType: "VALOR",
+  discountValue: "",
   items: [{ ...EMPTY_ITEM_ROW }],
 };
 
@@ -246,6 +250,8 @@ function OrcamentosAdminPageContent() {
       receiverPhone: order.receiverPhone ?? "",
       paymentMethod: order.paymentMethod,
       orderNotes: order.orderNotes ?? "",
+      discountType: order.discountType ?? "VALOR",
+      discountValue: order.discountValue > 0 ? String(order.discountValue) : "",
       items: order.items.map((item) => ({ productId: item.productId, quantity: String(item.quantity) })),
     });
     setFormErrors({});
@@ -301,7 +307,14 @@ function OrcamentosAdminPageContent() {
     return sum + product.basePrice * qty;
   }, 0);
   const feeValue = form.deliveryType === "ENTREGA_GRATIS" ? 0 : (parseFloat(form.deliveryFee) || 0);
-  const orderTotal = itemsSubtotal + feeValue;
+  // Prévia do desconto — o valor oficial é recalculado no servidor
+  // (resolveQuoteTotals em orderService.ts), com a mesma regra.
+  const discountInput = parseFloat(form.discountValue.replace(",", ".")) || 0;
+  const discountAmount = Math.min(
+    form.discountType === "PERCENTUAL" ? (itemsSubtotal * discountInput) / 100 : discountInput,
+    itemsSubtotal,
+  );
+  const orderTotal = itemsSubtotal - Math.max(discountAmount, 0) + feeValue;
 
   function validateForm(): boolean {
     const errs: Record<string, string> = {};
@@ -324,6 +337,13 @@ function OrcamentosAdminPageContent() {
         errs[`items[${index}].quantity`] = "Quantidade deve ser maior que zero.";
       }
     });
+
+    if (form.discountValue.trim() !== "") {
+      const value = parseFloat(form.discountValue.replace(",", "."));
+      if (Number.isNaN(value) || value < 0) errs.discountValue = "Informe um desconto válido.";
+      else if (form.discountType === "PERCENTUAL" && value > 100) errs.discountValue = "O desconto não pode passar de 100%.";
+      else if (form.discountType === "VALOR" && value > itemsSubtotal) errs.discountValue = "O desconto não pode ser maior que o valor dos itens.";
+    }
 
     const ids = form.items.map((i) => i.productId).filter(Boolean);
     if (new Set(ids).size !== ids.length) errs.items = "Não repita o mesmo produto no orçamento.";
@@ -370,6 +390,8 @@ function OrcamentosAdminPageContent() {
         paymentMethod: form.paymentMethod,
         subtotal,
         total: subtotal + deliveryFee,
+        discountType: discountInput > 0 ? form.discountType : null,
+        discountValue: discountInput > 0 ? discountInput : 0,
         items,
         receiverName: form.receiverName.trim() || undefined,
         receiverPhone: form.receiverPhone.trim() || undefined,
@@ -1015,11 +1037,52 @@ function OrcamentosAdminPageContent() {
             </div>
           </div>
 
-          <div className="rounded-xl bg-sand/40 p-3 md:col-span-2">
+          <Field label="Desconto (opcional)" htmlFor="order-discount" error={formErrors.discountValue}>
+            <div className="flex gap-2">
+              <div className="flex shrink-0 rounded-xl border border-sand p-1" role="group" aria-label="Tipo de desconto">
+                {(["VALOR", "PERCENTUAL"] as DiscountType[]).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setField("discountType", type)}
+                    disabled={submitting}
+                    aria-pressed={form.discountType === type}
+                    className={`rounded-lg px-3 text-sm font-semibold ${
+                      form.discountType === type ? "bg-chocolate text-white" : "text-chocolate"
+                    }`}
+                  >
+                    {DISCOUNT_TYPE_LABELS[type]}
+                  </button>
+                ))}
+              </div>
+              <input
+                id="order-discount"
+                type="number"
+                step="0.01"
+                min={0}
+                max={form.discountType === "PERCENTUAL" ? 100 : undefined}
+                className={`input-field ${formErrors.discountValue ? "border-rose" : ""}`}
+                value={form.discountValue}
+                onChange={(e) => setField("discountValue", e.target.value)}
+                placeholder={form.discountType === "PERCENTUAL" ? "Ex: 10" : "Ex: 15.00"}
+                disabled={submitting}
+              />
+            </div>
+          </Field>
+
+          <div className="rounded-xl bg-sand/40 p-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted">Itens</span>
               <span className="text-chocolate">{formatCurrency(itemsSubtotal)}</span>
             </div>
+            {discountAmount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted">
+                  Desconto{form.discountType === "PERCENTUAL" ? ` (${discountInput}%)` : ""}
+                </span>
+                <span className="text-sage">− {formatCurrency(discountAmount)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted">Entrega</span>
               <span className="text-chocolate">{formatCurrency(feeValue)}</span>

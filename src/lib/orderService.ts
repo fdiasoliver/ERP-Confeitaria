@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { DeliveryType, DeliveryAddressInput, OrderStatus, PaymentMethod, PaymentStatus, QuoteStatus, RescheduleStatus, ValidationError } from "@/lib/types";
+import type { DeliveryType, DeliveryAddressInput, DiscountType, OrderStatus, PaymentMethod, PaymentStatus, QuoteStatus, RescheduleStatus, ValidationError } from "@/lib/types";
 import type {
   OrderStatus as PrismaOrderStatus,
   RescheduleStatus as PrismaRescheduleStatus,
@@ -189,6 +189,9 @@ export interface OrderDTO {
   receiverPhone: string | null;
   deliveryFee: number;
   subtotal: number;
+  discountType: DiscountType | null;
+  discountValue: number;
+  discountAmount: number;
   total: number;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
@@ -230,6 +233,9 @@ function mapOrderDTO(order: OrderWithItems): OrderDTO {
     receiverPhone: order.receiverPhone,
     deliveryFee: order.deliveryFee.toNumber(),
     subtotal: order.subtotal.toNumber(),
+    discountType: order.discountType as DiscountType | null,
+    discountValue: order.discountValue.toNumber(),
+    discountAmount: order.discountAmount.toNumber(),
     total: order.total.toNumber(),
     paymentMethod: order.paymentMethod as PaymentMethod,
     paymentStatus: order.paymentStatus as PaymentStatus,
@@ -569,8 +575,13 @@ export interface CreateOrderInput {
   receiverPhone?: string;
   orderNotes?: string;
   paymentMethod: PaymentMethod;
-  subtotal: number;
-  total: number;
+  // Ignorados: subtotal/total são recalculados no servidor a partir dos itens,
+  // do desconto e da taxa de entrega (resolveQuoteTotals) — mantidos no tipo só
+  // por compatibilidade com o payload já enviado pelo front.
+  subtotal?: number;
+  total?: number;
+  discountType?: DiscountType | null;
+  discountValue?: number;
   items: {
     productId: string;
     productName: string;
@@ -579,6 +590,52 @@ export interface CreateOrderInput {
     totalPrice: number;
     observation?: string;
   }[];
+}
+
+// ─── Totais do orçamento (desconto) ────────────────────────────────────────────
+// Desconto do orçamento (01/10/2026): sempre aplicado sobre o subtotal dos itens,
+// nunca sobre a entrega — total = subtotal − desconto + entrega. Tudo recalculado
+// aqui a partir dos itens; subtotal/total enviados pelo front são ignorados.
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/** Desconto em R$ para um subtotal. PERCENTUAL reaplica o %; VALOR é limitado
+ * ao subtotal — usado quando o cliente reduz itens pelo link público. */
+function recalculateDiscountAmount(type: DiscountType | null, value: number, subtotal: number): number {
+  if (!type || value <= 0) return 0;
+  const amount = type === "PERCENTUAL" ? (subtotal * value) / 100 : value;
+  return roundMoney(Math.min(amount, subtotal));
+}
+
+function resolveQuoteTotals(input: CreateOrderInput) {
+  const subtotal = roundMoney(input.items.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0));
+  const deliveryFee = input.deliveryType === "ENTREGA_GRATIS" ? 0 : Number(input.deliveryFee || 0);
+  const discountType = input.discountType ?? null;
+  const discountValue = roundMoney(Number(input.discountValue ?? 0));
+
+  const errors: ValidationError[] = [];
+  if (discountType !== null && discountType !== "VALOR" && discountType !== "PERCENTUAL") {
+    errors.push({ field: "discountType", code: "INVALID", message: "Tipo de desconto inválido." });
+  } else if (!Number.isFinite(discountValue) || discountValue < 0) {
+    errors.push({ field: "discountValue", code: "INVALID", message: "O desconto não pode ser negativo." });
+  } else if (discountType === "PERCENTUAL" && discountValue > 100) {
+    errors.push({ field: "discountValue", code: "MAX", message: "O desconto não pode passar de 100%." });
+  } else if (discountType === "VALOR" && discountValue > subtotal) {
+    errors.push({ field: "discountValue", code: "MAX", message: "O desconto não pode ser maior que o valor dos itens." });
+  }
+  if (errors.length > 0) throw new OrderValidationFailedError(errors);
+
+  const hasDiscount = discountType !== null && discountValue > 0;
+  const discountAmount = hasDiscount ? recalculateDiscountAmount(discountType, discountValue, subtotal) : 0;
+  return {
+    subtotal,
+    discountType: hasDiscount ? discountType : null,
+    discountValue: hasDiscount ? discountValue : 0,
+    discountAmount,
+    total: roundMoney(subtotal - discountAmount + deliveryFee),
+  };
 }
 
 export async function createOrder(
@@ -591,6 +648,7 @@ export async function createOrder(
     errors.push({ field: "items", code: "REQUIRED", message: "Pelo menos um item é obrigatório." });
   }
   if (errors.length > 0) throw new OrderValidationFailedError(errors);
+  const totals = resolveQuoteTotals(input);
 
   const customer = await findCustomerById(input.customerId);
   if (!customer) throw new CustomerNotFoundError(input.customerId);
@@ -664,8 +722,7 @@ export async function createOrder(
     receiverPhone: input.receiverPhone ?? null,
     deliveryFee: input.deliveryType === "ENTREGA_GRATIS" ? 0 : input.deliveryFee,
     deliveryDistanceKm,
-    subtotal: input.subtotal,
-    total: input.total,
+    ...totals,
     paymentMethod: input.paymentMethod,
     orderNotes: input.orderNotes ?? null,
     createdById,
@@ -694,6 +751,7 @@ export async function updateOrder(orderId: string, input: CreateOrderInput): Pro
     errors.push({ field: "items", code: "REQUIRED", message: "Pelo menos um item é obrigatório." });
   }
   if (errors.length > 0) throw new OrderValidationFailedError(errors);
+  const totals = resolveQuoteTotals(input);
 
   const existing = await findOrderById(orderId);
   if (!existing) throw new OrderNotFoundError(orderId);
@@ -760,8 +818,7 @@ export async function updateOrder(orderId: string, input: CreateOrderInput): Pro
     receiverPhone: input.receiverPhone ?? null,
     deliveryFee: input.deliveryType === "ENTREGA_GRATIS" ? 0 : input.deliveryFee,
     deliveryDistanceKm,
-    subtotal: input.subtotal,
-    total: input.total,
+    ...totals,
     paymentMethod: input.paymentMethod,
     orderNotes: input.orderNotes ?? null,
     items: input.items,
@@ -843,6 +900,9 @@ export interface PublicQuoteDTO {
   };
   items: PublicQuoteItemDTO[];
   subtotal: number;
+  discountType: DiscountType | null;
+  discountValue: number;
+  discountAmount: number;
   deliveryFee: number;
   total: number;
   paymentMethod: PaymentMethod;
@@ -890,6 +950,9 @@ function mapPublicQuoteDTO(order: OrderWithItemsAndCustomer): PublicQuoteDTO {
       totalPrice: item.totalPrice.toNumber(),
     })),
     subtotal: order.subtotal.toNumber(),
+    discountType: order.discountType as DiscountType | null,
+    discountValue: order.discountValue.toNumber(),
+    discountAmount: order.discountAmount.toNumber(),
     deliveryFee: order.deliveryFee.toNumber(),
     total: order.total.toNumber(),
     paymentMethod: order.paymentMethod as PaymentMethod,
@@ -1023,10 +1086,11 @@ export async function updatePublicQuoteItemQuantity(
   const otherItemsTotal = order.items
     .filter((i) => i.id !== itemId)
     .reduce((sum, i) => sum + i.totalPrice.toNumber(), 0);
-  const newSubtotal = otherItemsTotal + newItemTotal;
-  const newTotal = newSubtotal + order.deliveryFee.toNumber();
+  const newSubtotal = roundMoney(otherItemsTotal + newItemTotal);
+  const newDiscountAmount = recalculateDiscountAmount(order.discountType as DiscountType | null, order.discountValue.toNumber(), newSubtotal);
+  const newTotal = roundMoney(newSubtotal - newDiscountAmount + order.deliveryFee.toNumber());
 
-  const updated = await updateItemQuantityAndTotals(order.id, itemId, quantity, newItemTotal, newSubtotal, newTotal);
+  const updated = await updateItemQuantityAndTotals(order.id, itemId, quantity, newItemTotal, newSubtotal, newDiscountAmount, newTotal);
   return mapPublicQuoteDTO(updated);
 }
 
@@ -1050,9 +1114,10 @@ export async function removePublicQuoteItem(token: string, itemId: string): Prom
   const newSubtotal = order.items
     .filter((i) => i.id !== itemId)
     .reduce((sum, i) => sum + i.totalPrice.toNumber(), 0);
-  const newTotal = newSubtotal + order.deliveryFee.toNumber();
+  const newDiscountAmount = recalculateDiscountAmount(order.discountType as DiscountType | null, order.discountValue.toNumber(), newSubtotal);
+  const newTotal = roundMoney(newSubtotal - newDiscountAmount + order.deliveryFee.toNumber());
 
-  const updated = await removeItemAndRecalculateTotals(order.id, itemId, newSubtotal, newTotal);
+  const updated = await removeItemAndRecalculateTotals(order.id, itemId, newSubtotal, newDiscountAmount, newTotal);
   return mapPublicQuoteDTO(updated);
 }
 

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Prisma, OrderStatus, RescheduleStatus, DeliveryType, PaymentMethod, QuoteStatus } from "@prisma/client";
+import type { Prisma, OrderStatus, RescheduleStatus, DeliveryType, PaymentMethod, QuoteStatus, DiscountType } from "@prisma/client";
 
 // ─── Tipos e includes ──────────────────────────────────────────────────────────
 
@@ -282,6 +282,9 @@ export interface CreateOrderWithItemsInput {
   deliveryFee: number;
   deliveryDistanceKm?: number | null;
   subtotal: number;
+  discountType?: DiscountType | null;
+  discountValue?: number;
+  discountAmount?: number;
   total: number;
   paymentMethod: PaymentMethod;
   orderNotes?: string | null;
@@ -319,6 +322,9 @@ export async function createOrderWithItems(data: CreateOrderWithItemsInput): Pro
         deliveryFee: data.deliveryFee,
         deliveryDistanceKm: data.deliveryDistanceKm ?? null,
         subtotal: data.subtotal,
+        discountType: data.discountType ?? null,
+        discountValue: data.discountValue ?? 0,
+        discountAmount: data.discountAmount ?? 0,
         total: data.total,
         paymentMethod: data.paymentMethod,
         paymentStatus: "PENDENTE",
@@ -366,6 +372,9 @@ export interface UpdateOrderWithItemsInput {
   deliveryFee: number;
   deliveryDistanceKm?: number | null;
   subtotal: number;
+  discountType: DiscountType | null;
+  discountValue: number;
+  discountAmount: number;
   total: number;
   paymentMethod: PaymentMethod;
   orderNotes?: string | null;
@@ -393,6 +402,9 @@ export async function updateOrderWithItems(orderId: string, data: UpdateOrderWit
         deliveryFee: data.deliveryFee,
         deliveryDistanceKm: data.deliveryDistanceKm ?? null,
         subtotal: data.subtotal,
+        discountType: data.discountType,
+        discountValue: data.discountValue,
+        discountAmount: data.discountAmount,
         total: data.total,
         paymentMethod: data.paymentMethod,
         orderNotes: data.orderNotes ?? null,
@@ -475,6 +487,7 @@ export async function updateItemQuantityAndTotals(
   quantity: number,
   newItemTotal: number,
   newSubtotal: number,
+  newDiscountAmount: number,
   newTotal: number,
 ): Promise<OrderWithItemsAndCustomer> {
   return prisma.$transaction(async (tx) => {
@@ -485,7 +498,7 @@ export async function updateItemQuantityAndTotals(
 
     return tx.order.update({
       where: { id: orderId },
-      data: { subtotal: newSubtotal, total: newTotal },
+      data: { subtotal: newSubtotal, discountAmount: newDiscountAmount, total: newTotal },
       include: withItemsAndCustomer,
     });
   });
@@ -495,6 +508,7 @@ export async function removeItemAndRecalculateTotals(
   orderId: string,
   itemId: string,
   newSubtotal: number,
+  newDiscountAmount: number,
   newTotal: number,
 ): Promise<OrderWithItemsAndCustomer> {
   return prisma.$transaction(async (tx) => {
@@ -502,7 +516,7 @@ export async function removeItemAndRecalculateTotals(
 
     return tx.order.update({
       where: { id: orderId },
-      data: { subtotal: newSubtotal, total: newTotal },
+      data: { subtotal: newSubtotal, discountAmount: newDiscountAmount, total: newTotal },
       include: withItemsAndCustomer,
     });
   });

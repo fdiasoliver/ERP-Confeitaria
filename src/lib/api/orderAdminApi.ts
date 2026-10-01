@@ -1,4 +1,4 @@
-import type { DeliveryAddressInput, DeliveryType, OrderStatus, PaymentMethod, PaymentStatus, QuoteStatus, RescheduleStatus } from "@/lib/types";
+import type { DeliveryAddressInput, DeliveryType, DiscountType, OrderStatus, PaymentMethod, PaymentStatus, QuoteStatus, RescheduleStatus } from "@/lib/types";
 
 // ── Tipos de exibição (DTO) ──────────────────────────────────────────────────
 // Espelham src/lib/orderService.ts (KanbanOrderDTO/KanbanDataDTO/OrderDTO), sem
@@ -105,6 +105,9 @@ export interface OrderDTO {
   receiverPhone: string | null;
   deliveryFee: number;
   subtotal: number;
+  discountType: DiscountType | null;
+  discountValue: number;
+  discountAmount: number;
   total: number;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
@@ -143,6 +146,8 @@ export interface CreateOrderInput {
   paymentMethod: PaymentMethod;
   subtotal: number;
   total: number;
+  discountType: DiscountType | null;
+  discountValue: number;
   items: CreateOrderItemInput[];
 }
 

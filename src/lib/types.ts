@@ -33,6 +33,9 @@ export type QuoteStatus =
   | "APROVADO"
   | "RECUSADO";
 
+/** Desconto do orçamento — R$ fixo (VALOR) ou % sobre o subtotal (PERCENTUAL). */
+export type DiscountType = "VALOR" | "PERCENTUAL";
+
 export type PixKeyType = "CPF" | "CNPJ" | "EMAIL" | "TELEFONE" | "ALEATORIA";
 
 export interface ValidationError {
@@ -278,6 +281,11 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   EM_REVISAO: "Em Revisão",
   APROVADO: "Aprovado",
   RECUSADO: "Recusado",
+};
+
+export const DISCOUNT_TYPE_LABELS: Record<DiscountType, string> = {
+  VALOR: "R$",
+  PERCENTUAL: "%",
 };
 
 export const PIX_KEY_TYPE_LABELS: Record<PixKeyType, string> = {
