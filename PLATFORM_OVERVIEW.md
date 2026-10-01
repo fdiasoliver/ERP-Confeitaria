@@ -10,7 +10,7 @@ Um ERP vertical de gestão de encomendas para confeitarias artesanais, evoluindo
 
 ## Qual é o ambiente de execução oficial?
 
-Sistema **Web**, totalmente **responsivo** (Desktop, Tablet, Smartphone — critério mínimo de aceite, `PROJECT_GOVERNANCE.md` Seção 8.8). Produção roda em **VPS Linux** — scripts e automação novos priorizam compatibilidade com Linux, evitando dependência exclusiva de Windows. Formalizado na Sprint G.6.2 (Product Runtime Standards, ADR-010) — detalhe completo em `PROJECT_GOVERNANCE.md` Seção 8.8, não duplicado aqui.
+Sistema **Web**, totalmente **responsivo** (Desktop, Tablet, Smartphone — critério mínimo de aceite, `PROJECT_GOVERNANCE.md` Seção 8.8). Produção roda na **Vercel** (com Supabase para banco e Storage) — ambiente oficial definido pela ADR-027 (01/10/2026), que superou o "VPS Linux" original da ADR-010; scripts e automação novos priorizam compatibilidade com Linux, evitando dependência exclusiva de Windows. Padrões formalizados na Sprint G.6.2 (Product Runtime Standards, ADR-010) — detalhe completo em `PROJECT_GOVERNANCE.md` Seção 8.8, não duplicado aqui.
 
 ## Como está organizada?
 

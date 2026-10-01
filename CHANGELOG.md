@@ -4,6 +4,49 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Governança — ADR-027] — 2026-10-01 — Vercel declarada ambiente oficial de produção
+
+**Tipo:** Decisão arquitetural do Product Owner — resolve a divergência registrada na ADR-026 (06/09/2026), opção (a). Nenhum código alterado.
+
+### Alterações
+
+- **ADR-027** criada em `CLAUDE.md` (tabela "Decisões arquiteturais tomadas"): ambiente oficial de produção = Vercel (app) + Supabase (PostgreSQL + Storage) + Hostgator (só DNS). Supera a parte "Produção: VPS Linux" da ADR-010; o restante da ADR-010 não foi alterado.
+- Linhas da ADR-010 e da ADR-026 em `CLAUDE.md` ganharam nota apontando para a ADR-027; linha "Hospedagem" da tabela de stack e seção "Infraestrutura atual" atualizadas.
+- `PROJECT_GOVERNANCE.md` Seção 8.8: "Produção: VPS Linux" → "Produção: Vercel"; critério de compatibilidade "(Web, responsivo, Linux/VPS)" → "(Web, responsivo, Vercel/Linux)".
+- `PLATFORM_OVERVIEW.md` ("Qual é o ambiente de execução oficial?"), `ARCHITECTURE.md` Seção 6 (nova linha ADR-027, linha ADR-026 marcada como resolvida) e `PROJECT_STATE.md` atualizados.
+
+**Arquivos alterados:** `CLAUDE.md`, `PROJECT_GOVERNANCE.md`, `PLATFORM_OVERVIEW.md`, `ARCHITECTURE.md`, `PROJECT_STATE.md`, `CHANGELOG.md`.
+
+---
+
+## [Configuração da loja] — 2026-10-01 — Telefone da loja cadastrado
+
+**Tipo:** Dado de configuração, sem alteração de código. `StoreConfig.phone` preenchido pelo Product Owner em `/admin/config` (atualização registrada no banco em 01/10/2026, 11 dígitos). Com o telefone presente, o CTA de WhatsApp da seção "Fale Conosco" e o botão flutuante (`FloatingWhatsApp`, `src/components/vitrine/VitrineSections.tsx`) passam a ser exibidos na Vitrine (`/`) — ambos já condicionados a `contact.phone` desde o redesenho de 20/09/2026.
+
+### Validação
+
+Leitura direta de `StoreConfig` no banco Supabase real: `phone` preenchido (11 dígitos), `updatedAt` 2026-10-01.
+
+---
+
+## [Vitrine — pré-visualização] — 2026-09-24 — Tela paralela `/vitrine-preview` (versionada em 01/10/2026)
+
+**Tipo:** Tela nova, paralela à Vitrine real — não substitui nem altera `/` (`src/app/(client)/page.tsx`). Criada em 24/09/2026 e versionada em 01/10/2026; por decisão do Product Owner (01/10/2026), permanece como página separada.
+
+### Implementação
+
+- **`src/app/vitrine-preview/layout.tsx`:** fora do route group `(client)` (não herda o `ClientShell`/`CartFab` global); metadata `robots: { index: false, follow: false }`.
+- **`src/app/vitrine-preview/page.tsx`:** Vitrine mobile em formato de capa + cartão da loja + itens em linha + barra inferior; reaproveita `CartDrawer`, `CategoryChips`, `ProductDetailDialog` e `useCart`; produtos via `getProducts()`, ocasiões via `GET /api/occasions`, dados da loja (nome, logo, telefone, e-mail, Instagram, endereço) via `GET /api/config`; prazo de encomenda derivado do catálogo real. Horário de funcionamento (`18:00`) e slogan são constantes de exemplo no próprio arquivo (sem campo correspondente em `StoreConfig`).
+- **`src/components/vitrine-preview/PreviewParts.tsx`:** `PreviewCover`, `PreviewStoreCard`, `PreviewProductRow`, `PreviewBottomBar`, `PreviewStoreInfoDialog`.
+
+Nenhuma alteração de schema, API ou de componentes existentes.
+
+### Validação
+
+`npx tsc --noEmit`: 0 erros. `npx eslint src/app/vitrine-preview src/components/vitrine-preview`: 0 erros. `GET /vitrine-preview` no servidor dev: HTTP 200.
+
+---
+
 ## [Módulo Vitrine] — 2026-09-20 — Redesenho editorial da Vitrine do Cliente
 
 **Tipo:** Redesenho visual da página inicial da Vitrine (`/`), a partir de um preview HTML aprovado pelo Product Owner (misturando o material de referência entregue fora do repositório com o catálogo/carrinho/filtros reais existentes). Nenhuma funcionalidade foi removida ou alterada em comportamento — só a apresentação, mais quatro seções institucionais novas que não existiam antes.
@@ -326,6 +369,52 @@ Exibição do link público em si (ex.: campo copiável visível no card) não i
 
 ---
 
+## [Módulo Clientes] — 2026-09-16 — Cadastro de cliente: autocadastro, endereços salvos, ativar/desativar/excluir e cliente corporativo
+
+**Tipo:** Três entregas do mesmo dia no domínio Clientes (commits `7c63626`, `d9eadbf`, `7d862b8`). Entrada registrada retroativamente em 01/10/2026 a partir dos commits.
+
+### 1. Autocadastro do cliente e reuso de endereço salvo (`7c63626`)
+
+- **Schema:** `Customer.birthDate DateTime? @db.Date`.
+- **Autenticação:** `authorize()` do provider `customer` trocou `upsert` por `findUnique` + `create` quando não existe. O placeholder de nome `"Cliente"` foi centralizado em `src/lib/constants/customer.ts`; "precisa de cadastro" é calculado no servidor a cada consulta (nome igual ao placeholder), sem campo novo no JWT/sessão.
+- **API (cliente autenticado, `requireCustomer()`):** `GET`/`PATCH /api/customers/me` (perfil), `GET`/`POST /api/customers/me/addresses` (endereços do próprio cliente). Novo `addressRepository.ts`, `customerProfileService.ts`, `addressValidator.ts`, `customerProfileValidator.ts`.
+- **`POST /api/orders`:** aceita `addressId` opcional além de `deliveryAddress`; o endereço é vinculado ao pedido só após confirmar, na mesma transação, que `address.customerId` é o do cliente do pedido. O caminho `deliveryAddress` (novo `Address`) permanece inalterado.
+- **Frontend:** nova `src/app/(client)/cadastro/page.tsx` (Nome obrigatório; Data de nascimento e endereços opcionais, vários endereços); `/login` redireciona cliente novo/incompleto para `/cadastro`, preservando o `callbackUrl`; `/checkout` ganha seletor "Novo endereço" × endereço salvo.
+
+### 2. Ativar, desativar e excluir cliente no admin (`d9eadbf`)
+
+- **Schema:** `Customer.active Boolean @default(true)`.
+- **`customerService.ts`:** `activateCustomer`, `deactivateCustomer`, `deleteCustomer`, `CustomerInUseError` — exclusão real só para cliente sem nenhum pedido.
+- **API:** `DELETE /api/admin/customers/[id]` (`404`; `409 CUSTOMER_IN_USE` com a contagem de pedidos), `PATCH /api/admin/customers/[id]/activate` e `/deactivate` — todas com `requireRole(["ADMIN","ATENDIMENTO"])`.
+- **`/admin/clientes`:** `FilterChips` de status (Todos/Ativos/Inativos), `StatusBadge`, ações Ativar/Desativar/Excluir com `ConfirmDialog`.
+
+### 3. Cliente corporativo e orçamentos criados pela equipe (`7d862b8`)
+
+- **Schema:** enum `CustomerType` (`CONSUMIDOR_FINAL`, `CORPORATIVO`); `Customer` ganha `type` (default `CONSUMIDOR_FINAL`), `cnpj String? @unique`, `companyName`, `tradeName`; `phone` passa a ser opcional (obrigatoriedade por tipo validada em `customerValidator.ts`).
+- **Admin:** cadastro de cliente corporativo em `/admin/clientes`; detalhe do cliente exibe os campos corporativos e link para criar orçamento para ele.
+- **Orçamentos:** nova `/admin/orcamentos` — criação de orçamento pela equipe para qualquer cliente (`Order.status = RASCUNHO`), aprovação (`RASCUNHO` → `CONFIRMADO`) e cancelamento pelo fluxo de status já existente; entrada no `Sidebar` e em `src/proxy.ts`.
+
+**Arquivos alterados/criados:**
+- `prisma/schema.prisma`
+- `src/app/(client)/cadastro/page.tsx` (novo), `src/app/(client)/checkout/page.tsx`, `src/app/(client)/login/page.tsx`
+- `src/app/api/auth/[...nextauth]/route.ts`, `src/app/api/orders/route.ts`
+- `src/app/api/customers/me/route.ts` (novo), `src/app/api/customers/me/addresses/route.ts` (novo)
+- `src/app/api/admin/customers/route.ts`, `src/app/api/admin/customers/[id]/route.ts`, `src/app/api/admin/customers/[id]/activate/route.ts` (novo), `src/app/api/admin/customers/[id]/deactivate/route.ts` (novo), `src/app/api/admin/orders/route.ts`
+- `src/app/admin/clientes/page.tsx`, `src/app/admin/clientes/[id]/page.tsx`, `src/app/admin/orcamentos/page.tsx` (novo)
+- `src/lib/constants/customer.ts` (novo), `src/lib/customerProfileService.ts` (novo), `src/lib/customerService.ts`, `src/lib/orderService.ts`
+- `src/lib/repositories/addressRepository.ts` (novo), `src/lib/repositories/customerRepository.ts`, `src/lib/repositories/orderRepository.ts`
+- `src/lib/validators/addressValidator.ts` (novo), `src/lib/validators/customerProfileValidator.ts` (novo), `src/lib/validators/customerValidator.ts` (novo)
+- `src/lib/api/customerApi.ts`, `src/lib/api/orderAdminApi.ts`, `src/services/customerProfileApi.ts` (novo), `src/services/orderService.ts`
+- `src/components/admin/shared/Sidebar.tsx`, `src/proxy.ts`
+
+### Validação
+
+- **Autocadastro:** `tsc`/`lint`/`build`: 0 erros. Banco Supabase real, cliente descartável: login OTP real com telefone novo → redirecionamento para `/cadastro` → nome/nascimento/endereço salvos → retorno ao `callbackUrl`; no checkout, o endereço salvo foi vinculado ao pedido sem duplicar o `Address`; novo login com o mesmo telefone foi direto para `/pedidos`. Dados de teste removidos.
+- **Ativar/desativar/excluir:** `tsc`/`lint`/`build`: 0 erros. Banco real: cliente real desativado e reativado; exclusão bloqueada para cliente com 2 pedidos ("Cliente não pode ser excluído: possui 2 pedido(s)."); cliente descartável sem pedidos excluído.
+- **Achado registrado no commit `7c63626`:** na mesma sessão do navegador, o cabeçalho continua exibindo o nome placeholder logo após concluir o cadastro; o nome correto aparece a partir do login seguinte.
+
+---
+
 ## [Módulo P3.3] — 2026-09-15 — Calendário de produção: reagendamento negociado (conclusão, Épico 4)
 
 **Tipo:** Conclusão do Módulo P3.3 (Calendário de produção, Épico 4). A aba "Calendário" (visualização de pedidos por data de entrega com indicador de carga, alerta de sobreposição) já havia sido implementada e commitada anteriormente (commit `75c9f04`, "Add Módulo P3.3: Calendário de produção") sem entrada própria neste CHANGELOG — gap pré-existente, não resolvido retroativamente nesta entrada, fora do escopo desta sprint. Esta entrada documenta a entrega final que completa a lista de "Entregas" do módulo em `PLAN.md`: reagendamento negociado de pedidos.
@@ -392,6 +481,130 @@ Nenhuma alteração em `prisma/schema.prisma`.
 ### Documentação corrigida retroativamente
 
 `REGRAS_NEGOCIO.md` Seção 13.6 (Centro de custo) — já implementada na Sprint 2 anterior deste mesmo módulo (despesas pagas agrupadas por canal de venda e por categoria de produto, via `sumPaidExpensesBySalesChannel`/`sumPaidExpensesByProductCategory` em `expenseRepository.ts` e `getCostCenterReport` em `reportsService.ts`), mas a Sprint 2 não havia atualizado esta seção, que permanecia registrada como "A definir". Corrigida nesta sprint, sem alteração de código. Seções 13.3, 13.4 e 13.8 de `REGRAS_NEGOCIO.md` atualizadas com as regras desta sprint. `PLAN.md` — módulo P3.2 (Relatórios financeiros) marcado como concluído.
+
+---
+
+## [Módulo Canais de Venda + Sprint 2 — P3.2] — 2026-09-13 — Cadastro de canais de venda e Centro de custo em Despesas
+
+**Tipo:** Duas sprints no mesmo commit (`563d717`), executadas pelo pipeline de Sub-agents (`ai-solution-architect` → `ai-backend-engineer` → `ai-frontend-engineer` → `ai-qa-engineer`, ADR-017). Entrada registrada retroativamente em 01/10/2026 a partir do commit.
+
+### Sprint 1 — Módulo Canais de Venda
+
+- **Schema:** novo modelo `SalesChannel` (`name` e `slug` únicos, `color`, `icon`, `sortOrder`, `isActive`, timestamps).
+- **Backend:** `salesChannelRepository.ts`, `salesChannelValidator.ts`, `salesChannelService.ts`; rotas `GET`/`POST /api/admin/sales-channels`, `PATCH /api/admin/sales-channels/[id]`, `PATCH .../[id]/activate`, `PATCH .../[id]/deactivate` — `requireAdmin()`.
+- **Frontend:** nova `/admin/canais-venda` com toggle Cards/Lista (`EntityCard`/`EntityTable`/`ViewToggle`/`SearchBar`/`FilterChips`); `src/lib/api/salesChannelApi.ts`; entrada no `Sidebar` e em `src/proxy.ts`.
+- **Seed:** canal "Loja/Vitrine online" criado de forma idempotente em `prisma/seed.ts`.
+
+### Sprint 2 — Centro de custo em Despesas (P3.2)
+
+- **Schema:** `Expense` ganha `salesChannelId` e `productCategoryId` (ambos opcionais, `onDelete: SetNull`, com índice); `SalesChannel` e `ProductCategory` ganham a relação inversa `expenses`.
+- **`/admin/despesas`:** dois selects opcionais (Canal de venda, Categoria de produto), só com registros ativos.
+- **Relatório:** `GET /api/admin/reports/cost-centers` (`requireFinance()`), `getCostCenterReport` em `reportsService.ts`, `sumPaidExpensesBySalesChannel`/`sumPaidExpensesByProductCategory` em `expenseRepository.ts`; nova aba "Centro de custo" em `/admin/relatorios` com duas tabelas (por canal, por categoria) somando `Expense.amount` com `status = PAGO` no período; despesas sem vínculo agrupadas em "Sem canal"/"Sem categoria".
+
+**Arquivos alterados/criados:** `prisma/schema.prisma`, `prisma/seed.ts`, `src/app/admin/canais-venda/page.tsx` (novo), `src/app/admin/despesas/page.tsx`, `src/app/admin/relatorios/page.tsx`, `src/app/api/admin/reports/cost-centers/route.ts` (novo), `src/app/api/admin/sales-channels/**` (4 arquivos novos), `src/components/admin/shared/Sidebar.tsx`, `src/lib/api/expenseApi.ts`, `src/lib/api/reportsApi.ts`, `src/lib/api/salesChannelApi.ts` (novo), `src/lib/expenseService.ts`, `src/lib/reportsService.ts`, `src/lib/repositories/expenseRepository.ts`, `src/lib/repositories/salesChannelRepository.ts` (novo), `src/lib/salesChannelService.ts` (novo), `src/lib/types.ts`, `src/lib/validators/expenseValidator.ts`, `src/lib/validators/salesChannelValidator.ts` (novo), `src/proxy.ts`.
+
+### Validação
+
+`npx prisma db push` aplicado ao Supabase real (uma tabela nova, duas colunas anuláveis + índices em `Expense`), com confirmação do Product Owner. `tsc`/`lint`: 0 erros. Sprint 1 validada no navegador contra o banco real (login admin; visões Cards e Lista exibindo o canal "Loja/Vitrine online"). Sprint 2: revisão estática entre camadas sem divergências; validação de clique na interface não executada nessa sessão (sem ferramenta de navegador disponível).
+
+---
+
+## [Módulo Tema] — 2026-09-10 — `/admin/tema`: tema padrão + cores personalizadas
+
+**Tipo:** Novo módulo admin (Épico 4), em três commits do mesmo dia (`e4bb212`, `3bc2abe`, `9f89d20`). Entrada registrada retroativamente em 01/10/2026 a partir dos commits.
+
+### Implementação
+
+- **Schema:** `ThemeConfig.activePreset String @default("moderno")` e `ThemeConfig.customTokens Json?` (as 8 cores do preset "personalizado"). Os campos legados `primaryColor`/`secondaryColor`/`backgroundColor`/`accentColor` não foram alterados.
+- **Presets (`src/lib/theme-presets.ts`):** "Ateliê Moderno" (paleta em produção, fixa) e "Personalizado" (8 seletores de cor, um por token do design system). A primeira versão (`e4bb212`) tinha um segundo preset fixo ("Ateliê Clássico"), substituído pelo "Personalizado" em `3bc2abe`, que parte pré-preenchido com os valores dele.
+- **Contraste:** `src/lib/wcag.ts` calcula no cliente a razão de contraste WCAG dos 7 pares texto/fundo relevantes, exibida ao editar — apenas informativa, não bloqueia o salvamento.
+- **Segurança:** cores personalizadas só são aplicadas após `isCompleteThemeTokens()` validar os 8 valores contra `/^#[0-9A-Fa-f]{6}$/`.
+- **Aplicação no site:** `src/components/ThemeStyleOverride.tsx` (Server Component no `layout.tsx` raiz) injeta `<style>` em `html:root` só quando o preset ativo não é o padrão; `getActiveThemePreset()` volta ao padrão em qualquer erro de banco; `layout.tsx` com `revalidate = 3600`. `getThemeStatus()` normaliza um `activePreset` desconhecido para o padrão.
+- **Revalidação (`9f89d20`):** `PATCH /api/admin/theme` chama `revalidatePath("/", "layout")` após salvar — a mudança aparece na requisição seguinte, em vez de até 1 hora depois.
+- **Backend/Frontend:** `themeConfigRepository.ts`, `themeConfigService.ts`, `GET`/`PATCH /api/admin/theme` (`requireAdmin()`), `src/lib/api/themeApi.ts`, nova `/admin/tema`; entrada no `Sidebar` e em `src/proxy.ts`.
+
+**Arquivos alterados/criados:** `prisma/schema.prisma`, `src/app/admin/page.tsx`, `src/app/admin/tema/page.tsx` (novo), `src/app/api/admin/theme/route.ts` (novo), `src/app/layout.tsx`, `src/components/ThemeStyleOverride.tsx` (novo), `src/components/admin/shared/Sidebar.tsx`, `src/lib/api/themeApi.ts` (novo), `src/lib/repositories/themeConfigRepository.ts` (novo), `src/lib/theme-presets.ts` (novo), `src/lib/themeConfigService.ts` (novo), `src/lib/wcag.ts` (novo), `src/proxy.ts`.
+
+### Validação
+
+Banco Supabase real: troca de preset persistida e revertida; preset inválido rejeitado; `getThemeStatus()`/`getActiveThemePreset()` lendo "moderno" após a normalização. Build de produção local: override `html:root` presente no HTML com preset não padrão e ausente com o padrão. Revalidação: login admin real via NextAuth, `PATCH` de uma cor de teste refletido na requisição seguinte a `/`; cor salva pelo Product Owner restaurada ao final.
+
+---
+
+## [PWA] — 2026-09-09 — App instalável (manifest, ícone, service worker)
+
+**Tipo:** Item do Épico 4 (commit `3e5abcc`). Entrada registrada retroativamente em 01/10/2026 a partir do commit.
+
+### Implementação
+
+- **`src/app/manifest.ts`:** manifest nativo do Next.js; `name`/`short_name` vindos de `StoreConfig` (cache `revalidate: 3600`), com fallback estático "Doce Menina" se a leitura falhar.
+- **`src/app/icon.tsx`:** ícone PNG 512×512 gerado via `next/og` (`ImageResponse`), "DM" nas cores chocolate/cream; `src/app/favicon.ico` removido.
+- **`public/sw.js`:** service worker mínimo (install/activate/fetch), sem cache de dados para uso offline. Registrado por `src/components/PwaServiceWorker.tsx`.
+- **`src/app/layout.tsx`:** metadata de `viewport` (cor do navegador) e `appleWebApp`.
+
+**Arquivos alterados/criados:** `public/sw.js` (novo), `src/app/icon.tsx` (novo), `src/app/manifest.ts` (novo), `src/components/PwaServiceWorker.tsx` (novo), `src/app/layout.tsx`, `src/app/favicon.ico` (removido).
+
+### Validação
+
+Build de produção local: `/manifest.webmanifest` com o nome real da loja vindo do banco, `/icon` renderizando o PNG (imagem inspecionada), `/sw.js` servido.
+
+**Achados registrados no commit:** `StoreConfig.faviconUrl` (upload em `/admin/config`) não é usado como ícone da aba; `<title>` do `layout.tsx` ainda "Doce Atelier".
+
+---
+
+## [Módulo Usuários] — 2026-09-09 — `/admin/usuarios`: gestão de usuários da equipe
+
+**Tipo:** Novo módulo admin (Épico 4, commit `448ecbc`). Sem alteração de schema (`User`/`UserRole` já existiam). Entrada registrada retroativamente em 01/10/2026 a partir do commit.
+
+### Implementação
+
+- **Backend:** `userRepository.ts`, `userValidator.ts`, `userService.ts`; rotas `GET`/`POST /api/admin/users`, `GET`/`PATCH /api/admin/users/[id]`, `PATCH .../[id]/activate`, `PATCH .../[id]/deactivate` — `requireAdmin()`.
+- **Senha:** definida pelo ADMIN na criação e redefinível na edição; hash `bcryptjs` (10 rounds, mesmo de `prisma/seed.ts`); nunca presente no DTO da API.
+- **Proteções no servidor (`userService.ts`):** `SelfDeactivationError` (ADMIN não desativa a própria conta) e `LastActiveAdminError` (o último ADMIN ativo não pode ser desativado).
+- **Frontend:** nova `/admin/usuarios`, `src/lib/api/userApi.ts`; entrada no `Sidebar` e em `src/proxy.ts`.
+
+**Arquivos alterados/criados:** `src/app/admin/page.tsx`, `src/app/admin/usuarios/page.tsx` (novo), `src/app/api/admin/users/**` (4 arquivos novos), `src/components/admin/shared/Sidebar.tsx`, `src/lib/api/userApi.ts` (novo), `src/lib/repositories/userRepository.ts` (novo), `src/lib/userService.ts` (novo), `src/lib/validators/userValidator.ts` (novo), `src/proxy.ts`.
+
+### Validação
+
+Banco Supabase real: criar, listar, editar, desativação da própria conta bloqueada, desativar; senha gravada com hash bcrypt e ausente do DTO. Usuário de teste removido.
+
+---
+
+## [Módulo Despesas] — 2026-09-09 — `/admin/despesas`: despesas e contas a pagar
+
+**Tipo:** Novo módulo admin (commit `fe5508f`), base para Fluxo de caixa, Contas a pagar, Centro de custo e DRE (`REGRAS_NEGOCIO.md` 13.2/13.4). Entrada registrada retroativamente em 01/10/2026 a partir do commit.
+
+### Implementação
+
+- **Schema:** enums `ExpenseCategory` (`ALUGUEL`, `SALARIOS`, `MARKETING`, `IMPOSTOS`, `SERVICOS`, `MANUTENCAO`, `OUTROS`) e `ExpenseStatus` (`PENDENTE`, `PAGO`); modelo `Expense` (`description`, `category`, `amount Decimal(10,2)`, `status`, `dueDate`, `paidDate`, `supplierId` opcional, `notes`), índices em `status`, `dueDate`, `category`; relação inversa `Supplier.expenses`. Uma única entidade cobre despesa avulsa (`PAGO`) e conta a pagar (`PENDENTE` + `dueDate`); categoria é enum fixo, sem cadastro próprio.
+- **Backend:** `expenseRepository.ts`, `expenseValidator.ts`, `expenseService.ts`; rotas `GET`/`POST /api/admin/expenses`, `GET`/`PATCH`/`DELETE /api/admin/expenses/[id]`, `PATCH .../[id]/pay`, `PATCH .../[id]/pending` — `requireFinance()` (ADMIN + FINANCEIRO).
+- **Frontend:** nova `/admin/despesas` — criar/editar/excluir, marcar paga/pendente, fornecedor e vencimento opcionais, toggle Cards/Lista; `src/lib/api/expenseApi.ts`; entrada no `Sidebar` e em `src/proxy.ts`.
+
+**Arquivos alterados/criados:** `prisma/schema.prisma`, `src/app/admin/despesas/page.tsx` (novo), `src/app/admin/page.tsx`, `src/app/api/admin/expenses/**` (4 arquivos novos), `src/components/admin/shared/Sidebar.tsx`, `src/lib/api/expenseApi.ts` (novo), `src/lib/expenseService.ts` (novo), `src/lib/repositories/expenseRepository.ts` (novo), `src/lib/validators/expenseValidator.ts` (novo), `src/proxy.ts`.
+
+### Validação
+
+`npx prisma db push` aplicado ao banco de produção (tabela `Expense` e os dois enums, nenhuma tabela existente alterada), após confirmação explícita. Fluxo criar/listar/marcar paga/excluir verificado contra o banco real.
+
+---
+
+## [Sprint 1 — P3.2] — 2026-09-08 — Dashboard de relatórios financeiros (`/admin/relatorios`)
+
+**Tipo:** Primeira sprint do módulo P3.2 (Relatórios financeiros, Épico 3, commit `4418a3b`). Entrada registrada retroativamente em 01/10/2026 a partir do commit.
+
+### Implementação
+
+- **Relatório:** faturamento, ticket médio e número de pedidos; quebra por categoria de produto; receita × custo (margem); quebra por forma de pagamento; exportação CSV e PDF (impressão do navegador).
+- **Critério de faturamento:** toggle Entregue/Pago na tela (`REGRAS_NEGOCIO.md` 13.1 usa pedidos `PAGO`, 14.2 usa `ENTREGUE` — o Product Owner optou por expor os dois). CMV sempre com base em pedidos `ENTREGUE` (13.7), independente do toggle, com nota na interface.
+- **Backend:** consultas de agregação em `orderRepository.ts`; novo `reportsService.ts` (reusa `calculateCMV`); `GET /api/admin/reports/financial` (ADMIN + FINANCEIRO, mesma proteção da rota de CMV).
+- **Frontend:** nova `/admin/relatorios`, `src/lib/api/reportsApi.ts`; entrada no `Sidebar` e em `src/proxy.ts`. `EntityTable`: `renderActions` passa a ser opcional.
+
+**Arquivos alterados/criados:** `src/app/admin/page.tsx`, `src/app/admin/relatorios/page.tsx` (novo), `src/app/api/admin/reports/financial/route.ts` (novo), `src/components/admin/shared/Sidebar.tsx`, `src/components/shared/EntityTable.tsx`, `src/lib/api/reportsApi.ts` (novo), `src/lib/reportsService.ts` (novo), `src/lib/repositories/orderRepository.ts`, `src/proxy.ts`.
+
+### Validação
+
+`getFinancialReport` executado de ponta a ponta contra o banco de produção, sem erros; retornou estrutura vazia válida (nenhum pedido `ENTREGUE`/`PAGO` no banco na data).
 
 ---
 

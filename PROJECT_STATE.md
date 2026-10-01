@@ -12,10 +12,10 @@
 | Versão | 0.1.0 (`package.json`) — em produção real (Vercel + Supabase, `app.confeitariadocemenina.com.br`), sem release formal versionada |
 | Sprint atual | Nenhuma sprint oficial em andamento |
 | Módulo atual | Nenhum módulo funcional em desenvolvimento |
-| Data desta fotografia | 23/09/2026 |
+| Data desta fotografia | 01/10/2026 |
 | Status geral | 🟢 Estável — em produção com clientes reais; Épicos 1 e 2 encerrados; Épicos 3, 4 e 5 com a maior parte dos itens entregues |
-| Última atualização | 23/09/2026 |
-| Origem da atualização | Retomada do projeto: releitura da documentação e do histórico git (`main` sincronizado com `origin/main`, último commit `b272cb7`, 20/09/2026) |
+| Última atualização | 01/10/2026 |
+| Origem da atualização | Decisões do Product Owner de 01/10/2026: ADR-027 (Vercel oficial), telefone da loja cadastrado, registro retroativo no `CHANGELOG.md` dos módulos de setembro, `/vitrine-preview` versionada |
 | Responsável pela atualização | IA (Claude Code) |
 
 ---
@@ -31,9 +31,10 @@
 - **Épico 4 — Expansão Operacional:** Usuários, Calendário de produção + reagendamento negociado com o cliente (P3.3), PWA, Tema (cores livres com checagem WCAG).
 - **Épico 5 — Integrações:** `5.A` Google Maps (Routes API, recálculo server-side), `5.B` WhatsApp OTP + notificações, `5.E` importador de NFC-e (substituiu CONAB/CEASA, que não têm API pública). Falta `5.D` (PIX).
 - **Fora de épico, 15–20/09/2026:** cadastro de cliente (autocadastro em `/cadastro` + pessoa física/corporativa no admin) com endereços salvos e gestão direta de endereços; **Orçamentos** (`/admin/orcamentos`, `Order.status = RASCUNHO` + `quoteStatus`, link público de aprovação `/orcamento/[token]`, editor completo); importação de ingredientes por Excel; preço por embalagem; duplicar receita; correção de LTV (`RASCUNHO`/`CANCELADO` fora do "Total Gasto"); página pública de orçamento redesenhada.
-- **Vitrine (`/`) redesenhada em 20/09/2026** (wine/gold + Fraunces, seções institucionais, dados de contato vindos de `StoreConfig`). `StoreConfig.phone` ainda é `null`, então CTA/botão flutuante de WhatsApp ficam ocultos.
+- **Vitrine (`/`) redesenhada em 20/09/2026** (wine/gold + Fraunces, seções institucionais, dados de contato vindos de `StoreConfig`). `StoreConfig.phone` cadastrado em 01/10/2026 — CTA e botão flutuante de WhatsApp passam a aparecer.
+- **`/vitrine-preview` (24/09/2026, versionada em 01/10/2026):** Vitrine mobile alternativa (capa + cartão da loja + itens em linha), página paralela e não indexável — por decisão do Product Owner **não substitui** a Vitrine (`/`); a substituição será decidida depois. Horário/slogan são valores de exemplo fixos no código.
 
-**Lacuna de documentação (achado real desta atualização):** vários módulos entregues em setembro foram commitados **sem entrada própria no `CHANGELOG.md`** — Usuários, Tema, PWA, Canais de Venda, Despesas, `DS.6` (ajustes de layout admin + toggle Cards/Lista), Sprints 1–2 do P3.2 e o cadastro de cliente/orçamentos criados (commits `7d862b8`, `7c63626`, `f7ab1b2`). O próprio `CHANGELOG.md` já registra esse gap para o P3.3. Orçamentos e o guard `requireCustomer` também não têm ADR. Nada disso foi reescrito retroativamente.
+**Lacuna de documentação:** em 01/10/2026 foram registrados retroativamente no `CHANGELOG.md` Usuários, Tema, PWA, Canais de Venda, Despesas, Sprints 1–2 do P3.2 e o cadastro de cliente (commits `7c63626`, `d9eadbf`, `7d862b8`). **Continuam sem entrada:** `DS.6` (layout admin + toggle Cards/Lista) e commits avulsos de 08–16/09 (imagens na Vitrine, pool de conexões, migração Cards/Lista de categorias/ocasiões, correções de 15–16/09), além da primeira entrega do P3.3 (`75c9f04`). Orçamentos e o guard `requireCustomer` seguem sem ADR.
 
 ---
 
@@ -59,11 +60,11 @@ Ordem cronológica inversa (fonte: `git log`; itens com `CHANGELOG.md` marcados 
 - **20/09** — Redesenho editorial da Vitrine ✔ · Editor completo de orçamento ✔ · Design público do orçamento + orçamentos recusados visíveis + correção de LTV ✔ · Exclusão de endereço de cliente ✔ · Cadastro direto de endereços pela equipe ✔ · Duplicar receita ✔ · Preço por embalagem ✔
 - **19/09** — Importação/exportação de ingredientes por Excel ✔
 - **17/09** — Link público de aprovação de orçamento + front admin ✔
-- **16/09** — Cadastro de cliente (autocadastro, corporativo, ativar/desativar/excluir), orçamentos criados pelo admin, correção de erro de endereço no formulário de orçamento (sem entrada no `CHANGELOG.md`)
+- **16/09** — Cadastro de cliente (autocadastro, corporativo, ativar/desativar/excluir) e orçamentos criados pelo admin ✔ · correção de erro de endereço no formulário de orçamento
 - **15/09** — Reagendamento negociado (P3.3) ✔ · correção: área cliente presa em largura mobile no desktop · correção: envio de WhatsApp para telefones sem código de país
-- **13/09** — Fluxo de caixa/Contas a pagar/DRE ✔ · Canais de Venda + centro de custo em Despesas · migração de `categorias`/`ocasioes` para o padrão Cards/Lista
-- **08–12/09** — `DS.6` (layout admin + toggle Cards/Lista), imagens reais na Vitrine, Relatórios financeiros (Sprint 1), correção do pool de conexões (produção)
-- **09–10/09** — Usuários, Calendário de produção, PWA, Tema (correção de revalidação de cache)
+- **13/09** — Fluxo de caixa/Contas a pagar/DRE ✔ · Canais de Venda + centro de custo em Despesas ✔ · migração de `categorias`/`ocasioes` para o padrão Cards/Lista
+- **08–12/09** — `DS.6` (layout admin + toggle Cards/Lista), imagens reais na Vitrine, Relatórios financeiros (Sprint 1) ✔, correção do pool de conexões (produção)
+- **09–10/09** — Despesas ✔ · Usuários ✔ · Calendário de produção · PWA ✔ · Tema ✔
 - **05–07/09** — Importador de NFC-e (`5.E`) ✔ · Google Maps (`5.A`) ✔ · Precificação (`P3.1`) ✔ · ADR-026
 - **04–06/09** — Deploy em produção (`I.4`) ✔
 - **27–28/08** — `DS.5` shadcn/ui (ADR-025) ✔
@@ -73,7 +74,9 @@ Ordem cronológica inversa (fonte: `git log`; itens com `CHANGELOG.md` marcados 
 ## Últimas decisões
 
 - **ADR-025** (27/08/2026): shadcn/ui como camada de componentes oficial.
-- **ADR-026** (06/09/2026): registro (não resolução) de que produção real é Vercel, contradizendo a ADR-010 (VPS Linux).
+- **ADR-026** (06/09/2026): registro de que produção real é Vercel, contradizendo a ADR-010 (VPS Linux).
+- **ADR-027** (01/10/2026): Vercel declarada ambiente oficial de produção — resolve a ADR-026 e supera a parte "VPS Linux" da ADR-010.
+- **Decisão do Product Owner (01/10/2026):** `/vitrine-preview` mantida como página paralela, sem substituir a Vitrine; substituição a decidir.
 - **Decisão de infraestrutura (08/09/2026):** `DATABASE_URL` (Transaction Pooler) + `DIRECT_URL` (Session Pooler) — sem ADR própria; registrada em comentário no `schema.prisma`, `.env.example` e no `CLAUDE.md`.
 - **Decisão do Product Owner (13/09/2026):** DRE não deduz "devoluções e cancelamentos" (não existe valor confiável hoje); Fluxo de Caixa é realizado, não projetado.
 - **Decisão do Product Owner (17/09/2026):** ciclo completo de ações por estado do orçamento (não só enviar/copiar link); confirmação pública por últimos 4 dígitos do telefone/CNPJ.
@@ -92,16 +95,14 @@ Ordem cronológica inversa (fonte: `git log`; itens com `CHANGELOG.md` marcados 
 - Lista de papéis em `Sidebar.tsx` mantida à mão em paralelo a `src/proxy.ts` `ROLE_REQUIRED`.
 - `KI-03` — parcial: WhatsApp resolvido no `5.B`; falta só o PIX (`5.D`).
 - Dado ruim em produção: produto "Bolo Chocolate 25cm" com `imageUrl` apontando para um clip-art (precisa de novo upload em `/admin/produtos`).
-- `StoreConfig.phone` vazio — botão de WhatsApp da Vitrine oculto até o cadastro do telefone em `/admin/config`.
 
 **Documentais:**
-- `CHANGELOG.md` sem entradas para vários módulos de setembro (lista acima); Sprint `I.4` ainda "em andamento" em `PLAN.md`. `PLAN.md` e `KNOWN_ISSUES.md` atualizados em 23/09/2026.
+- `CHANGELOG.md` ainda sem entrada para `DS.6` e commits avulsos de 08–16/09 (lista acima); Sprint `I.4` ainda "em andamento" em `PLAN.md`. `PLAN.md` e `KNOWN_ISSUES.md` atualizados em 23/09/2026.
 - `CLAUDE.md` atualizado nesta mesma sessão (estrutura, stack, infraestrutura, autenticação, status); a credencial de admin antiga foi removida do arquivo por segurança.
 - `MENU_STRUCTURE.md`/`SCREENS.md` desatualizados desde a Sprint P1 para praticamente todos os módulos.
 - Backlog de Product Review de 13/09 (8 itens de UX/UI/acessibilidade em `/admin/relatorios`) e "Vitrine com layout errado" (13/09, possivelmente superado pelo redesenho de 20/09) em `PLAN.md`.
 
 **Arquiteturais:**
-- **ADR-026 vs ADR-010** (Vercel × VPS Linux) — reconciliação pendente do Product Owner.
 - Orçamentos, `requireCustomer` e a estratégia de pool de conexões sem ADR.
 - GD-001/GD-002/GD-003.
 
@@ -112,7 +113,7 @@ Ordem cronológica inversa (fonte: `git log`; itens com `CHANGELOG.md` marcados 
 
 ## Próxima decisão do Product Owner
 
-Escolher o rumo: (a) `5.D` PIX, o último item que fecha o `KI-03`; (b) Épico 6 (detalhe de pedido/fotos de referência); (c) saldar a dívida documental de setembro (CHANGELOG/PLAN/ADRs) e decidir sobre testes automatizados; (d) reconciliar ADR-010/ADR-026. Em paralelo, seguem pendentes GD-001/GD-002/GD-003.
+Escolher o rumo: (a) `5.D` PIX, o último item que fecha o `KI-03`; (b) Épico 6 (detalhe de pedido/fotos de referência); (c) saldar o restante da dívida documental (`DS.6`, encerramento da `I.4`, ADRs de Orçamentos/`requireCustomer`) e decidir sobre testes automatizados; (d) decidir se a `/vitrine-preview` substitui a Vitrine. Em paralelo, seguem pendentes GD-001/GD-002/GD-003.
 
 ---
 
