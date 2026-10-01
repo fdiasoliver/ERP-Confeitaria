@@ -76,7 +76,8 @@ export default function IngredientesAdminPage() {
   const [view, setView] = useViewMode("ingredientes");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [lowStockOnly, setLowStockOnly] = useState(false);
+  // Filtro de estoque — também acionado pelos indicadores do painel no topo.
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [form, setForm] = useState<IngredientForm>(EMPTY_FORM);
@@ -118,11 +119,38 @@ export default function IngredientesAdminPage() {
       .filter((i) => !term || i.name.toLowerCase().includes(term))
       .filter((i) => statusFilter === "all" || (statusFilter === "active" ? i.active : !i.active))
       .filter((i) => categoryFilter === "all" || i.categoryId === categoryFilter)
-      .filter((i) => !lowStockOnly || i.isLowStock)
+      .filter((i) => stockFilter === "all" || (stockFilter === "low" ? i.isLowStock : i.stockQuantity <= 0))
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  }, [ingredients, search, statusFilter, categoryFilter, lowStockOnly]);
+  }, [ingredients, search, statusFilter, categoryFilter, stockFilter]);
 
-  const hasActiveFilter = search.trim() !== "" || statusFilter !== "all" || categoryFilter !== "all" || lowStockOnly;
+  // Painel de controle de estoque (01/10/2026) — só ingredientes ativos.
+  const stockStats = useMemo(() => {
+    const active = ingredients.filter((i) => i.active);
+    return {
+      activeCount: active.length,
+      stockValue: active.reduce((sum, i) => sum + i.stockQuantity * i.currentPrice, 0),
+      lowCount: active.filter((i) => i.isLowStock).length,
+      outCount: active.filter((i) => i.stockQuantity <= 0).length,
+    };
+  }, [ingredients]);
+
+  function applyStockShortcut(filter: "all" | "low" | "out") {
+    setStatusFilter(filter === "all" ? "all" : "active");
+    setStockFilter(filter);
+  }
+
+  // Abre a edição a partir de /admin/ingredientes/[id] ("Editar ingrediente") —
+  // mesma convenção ?edit= de /admin/produtos; o parâmetro é limpo da URL.
+  useEffect(() => {
+    if (loading) return;
+    const editId = new URLSearchParams(window.location.search).get("edit");
+    if (!editId) return;
+    const target = ingredients.find((i) => i.id === editId);
+    window.history.replaceState(null, "", "/admin/ingredientes");
+    if (target) openEdit(target);
+  }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasActiveFilter = search.trim() !== "" || statusFilter !== "all" || categoryFilter !== "all" || stockFilter !== "all";
   const canCreate = units.length > 0;
 
   function openCreate() {
@@ -289,6 +317,12 @@ export default function IngredientesAdminPage() {
     const busy = actionLoading === ingredient.id;
     return (
       <>
+        <Link
+          href={`/admin/ingredientes/${ingredient.id}`}
+          className={`${base} ${neutral} block text-center text-chocolate`}
+        >
+          Ver ingrediente
+        </Link>
         <button
           type="button"
           onClick={() => openEdit(ingredient)}
@@ -386,6 +420,30 @@ export default function IngredientesAdminPage() {
           </Link>
         </div>
 
+        {!loading && !error && (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[
+              { key: "all" as const, label: "Ingredientes ativos", value: String(stockStats.activeCount), tone: "text-chocolate" },
+              { key: "all" as const, label: "Valor em estoque", value: formatCurrency(stockStats.stockValue), tone: "text-chocolate" },
+              { key: "low" as const, label: "Abaixo do mínimo", value: String(stockStats.lowCount), tone: stockStats.lowCount > 0 ? "text-rose" : "text-chocolate" },
+              { key: "out" as const, label: "Sem estoque", value: String(stockStats.outCount), tone: stockStats.outCount > 0 ? "text-rose" : "text-chocolate" },
+            ].map((kpi) => (
+              <button
+                key={kpi.label}
+                type="button"
+                onClick={() => applyStockShortcut(kpi.key)}
+                aria-pressed={kpi.key !== "all" && stockFilter === kpi.key}
+                className={`shadow-card rounded-2xl border bg-white px-4 py-3 text-left transition-colors hover:bg-sand/30 ${
+                  kpi.key !== "all" && stockFilter === kpi.key ? "border-chocolate" : "border-sand"
+                }`}
+              >
+                <p className="text-xs font-semibold text-muted">{kpi.label}</p>
+                <p className={`font-display mt-2 text-2xl font-semibold ${kpi.tone}`}>{kpi.value}</p>
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted">
             {loading ? "Carregando…" : `${filtered.length} ingrediente${filtered.length !== 1 ? "s" : ""}`}
@@ -432,14 +490,16 @@ export default function IngredientesAdminPage() {
                 ]}
               />
             )}
-            <label className="flex items-center gap-2 text-sm text-chocolate">
-              <input
-                type="checkbox"
-                checked={lowStockOnly}
-                onChange={(e) => setLowStockOnly(e.target.checked)}
-              />
-              Somente estoque baixo
-            </label>
+            <FilterChips
+              label="Estoque"
+              selected={stockFilter}
+              onSelect={setStockFilter}
+              options={[
+                { value: "all", label: "Todos" },
+                { value: "low", label: "Abaixo do mínimo" },
+                { value: "out", label: "Sem estoque" },
+              ]}
+            />
           </div>
         )}
 
@@ -465,6 +525,7 @@ export default function IngredientesAdminPage() {
               <EntityCard
                 key={ingredient.id}
                 title={ingredient.name}
+                href={`/admin/ingredientes/${ingredient.id}`}
                 badges={
                   <>
                     <StatusBadge isActive={ingredient.active} />
