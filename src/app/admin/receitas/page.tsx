@@ -21,6 +21,7 @@ import { ViewToggle } from "@/components/shared/ViewToggle";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
 import { useViewMode } from "@/hooks/useViewMode";
 import type { ValidationError } from "@/lib/types";
+import type { RecipeProductMarginDTO } from "@/lib/types";
 import { formatCurrency } from "@/lib/formatters/currency";
 import * as recipeApi from "@/lib/api/recipeApi";
 import { ApiRequestError, type Recipe } from "@/lib/api/recipeApi";
@@ -62,6 +63,21 @@ type StatusFilter = "all" | "active" | "inactive";
 // useSearchParams() (usado para reabrir o modal de duplicação via ?duplicate=id,
 // a partir de /admin/receitas/[id]) exige um limite de Suspense — mesma
 // convenção de ?edit=id em admin/produtos/page.tsx.
+// Margem/lucro da receita = dos produtos que a usam (recipeMarginService.ts).
+// Um produto: valor exato; vários: faixa menor–maior; nenhum: "—".
+function MarginSummary({ products, field }: { products: RecipeProductMarginDTO[]; field: "margin" | "profit" }) {
+  if (products.length === 0) return <span className="text-muted">—</span>;
+  const values = products.map((p) => p[field]);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const fmt = (v: number) => (field === "margin" ? `${(v * 100).toFixed(0)}%` : formatCurrency(v));
+  return (
+    <span className={`font-semibold ${min < 0 ? "text-rose" : "text-chocolate"}`}>
+      {min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`}
+    </span>
+  );
+}
+
 export default function ReceitasAdminPage() {
   return (
     <Suspense fallback={<div className="p-8 text-center text-sm text-muted">Carregando…</div>}>
@@ -89,6 +105,7 @@ function ReceitasAdminPageContent() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState<Recipe | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [margins, setMargins] = useState<Record<string, RecipeProductMarginDTO[]>>({});
 
   async function loadAll(silent = false) {
     if (!silent) {
@@ -96,12 +113,14 @@ function ReceitasAdminPageContent() {
       setError(null);
     }
     try {
-      const [recipeRows, ingredientRows, unitRows] = await Promise.all([
+      const [recipeRows, ingredientRows, unitRows, marginRows] = await Promise.all([
         recipeApi.listRecipes(),
         ingredientApi.listIngredients(),
         unitApi.listUnits(),
+        recipeApi.getRecipeMargins().catch(() => ({} as Record<string, RecipeProductMarginDTO[]>)),
       ]);
       setRecipes(recipeRows);
+      setMargins(marginRows);
       setIngredients(ingredientRows.filter((i) => i.active));
       setUnits(unitRows.filter((u) => u.isActive));
     } catch (err) {
@@ -402,6 +421,18 @@ function ReceitasAdminPageContent() {
       className: "hidden text-right sm:table-cell",
       render: (r) => <span className="text-muted">{formatCurrency(r.unitCost)}</span>,
     },
+    {
+      key: "margin",
+      header: "Margem",
+      className: "text-right",
+      render: (r) => <MarginSummary products={margins[r.id] ?? []} field="margin" />,
+    },
+    {
+      key: "profit",
+      header: "Lucro",
+      className: "hidden text-right md:table-cell",
+      render: (r) => <MarginSummary products={margins[r.id] ?? []} field="profit" />,
+    },
   ];
 
   return (
@@ -485,6 +516,14 @@ function ReceitasAdminPageContent() {
                   <div className="rounded-lg bg-sand/60 px-2 py-1.5">
                     <p className="text-sm font-semibold leading-none text-chocolate">{formatCurrency(recipe.unitCost)}</p>
                     <p className="mt-0.5 text-[10px] text-muted">Custo por {recipe.yieldUnit}</p>
+                  </div>
+                  <div className="rounded-lg bg-sand/60 px-2 py-1.5">
+                    <p className="text-sm font-semibold leading-none"><MarginSummary products={margins[recipe.id] ?? []} field="margin" /></p>
+                    <p className="mt-0.5 text-[10px] text-muted">Margem (produtos)</p>
+                  </div>
+                  <div className="rounded-lg bg-sand/60 px-2 py-1.5">
+                    <p className="text-sm font-semibold leading-none"><MarginSummary products={margins[recipe.id] ?? []} field="profit" /></p>
+                    <p className="mt-0.5 text-[10px] text-muted">Lucro (produtos)</p>
                   </div>
                 </div>
               </EntityCard>

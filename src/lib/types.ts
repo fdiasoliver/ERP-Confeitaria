@@ -33,6 +33,19 @@ export type QuoteStatus =
   | "APROVADO"
   | "RECUSADO";
 
+/** Margem/lucro de uma receita vista por um produto que a usa (01/10/2026) —
+ * ver src/lib/recipeMarginService.ts. `margin` é fração (0.45 = 45%). */
+export interface RecipeProductMarginDTO {
+  productId: string;
+  productName: string;
+  active: boolean;
+  recipeQuantity: number;
+  basePrice: number;
+  costPrice: number;
+  margin: number;
+  profit: number;
+}
+
 /** Desconto do orçamento — R$ fixo (VALOR) ou % sobre o subtotal (PERCENTUAL). */
 export type DiscountType = "VALOR" | "PERCENTUAL";
 

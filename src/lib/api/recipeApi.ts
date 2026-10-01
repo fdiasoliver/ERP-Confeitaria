@@ -1,3 +1,4 @@
+import type { RecipeProductMarginDTO } from "@/lib/types";
 export interface RecipeItem {
   id: string;
   ingredientId: string;
@@ -57,6 +58,11 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
 export async function listRecipes(): Promise<Recipe[]> {
   return request<Recipe[]>("/api/admin/recipes");
+}
+
+/** Mapa recipeId → produtos que usam a receita, com margem e lucro de cada um. */
+export async function getRecipeMargins(): Promise<Record<string, RecipeProductMarginDTO[]>> {
+  return request<Record<string, RecipeProductMarginDTO[]>>("/api/admin/recipes/margins");
 }
 
 export async function getRecipe(id: string): Promise<Recipe> {

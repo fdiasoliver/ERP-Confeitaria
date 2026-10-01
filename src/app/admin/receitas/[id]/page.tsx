@@ -6,7 +6,7 @@ import { HeaderMinimal } from "@/components/layout/Header";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
 import { toast } from "sonner";
-import type { ValidationError } from "@/lib/types";
+import type { RecipeProductMarginDTO, ValidationError } from "@/lib/types";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { formatCurrency } from "@/lib/formatters/currency";
@@ -319,6 +319,7 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
 
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [productMargins, setProductMargins] = useState<RecipeProductMarginDTO[]>([]);
   const [units, setUnits] = useState<UnitOfMeasure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -347,12 +348,14 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
       setError(null);
     }
     try {
-      const [recipeRow, ingredientRows, unitRows] = await Promise.all([
+      const [recipeRow, ingredientRows, unitRows, marginRows] = await Promise.all([
         recipeApi.getRecipe(id),
         ingredientApi.listIngredients(),
         unitApi.listUnits(),
+        recipeApi.getRecipeMargins().catch(() => ({} as Record<string, RecipeProductMarginDTO[]>)),
       ]);
       setRecipe(recipeRow);
+      setProductMargins(marginRows[id] ?? []);
       setIngredients(ingredientRows.filter((i) => i.active));
       setUnits(unitRows.filter((u) => u.isActive));
     } catch (err) {
@@ -694,6 +697,51 @@ export default function ReceitaDetailPage({ params }: { params: Promise<{ id: st
             />
           ))}
         </div>
+
+        <div>
+          <p className="text-sm font-semibold text-chocolate">
+            Produtos que usam esta receita ({productMargins.length})
+          </p>
+          <p className="text-xs text-muted">
+            Margem e lucro de cada produto: preço praticado − custo (ingredientes + embalagens).
+          </p>
+        </div>
+        {productMargins.length === 0 ? (
+          <p className="text-sm text-muted">Nenhum produto usa esta receita — sem margem a calcular.</p>
+        ) : (
+          <div className="shadow-card overflow-x-auto rounded-2xl bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-sand text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="px-4 py-3 font-medium">Produto</th>
+                  <th className="px-4 py-3 text-right font-medium">Preço</th>
+                  <th className="hidden px-4 py-3 text-right font-medium sm:table-cell">Custo</th>
+                  <th className="px-4 py-3 text-right font-medium">Margem</th>
+                  <th className="px-4 py-3 text-right font-medium">Lucro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productMargins.map((p) => (
+                  <tr key={p.productId} className="border-b border-sand/60 last:border-0">
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-chocolate">{p.productName}</span>
+                      {!p.active && <span className="ml-2 text-xs text-muted">(inativo)</span>}
+                      <span className="block text-xs text-muted">{p.recipeQuantity}× esta receita</span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-chocolate">{formatCurrency(p.basePrice)}</td>
+                    <td className="hidden px-4 py-3 text-right text-muted sm:table-cell">{formatCurrency(p.costPrice)}</td>
+                    <td className={`px-4 py-3 text-right font-semibold ${p.margin < 0 ? "text-rose" : "text-chocolate"}`}>
+                      {(p.margin * 100).toFixed(0)}%
+                    </td>
+                    <td className={`px-4 py-3 text-right font-semibold ${p.profit < 0 ? "text-rose" : "text-chocolate"}`}>
+                      {formatCurrency(p.profit)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {editModalOpen && (
