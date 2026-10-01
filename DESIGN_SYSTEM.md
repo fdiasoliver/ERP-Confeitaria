@@ -1325,6 +1325,18 @@ Eliminar a duplicação identificada na Sprint 2.E.6 (`MODULE_2E_UX_REVIEW.md`) 
 - **Visão Cards/Lista:** telas com `ViewToggle` abrem em **Lista** por padrão (`useViewMode`, admin e área do cliente, 01/10/2026); a escolha manual continua salva por tela no navegador.
 - **Implementação:** Radix `Dialog` não-modal (via `radix-ui`, ADR-025) com `Portal`, posicionado como página.
 
+### `MultiSelectFilter` / `FilterBar` (01/10/2026)
+- **Responsabilidade:** filtro de listagem em dropdown com checkbox — padrão de todos os filtros (status, tipo, categoria, situação, papel, estoque) das telas de lista do admin. Várias opções podem ser marcadas; nenhuma marcada = todas ("Todos"/"Todas"). O menu fica aberto ao marcar; "Limpar" volta para todas.
+- **Propriedades:** `label`, `options` (`{ value, label }[]`), `selected` (array), `onChange`, `allLabel?`. Helpers: `matchesFilter(selected, value)` (filtro em memória), `activeParamFrom(selected)` (status ativo/inativo → booleano da API), `STATUS_FILTER_OPTIONS`.
+- **`FilterBar`:** linha com os dropdowns e o "Ordenar por" lado a lado (2 colunas no celular).
+- **Implementação:** Radix `DropdownMenu` (`CheckboxItem`) via `radix-ui`. Substitui `FilterChips`, que continua só no seletor "Critério de faturamento" de `/admin/relatorios` (alternância de modo, não filtro).
+
+### `SortSelect` (01/10/2026)
+- **Responsabilidade:** "Ordenar por" padrão de toda listagem do admin — sempre com "Nome (A–Z)"/"Nome (Z–A)" (ou o equivalente da tela, ex.: descrição/destinatário) e opções próprias de cada tela (preço, custo, margem, estoque, valor, vencimento, entrega, mais recentes). Helpers `sortBy`, `compareText`, `NAME_SORT_OPTIONS`, `RECENT_SORT_OPTION` para ordenação em memória; telas paginadas no servidor mapeiam a opção para `orderBy`/`orderDirection` da API.
+
+### `DeleteCategoryDialog` (01/10/2026)
+- **Responsabilidade:** exclusão de categoria (produto, ingrediente, embalagem). Confirma a exclusão; se a API responder que há itens vinculados (`details.count`), mostra quantos são e pede a categoria de destino ("Mover e excluir"). `allowNoCategory` oferece "Sem categoria" (ingredientes e embalagens).
+
 ### Reaproveitados sem alteração de responsabilidade (não recriados)
 - **`Field`/`Section`** (`src/components/admin/config/FormPrimitives.tsx`) — já existiam; `Field` ganhou suporte a `htmlFor` (extensão retrocompatível) para acessibilidade de label/input.
 - **`PageHeader`** → já satisfeito por `HeaderMinimal` (`src/components/layout/Header.tsx`), não recriado.

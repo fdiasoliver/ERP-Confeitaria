@@ -109,7 +109,7 @@ Distinto de `OccasionTag`, que representa "para qual situação o produto é ven
 
 **Regras:**
 - Cada produto pertence a exatamente **uma** categoria (`categoryId` obrigatório)
-- Categorias **não são removidas fisicamente** e **não possuem endpoint DELETE** — ciclo de vida restrito a ativar (`isActive = true`) e desativar (`isActive = false`)
+- **Exclusão (desde 01/10/2026 — antes não havia endpoint DELETE):** `DELETE /api/admin/categories/[id]`. Sem produtos vinculados, exclui direto. Com produtos, exige `?transferTo=<id>` de outra categoria **ativa**: produtos e despesas ligadas à categoria (`Expense.productCategoryId`, centro de custo) são movidos para ela e a categoria é excluída na mesma transação; sem destino, a API responde `409 CATEGORY_HAS_PRODUCTS` com a contagem. Ativar/desativar continua disponível
 - **Desativação bloqueada se a categoria possuir produtos vinculados** — `countProductsByCategory()` é executado antes de qualquer desativação; se o resultado for > 0, a operação é rejeitada com `CategoryHasProductsError`
 - Categoria inativa: não aparece no catálogo; validator rejeita criação de novo produto com `categoryId` de categoria inativa
 - `slug` é **somente leitura após a criação**: gerado automaticamente via `slugify(name)`, não é editável via UI nem via API — alterações de `name` não atualizam o slug
@@ -427,6 +427,7 @@ Exemplo: receita usa 250 g de chocolate; ingrediente comprado em kg → 250 g ×
 
 - `IngredientCategory` permite agrupar insumos (ex: Farinhas, Chocolates, Laticínios)
 - Categoria de ingrediente é independente de categoria de produto
+- **Exclusão com transferência (01/10/2026):** categoria sem ingredientes é excluída direto; com ingredientes, `DELETE /api/admin/ingredient-categories/[id]` sem destino responde `409 CATEGORY_HAS_INGREDIENTS` com a contagem, e `?transferTo=<id>` (outra categoria) ou `?transferTo=none` (sem categoria) move os ingredientes e exclui a categoria na mesma transação. Mesma regra para categorias de embalagem (`/api/admin/packaging-categories/[id]`, `409 CATEGORY_HAS_PACKAGINGS`)
 
 ---
 

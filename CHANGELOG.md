@@ -4,6 +4,117 @@ Registro cronológico de todas as sprints e mudanças significativas.
 
 ---
 
+## [Admin — Listagens] — 2026-10-01 — Filtros em dropdown com checkbox e "Ordenar por" padronizado
+
+**Tipo:** Mudança de interface em todas as telas de listagem do admin.
+
+### Implementação
+
+- **Novos componentes:** `src/components/admin/shared/MultiSelectFilter.tsx` (`MultiSelectFilter`, `FilterBar`, `matchesFilter`, `activeParamFrom`, `STATUS_FILTER_OPTIONS`) — Radix `DropdownMenu` com `CheckboxItem`, várias opções marcáveis, nenhuma marcada = todas; `src/components/admin/shared/SortSelect.tsx` (`SortSelect`, `sortBy`, `compareText`, `NAME_SORT_OPTIONS`, `RECENT_SORT_OPTION`).
+- **Telas convertidas (filtros + "Ordenar por"):** produtos, categorias, ocasiões, canais de venda, unidades, ingredientes, receitas, fornecedores, embalagens, despesas, clientes, usuários, orçamentos; categorias de ingrediente e de embalagem ganharam só o "Ordenar por" (sem filtros). `FilterChips` permanece apenas em `/admin/relatorios` ("Critério de faturamento").
+- **API — múltiplos valores separados por vírgula (Prisma `in`):** `GET /api/admin/products?categoryId=`, `GET /api/admin/packagings?categoryId=`, `GET /api/admin/expenses?category=`, `GET /api/admin/users?role=`; repositórios e clientes HTTP aceitam valor único ou lista. `GET /api/admin/expenses` aceita `orderBy=description`.
+- **Clientes e usuários:** ordenação passou a vir do "Ordenar por" (antes fixa em nome A–Z).
+- **Orçamentos:** carrega orçamentos em aberto (`RASCUNHO`) e recusados juntos; filtro "Situação" (Pendente, Em Revisão, Aprovado, Recusado), padrão = os três em aberto; substitui a alternância Pendentes/Recusados.
+
+**Arquivos alterados/criados:** `src/components/admin/shared/MultiSelectFilter.tsx` (novo), `src/components/admin/shared/SortSelect.tsx` (novo), as 15 páginas de listagem citadas, `src/app/api/admin/{products,packagings,expenses,users}/route.ts`, `src/lib/repositories/{product,packaging,expense,user}Repository.ts`, `src/lib/api/{product,packaging,expense,user}Api.ts`, `DESIGN_SYSTEM.md`.
+
+### Validação
+
+`npx tsc --noEmit` e `npx eslint src/app/admin src/components src/lib`: 0 erros. API real: produtos por 1 categoria = 5 e por 2 categorias = 13 (iguais à contagem da listagem completa); despesas por 2 categorias e ordenadas por descrição; usuários por lista de papéis. Navegador (1400px e 390px): dropdowns abrindo com checkbox em produtos, orçamentos e usuários; "Ordenar por" em todas as telas convertidas; 0 erros de console.
+
+---
+
+## [Categorias] — 2026-10-01 — Excluir categoria com transferência dos itens vinculados
+
+**Tipo:** Nova funcionalidade em categorias de produto, de ingrediente e de embalagem. Regra registrada em `REGRAS_NEGOCIO.md` Seções 3.4 e 7.5.
+
+### Implementação
+
+- **Repositórios:** `transferProductsAndDeleteCategory` (move produtos e `Expense.productCategoryId`), `transferIngredientsAndDeleteCategory`, `transferPackagingsAndDeleteCategory` — atualização dos vínculos e exclusão na mesma `$transaction`.
+- **Services:** `deleteProductCategory` (novo; destino obrigatório e ativo quando há produtos, `CategoryInUseError`), `deleteIngredientCategory`/`deletePackagingCategory` com parâmetro `transferTo` (id, `null` = sem categoria); `InvalidTransferTargetError` para destino igual à própria categoria ou inexistente.
+- **API:** `DELETE /api/admin/categories/[id]` (novo, `requireAdmin()`, `409 CATEGORY_HAS_PRODUCTS` com `count`); `DELETE` de `ingredient-categories/[id]` e `packaging-categories/[id]` aceitam `?transferTo=<id>|none`; destino inválido → `400 INVALID_TARGET`.
+- **Frontend:** `src/components/admin/shared/DeleteCategoryDialog.tsx` (novo) — confirma; se houver itens, mostra a quantidade e pede o destino ("Mover e excluir"). `/admin/categorias` ganhou a ação "Excluir"; categorias de ingrediente e de embalagem passaram a usar o diálogo.
+
+**Arquivos alterados/criados:** `src/lib/repositories/{productCategory,ingredientCategory,packagingCategory}Repository.ts`, `src/lib/{productCategory,ingredientCategory,packagingCategory}Service.ts`, `src/app/api/admin/{categories,ingredient-categories,packaging-categories}/[id]/route.ts`, `src/lib/api/{productCategory,ingredientCategory,packagingCategory}Api.ts`, `src/components/admin/shared/DeleteCategoryDialog.tsx` (novo), `src/app/admin/categorias/page.tsx`, `src/app/admin/ingredientes/categorias/page.tsx`, `src/app/admin/embalagens/categorias/page.tsx`, `REGRAS_NEGOCIO.md`.
+
+### Validação
+
+`npx tsc --noEmit` e `npx eslint`: 0 erros. API real com registros de teste: categoria de produto com 1 produto → `409` com `count: 1`; transferência para a própria categoria → `400`; pelo navegador, "Mover e excluir" para outra categoria → produto movido e categoria removida; categoria vazia excluída direto (`200`). Categoria de ingrediente → `409`, depois `?transferTo=none` → ingrediente sem categoria. Categoria de embalagem → `409`, depois transferência → embalagem na categoria de destino. Registros de teste removidos do banco ao final.
+
+---
+
+## [Ingredientes] — 2026-10-01 — Painel de estoque e página de detalhe com histórico de preços
+
+**Tipo:** Nova funcionalidade em `/admin/ingredientes`.
+
+### Implementação
+
+- **Painel no topo da listagem:** ingredientes ativos, valor em estoque (Σ estoque × preço atual), abaixo do mínimo, sem estoque — calculados sobre ingredientes ativos; os dois últimos filtram a lista ao clicar.
+- **Filtro "Estoque"** (Abaixo do mínimo / Sem estoque) substitui a caixa "Somente estoque baixo".
+- **`/admin/ingredientes/[id]` (nova):** preço atual, estoque, mínimo, valor em estoque, preço por embalagem, "Histórico de Preços" (data, preço, origem: Manual/Nota fiscal/CONAB-CEASA/CEPEA, a partir de `GET /api/admin/ingredients/[id]/price-history`, já existente) e receitas que usam o ingrediente; ações Editar (abre o formulário da listagem via `?edit=`) e Ativar/Desativar. Ação "Ver ingrediente" e card clicável na listagem.
+
+**Arquivos alterados/criados:** `src/app/admin/ingredientes/page.tsx`, `src/app/admin/ingredientes/[id]/page.tsx` (novo).
+
+### Validação
+
+`npx tsc --noEmit` e `npx eslint`: 0 erros. Navegador (banco real): painel com 208 ativos, 207 abaixo do mínimo, 206 sem estoque; clique em "Abaixo do mínimo" filtrando a lista; página de detalhe exibindo 2 registros de histórico; `?edit=` abrindo o formulário do ingrediente.
+
+---
+
+## [Receitas] — 2026-10-01 — Margem e lucro por receita (pelos produtos que a usam)
+
+**Tipo:** Nova funcionalidade em `/admin/receitas` e `/admin/receitas/[id]`. Sem alteração de schema.
+
+### Implementação
+
+- **`src/lib/recipeMarginService.ts` (novo):** `listRecipeProductMargins()` — para cada receita, os produtos que a usam (via `ProductRecipe`) com preço, custo (ingredientes + embalagens), margem e lucro (mesmos números de "Margem real" do produto).
+- **`GET /api/admin/recipes/margins` (novo):** `requireProductionChain()` (ADMIN + PRODUCAO).
+- **`src/lib/types.ts`:** `RecipeProductMarginDTO`. **`src/lib/api/recipeApi.ts`:** `getRecipeMargins()`.
+- **Listagem:** colunas "Margem" e "Lucro" e dois indicadores no card — valor exato com um produto, faixa menor–maior com vários, "—" sem produto.
+- **Detalhe:** seção "Produtos que usam esta receita" (produto, preço, custo, margem, lucro).
+
+**Arquivos alterados/criados:** `src/lib/recipeMarginService.ts` (novo), `src/app/api/admin/recipes/margins/route.ts` (novo), `src/lib/types.ts`, `src/lib/api/recipeApi.ts`, `src/app/admin/receitas/page.tsx`, `src/app/admin/receitas/[id]/page.tsx`.
+
+### Validação
+
+`npx tsc --noEmit` e `npx eslint`: 0 erros. `GET /api/admin/recipes/margins` sem sessão → `401`. Navegador (banco real): listagem em Lista e Cards com margem/lucro; detalhe de "Brigadeiro Tradicional" com o produto vinculado (preço R$ 1,80, custo R$ 1,00, margem 45%, lucro R$ 0,80).
+
+---
+
+## [Produtos] — 2026-10-01 — Embalagens no formulário e card de lucro
+
+**Tipo:** Nova funcionalidade em `/admin/produtos`.
+
+### Implementação
+
+- **Formulário de criar/editar produto:** seção "Embalagens vinculadas" (adicionar, quantidade, remover). Ao salvar, os vínculos são sincronizados pelas rotas existentes de `ProductPackaging` (remove, atualiza quantidade, adiciona); na criação, após o produto ser criado. Na edição, os vínculos são carregados de `GET /api/admin/products/[id]/packagings`.
+- **`/admin/produtos/[id]`:** card "Lucro real" (preço praticado − custo) ao lado de "Margem real"; grade de 4 cards (2 no celular).
+
+**Arquivos alterados:** `src/app/admin/produtos/page.tsx`, `src/app/admin/produtos/[id]/page.tsx`.
+
+### Validação
+
+`npx tsc --noEmit` e `npx eslint`: 0 erros. Navegador (banco real, produto de teste): criação com 1 embalagem ×2 → vínculo gravado; edição para ×3 → atualizado; remoção → 0 vínculos; card "Lucro real" exibido (negativo em vermelho). Produto de teste removido.
+
+---
+
+## [Admin — Formulários] — 2026-10-01 — Cadastro e edição em tela cheia
+
+**Tipo:** Mudança de layout — substitui o formulário em pop-up largo da entrada "Cadastro e edição com o mesmo formulário largo" (mesmo dia).
+
+### Implementação
+
+- **`src/components/admin/shared/EntityForm.tsx`:** o formulário passa a ocupar toda a área de conteúdo à direita da Sidebar (`md:left-60`; tela inteira no celular), com cabeçalho fixo "← Título", campos num card branco e barra Cancelar/Salvar fixa no rodapé — mesmo layout das páginas de detalhe. Radix `Dialog` não-modal (Sidebar clicável; `Escape` e "←" fecham; clique fora não fecha). `size="wide"` até `max-w-7xl` em 2 colunas; `size="compact"` até `max-w-2xl`.
+- **`EntityFormContext` + `Section` (`FormPrimitives.tsx`):** dentro do formulário, `Section` vira bloco com borda (sem card dentro de card).
+
+**Arquivos alterados:** `src/components/admin/shared/EntityForm.tsx`, `src/components/admin/config/FormPrimitives.tsx`, `DESIGN_SYSTEM.md`.
+
+### Validação
+
+`npx tsc --noEmit` e `npx eslint`: 0 erros. Navegador: "Editar produto", "Nova categoria", "Novo orçamento" em 1400px e "Editar produto" em 390px; 0 erros de console.
+
+---
+
 ## [Módulo Orçamentos] — 2026-10-01 — Desconto no orçamento (R$ ou %)
 
 **Tipo:** Nova funcionalidade em `/admin/orcamentos` e no orçamento público (`/orcamento/[token]`). Regra registrada em `REGRAS_NEGOCIO.md` Seção 12.12.
