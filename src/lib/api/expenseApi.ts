@@ -53,10 +53,10 @@ export interface ListExpensesParams {
   pageSize?: number;
   search?: string;
   status?: ExpenseStatus;
-  category?: ExpenseCategory;
+  category?: ExpenseCategory | ExpenseCategory[];
   startDate?: string;
   endDate?: string;
-  orderBy?: "dueDate" | "createdAt" | "amount";
+  orderBy?: "dueDate" | "createdAt" | "amount" | "description";
   orderDirection?: "asc" | "desc";
 }
 
@@ -83,7 +83,7 @@ function buildQuery(params: ListExpensesParams): string {
   if (params.pageSize !== undefined) search.set("pageSize", String(params.pageSize));
   if (params.search !== undefined && params.search.trim() !== "") search.set("search", params.search);
   if (params.status !== undefined) search.set("status", params.status);
-  if (params.category !== undefined) search.set("category", params.category);
+  if (params.category !== undefined && params.category.length > 0) search.set("category", [params.category].flat().join(","));
   if (params.startDate !== undefined) search.set("startDate", params.startDate);
   if (params.endDate !== undefined) search.set("endDate", params.endDate);
   if (params.orderBy !== undefined) search.set("orderBy", params.orderBy);

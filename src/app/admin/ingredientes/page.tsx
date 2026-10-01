@@ -12,7 +12,8 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar, matchesFilter, STATUS_FILTER_OPTIONS } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect, NAME_SORT_OPTIONS, RECENT_SORT_OPTION, compareText, sortBy } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
@@ -52,7 +53,14 @@ const EMPTY_FORM: IngredientForm = {
   stockQuantity: "0", minStock: "0", supplier: "", externalCode: "",
 };
 
-type StatusFilter = "all" | "active" | "inactive";
+const SORT_OPTIONS = [
+  ...NAME_SORT_OPTIONS,
+  RECENT_SORT_OPTION,
+  { value: "price-desc", label: "Maior preço" },
+  { value: "price-asc", label: "Menor preço" },
+  { value: "stock-asc", label: "Menor estoque" },
+  { value: "value-desc", label: "Maior valor em estoque" },
+];
 
 // Exclusivo deste módulo — não é um componente duplicado em outro lugar do
 // admin, por isso não foi promovido para src/components/admin/shared/.
@@ -74,10 +82,11 @@ export default function IngredientesAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [view, setView] = useViewMode("ingredientes");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<("active" | "inactive")[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [sort, setSort] = useState("name-asc");
   // Filtro de estoque — também acionado pelos indicadores do painel no topo.
-  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
+  const [stockFilter, setStockFilter] = useState<("low" | "out")[]>([]);
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [form, setForm] = useState<IngredientForm>(EMPTY_FORM);
@@ -117,11 +126,24 @@ export default function IngredientesAdminPage() {
     const term = search.trim().toLowerCase();
     return ingredients
       .filter((i) => !term || i.name.toLowerCase().includes(term))
-      .filter((i) => statusFilter === "all" || (statusFilter === "active" ? i.active : !i.active))
-      .filter((i) => categoryFilter === "all" || i.categoryId === categoryFilter)
-      .filter((i) => stockFilter === "all" || (stockFilter === "low" ? i.isLowStock : i.stockQuantity <= 0))
-      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+      .filter((i) => matchesFilter(statusFilter, i.active ? "active" : "inactive"))
+      .filter((i) => matchesFilter(categoryFilter, i.categoryId ?? "__none__"))
+      .filter((i) => stockFilter.length === 0 || (stockFilter.includes("low") && i.isLowStock) || (stockFilter.includes("out") && i.stockQuantity <= 0));
   }, [ingredients, search, statusFilter, categoryFilter, stockFilter]);
+
+  const sorted = useMemo(
+    () =>
+      sortBy(filtered, sort, {
+        "name-asc": (a, b) => compareText(a.name, b.name),
+        "name-desc": (a, b) => compareText(b.name, a.name),
+        recent: (a, b) => b.createdAt.localeCompare(a.createdAt),
+        "price-desc": (a, b) => b.currentPrice - a.currentPrice,
+        "price-asc": (a, b) => a.currentPrice - b.currentPrice,
+        "stock-asc": (a, b) => a.stockQuantity - b.stockQuantity || compareText(a.name, b.name),
+        "value-desc": (a, b) => b.stockQuantity * b.currentPrice - a.stockQuantity * a.currentPrice,
+      }),
+    [filtered, sort],
+  );
 
   // Painel de controle de estoque (01/10/2026) — só ingredientes ativos.
   const stockStats = useMemo(() => {
@@ -135,8 +157,8 @@ export default function IngredientesAdminPage() {
   }, [ingredients]);
 
   function applyStockShortcut(filter: "all" | "low" | "out") {
-    setStatusFilter(filter === "all" ? "all" : "active");
-    setStockFilter(filter);
+    setStatusFilter(filter === "all" ? [] : ["active"]);
+    setStockFilter(filter === "all" ? [] : [filter]);
   }
 
   // Abre a edição a partir de /admin/ingredientes/[id] ("Editar ingrediente") —
@@ -150,7 +172,7 @@ export default function IngredientesAdminPage() {
     if (target) openEdit(target);
   }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasActiveFilter = search.trim() !== "" || statusFilter !== "all" || categoryFilter !== "all" || stockFilter !== "all";
+  const hasActiveFilter = search.trim() !== "" || statusFilter.length > 0 || categoryFilter.length > 0 || stockFilter.length > 0;
   const canCreate = units.length > 0;
 
   function openCreate() {
@@ -432,9 +454,9 @@ export default function IngredientesAdminPage() {
                 key={kpi.label}
                 type="button"
                 onClick={() => applyStockShortcut(kpi.key)}
-                aria-pressed={kpi.key !== "all" && stockFilter === kpi.key}
+                aria-pressed={kpi.key !== "all" && stockFilter.length === 1 && stockFilter[0] === kpi.key}
                 className={`shadow-card rounded-2xl border bg-white px-4 py-3 text-left transition-colors hover:bg-sand/30 ${
-                  kpi.key !== "all" && stockFilter === kpi.key ? "border-chocolate" : "border-sand"
+                  kpi.key !== "all" && stockFilter.length === 1 && stockFilter[0] === kpi.key ? "border-chocolate" : "border-sand"
                 }`}
               >
                 <p className="text-xs font-semibold text-muted">{kpi.label}</p>
@@ -469,37 +491,28 @@ export default function IngredientesAdminPage() {
               placeholder="Pesquisar por nome…"
               ariaLabel="Pesquisar ingrediente por nome"
             />
-            <FilterChips
-              label="Status"
-              selected={statusFilter}
-              onSelect={setStatusFilter}
-              options={[
-                { value: "all", label: "Todos" },
-                { value: "active", label: "Ativos" },
-                { value: "inactive", label: "Inativos" },
-              ]}
-            />
-            {categories.length > 0 && (
-              <FilterChips
-                label="Categoria"
-                selected={categoryFilter}
-                onSelect={setCategoryFilter}
+            <FilterBar>
+              <MultiSelectFilter label="Status" options={STATUS_FILTER_OPTIONS} selected={statusFilter} onChange={setStatusFilter} />
+              {categories.length > 0 && (
+                <MultiSelectFilter
+                  label="Categoria"
+                  allLabel="Todas"
+                  options={[{ value: "__none__", label: "Sem categoria" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+                  selected={categoryFilter}
+                  onChange={setCategoryFilter}
+                />
+              )}
+              <MultiSelectFilter
+                label="Estoque"
                 options={[
-                  { value: "all", label: "Todas" },
-                  ...categories.map((c) => ({ value: c.id, label: c.name })),
+                  { value: "low", label: "Abaixo do mínimo" },
+                  { value: "out", label: "Sem estoque" },
                 ]}
+                selected={stockFilter}
+                onChange={setStockFilter}
               />
-            )}
-            <FilterChips
-              label="Estoque"
-              selected={stockFilter}
-              onSelect={setStockFilter}
-              options={[
-                { value: "all", label: "Todos" },
-                { value: "low", label: "Abaixo do mínimo" },
-                { value: "out", label: "Sem estoque" },
-              ]}
-            />
+              <SortSelect value={sort} options={SORT_OPTIONS} onChange={setSort} />
+            </FilterBar>
           </div>
         )}
 
@@ -521,7 +534,7 @@ export default function IngredientesAdminPage() {
         )}
         {!loading && !error && filtered.length > 0 && view === "grid" && (
           <ResponsiveGrid cols={3}>
-            {filtered.map((ingredient) => (
+            {sorted.map((ingredient) => (
               <EntityCard
                 key={ingredient.id}
                 title={ingredient.name}
@@ -557,7 +570,7 @@ export default function IngredientesAdminPage() {
         )}
         {!loading && !error && filtered.length > 0 && view === "list" && (
           <EntityTable
-            items={filtered}
+            items={sorted}
             columns={columns}
             getKey={(i) => i.id}
             renderActions={(i) => renderActions(i, "row")}

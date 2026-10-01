@@ -6,10 +6,10 @@ export interface ListExpensesParams {
   pageSize?: number;
   search?: string;
   status?: ExpenseStatus;
-  category?: ExpenseCategory;
+  category?: ExpenseCategory | ExpenseCategory[]; // lista = qualquer uma (filtro multisseleção)
   startDate?: Date;
   endDate?: Date;
-  orderBy?: "dueDate" | "createdAt" | "amount";
+  orderBy?: "dueDate" | "createdAt" | "amount" | "description";
   orderDirection?: "asc" | "desc";
 }
 
@@ -37,7 +37,7 @@ function buildWhere(
 ): Prisma.ExpenseWhereInput {
   return {
     ...(params.status ? { status: params.status } : {}),
-    ...(params.category ? { category: params.category } : {}),
+    ...(params.category ? { category: Array.isArray(params.category) ? { in: params.category } : params.category } : {}),
     ...(params.search ? { description: { contains: params.search, mode: "insensitive" } } : {}),
     ...(params.startDate || params.endDate
       ? {

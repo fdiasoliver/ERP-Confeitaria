@@ -42,7 +42,7 @@ export interface ListUsersParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  role?: UserRole;
+  role?: UserRole | UserRole[];
   active?: boolean;
   orderBy?: "name" | "createdAt";
   orderDirection?: "asc" | "desc";
@@ -70,7 +70,7 @@ function buildQuery(params: ListUsersParams): string {
   if (params.page !== undefined) search.set("page", String(params.page));
   if (params.pageSize !== undefined) search.set("pageSize", String(params.pageSize));
   if (params.search !== undefined && params.search.trim() !== "") search.set("search", params.search);
-  if (params.role !== undefined) search.set("role", params.role);
+  if (params.role !== undefined && params.role.length > 0) search.set("role", [params.role].flat().join(","));
   if (params.active !== undefined) search.set("active", String(params.active));
   if (params.orderBy !== undefined) search.set("orderBy", params.orderBy);
   if (params.orderDirection !== undefined) search.set("orderDirection", params.orderDirection);

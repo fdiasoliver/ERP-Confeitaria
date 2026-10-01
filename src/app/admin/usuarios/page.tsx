@@ -12,7 +12,8 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar, activeParamFrom, STATUS_FILTER_OPTIONS } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
@@ -36,8 +37,16 @@ interface UserForm {
 
 const EMPTY_FORM: UserForm = { name: "", email: "", password: "", role: "ATENDIMENTO" };
 
-type StatusFilter = "all" | "active" | "inactive";
-type RoleFilter = "all" | UserRole;
+const SORT_OPTIONS: {
+  value: string;
+  label: string;
+  orderBy: "name" | "createdAt";
+  orderDirection: "asc" | "desc";
+}[] = [
+  { value: "name-asc", label: "Nome (A–Z)", orderBy: "name", orderDirection: "asc" },
+  { value: "name-desc", label: "Nome (Z–A)", orderBy: "name", orderDirection: "desc" },
+  { value: "createdAt-desc", label: "Mais recentes", orderBy: "createdAt", orderDirection: "desc" },
+];
 
 const PAGE_SIZE = 12;
 
@@ -54,8 +63,10 @@ export default function UsuariosAdminPage() {
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<("active" | "inactive")[]>([]);
+  const [roleFilter, setRoleFilter] = useState<UserRole[]>([]);
+  const [sort, setSort] = useState("name-asc");
+  const sortOption = SORT_OPTIONS.find((o) => o.value === sort) ?? SORT_OPTIONS[0];
   const [page, setPage] = useState(1);
   const [view, setView] = useViewMode("usuarios");
 
@@ -88,10 +99,10 @@ export default function UsuariosAdminPage() {
         page,
         pageSize: PAGE_SIZE,
         search: debouncedSearch,
-        active: statusFilter === "all" ? undefined : statusFilter === "active",
-        role: roleFilter === "all" ? undefined : roleFilter,
-        orderBy: "name",
-        orderDirection: "asc",
+        active: activeParamFrom(statusFilter),
+        role: roleFilter.length > 0 ? roleFilter : undefined,
+        orderBy: sortOption.orderBy,
+        orderDirection: sortOption.orderDirection,
       });
       setUsers(result.items);
       setTotal(result.total);
@@ -109,13 +120,13 @@ export default function UsuariosAdminPage() {
 
   useEffect(() => {
     loadUsers(); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [page, debouncedSearch, statusFilter, roleFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, statusFilter, roleFilter, sort]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasActiveFilter = searchInput.trim() !== "" || statusFilter !== "all" || roleFilter !== "all";
+  const hasActiveFilter = searchInput.trim() !== "" || statusFilter.length > 0 || roleFilter.length > 0;
 
-  function handleStatusFilterChange(value: StatusFilter) { setStatusFilter(value); setPage(1); }
-  function handleRoleFilterChange(value: RoleFilter) { setRoleFilter(value); setPage(1); }
+  function handleStatusFilterChange(value: ("active" | "inactive")[]) { setStatusFilter(value); setPage(1); }
+  function handleRoleFilterChange(value: UserRole[]) { setRoleFilter(value); setPage(1); }
 
   // ── Formulário de criar/editar ─────────────────────────────────────────────
 
@@ -320,22 +331,16 @@ export default function UsuariosAdminPage() {
         {!error && (
           <div className="space-y-3">
             <SearchBar value={searchInput} onChange={setSearchInput} placeholder="Pesquisar por nome ou e-mail…" ariaLabel="Pesquisar usuário por nome ou e-mail" />
-            <FilterChips
-              label="Status"
-              selected={statusFilter}
-              onSelect={handleStatusFilterChange}
-              options={[
-                { value: "all", label: "Todos" },
-                { value: "active", label: "Ativos" },
-                { value: "inactive", label: "Inativos" },
-              ]}
-            />
-            <FilterChips
-              label="Papel"
-              selected={roleFilter}
-              onSelect={handleRoleFilterChange}
-              options={[{ value: "all", label: "Todos" }, ...(Object.entries(USER_ROLE_LABELS) as [UserRole, string][]).map(([value, label]) => ({ value, label }))]}
-            />
+            <FilterBar>
+              <MultiSelectFilter label="Status" options={STATUS_FILTER_OPTIONS} selected={statusFilter} onChange={handleStatusFilterChange} />
+              <MultiSelectFilter
+                label="Papel"
+                options={(Object.entries(USER_ROLE_LABELS) as [UserRole, string][]).map(([value, label]) => ({ value, label }))}
+                selected={roleFilter}
+                onChange={handleRoleFilterChange}
+              />
+              <SortSelect value={sort} options={SORT_OPTIONS} onChange={(v) => { setSort(v); setPage(1); }} />
+            </FilterBar>
           </div>
         )}
 

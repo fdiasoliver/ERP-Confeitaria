@@ -11,7 +11,8 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar, matchesFilter, STATUS_FILTER_OPTIONS } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect, NAME_SORT_OPTIONS, compareText, sortBy } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
@@ -25,7 +26,10 @@ import * as salesChannelApi from "@/lib/api/salesChannelApi";
 // ── Local types ────────────────────────────────────────────────────────────────
 
 type ModalMode = "create" | "edit";
-type StatusFilter = "all" | "active" | "inactive";
+const SORT_OPTIONS = [
+  { value: "order", label: "Ordem de exibição" },
+  ...NAME_SORT_OPTIONS,
+];
 interface ChannelForm { name: string; sortOrder: number; color: string; icon: string }
 const EMPTY_FORM: ChannelForm = { name: "", sortOrder: 0, color: "#E8A598", icon: "layout-grid" };
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
@@ -127,7 +131,8 @@ export default function CanaisVendaAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [view, setView] = useViewMode("canais-venda");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<("active" | "inactive")[]>([]);
+  const [sort, setSort] = useState("order");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<SalesChannel | null>(null);
   const [form, setForm] = useState<ChannelForm>(EMPTY_FORM);
@@ -159,12 +164,17 @@ export default function CanaisVendaAdminPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return channels
+    const rows = channels
       .filter((c) => !term || c.name.toLowerCase().includes(term))
-      .filter((c) => statusFilter === "all" || (statusFilter === "active" ? c.isActive : !c.isActive));
-  }, [channels, search, statusFilter]);
+      .filter((c) => matchesFilter(statusFilter, c.isActive ? "active" : "inactive"));
+    return sortBy(rows, sort, {
+        order: (a, b) => a.sortOrder - b.sortOrder || compareText(a.name, b.name),
+        "name-asc": (a, b) => compareText(a.name, b.name),
+        "name-desc": (a, b) => compareText(b.name, a.name),
+      });
+  }, [channels, search, statusFilter, sort]);
 
-  const hasActiveFilter = search.trim() !== "" || statusFilter !== "all";
+  const hasActiveFilter = search.trim() !== "" || statusFilter.length > 0;
 
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -362,16 +372,10 @@ export default function CanaisVendaAdminPage() {
               placeholder="Pesquisar por nome…"
               ariaLabel="Pesquisar canal por nome"
             />
-            <FilterChips
-              label="Status"
-              selected={statusFilter}
-              onSelect={setStatusFilter}
-              options={[
-                { value: "all", label: "Todos" },
-                { value: "active", label: "Ativos" },
-                { value: "inactive", label: "Inativos" },
-              ]}
-            />
+            <FilterBar>
+              <MultiSelectFilter label="Status" allLabel="Todos" options={STATUS_FILTER_OPTIONS} selected={statusFilter} onChange={setStatusFilter} />
+              <SortSelect value={sort} options={SORT_OPTIONS} onChange={setSort} />
+            </FilterBar>
           </div>
         )}
 

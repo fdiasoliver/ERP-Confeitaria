@@ -9,7 +9,7 @@ export interface ListPackagingsParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  categoryId?: string;
+  categoryId?: string | string[]; // lista = qualquer uma (filtro multisseleção)
   active?: boolean;
   orderBy?: "name" | "createdAt";
   orderDirection?: "asc" | "desc";
@@ -26,7 +26,7 @@ function buildWhere(
   params: Pick<ListPackagingsParams, "search" | "categoryId" | "active">,
 ): Prisma.PackagingWhereInput {
   return {
-    ...(params.categoryId ? { categoryId: params.categoryId } : {}),
+    ...(params.categoryId ? { categoryId: Array.isArray(params.categoryId) ? { in: params.categoryId } : params.categoryId } : {}),
     ...(params.active !== undefined ? { active: params.active } : {}),
     ...(params.search ? { name: { contains: params.search, mode: "insensitive" } } : {}),
   };

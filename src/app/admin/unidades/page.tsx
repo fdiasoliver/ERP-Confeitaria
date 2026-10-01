@@ -12,7 +12,8 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar, matchesFilter } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect, NAME_SORT_OPTIONS, compareText, sortBy } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
@@ -36,8 +37,11 @@ const UNIT_TYPE_LABELS: Record<UnitType, string> = {
   UNIT: "Unidade",
 };
 
-type StatusFilter = "all" | "active" | "inactive";
-type TypeFilter = "all" | UnitType;
+const SORT_OPTIONS = [
+  { value: "order", label: "Ordem de exibição" },
+  ...NAME_SORT_OPTIONS,
+  { value: "type", label: "Tipo" },
+];
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
@@ -47,8 +51,9 @@ export default function UnidadesAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [view, setView] = useViewMode("unidades");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<("active" | "inactive")[]>([]);
+  const [typeFilter, setTypeFilter] = useState<UnitType[]>([]);
+  const [sort, setSort] = useState("order");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<UnitOfMeasure | null>(null);
   const [form, setForm] = useState<UnitForm>(EMPTY_FORM);
@@ -80,14 +85,19 @@ export default function UnidadesAdminPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return units
+    const rows = units
       .filter((u) => !term || u.name.toLowerCase().includes(term))
-      .filter((u) => statusFilter === "all" || (statusFilter === "active" ? u.isActive : !u.isActive))
-      .filter((u) => typeFilter === "all" || u.type === typeFilter)
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "pt-BR"));
-  }, [units, search, statusFilter, typeFilter]);
+      .filter((u) => matchesFilter(statusFilter, u.isActive ? "active" : "inactive"))
+      .filter((u) => matchesFilter(typeFilter, u.type));
+    return sortBy(rows, sort, {
+      order: (a, b) => a.sortOrder - b.sortOrder || compareText(a.name, b.name),
+      "name-asc": (a, b) => compareText(a.name, b.name),
+      "name-desc": (a, b) => compareText(b.name, a.name),
+      type: (a, b) => compareText(UNIT_TYPE_LABELS[a.type], UNIT_TYPE_LABELS[b.type]) || compareText(a.name, b.name),
+    });
+  }, [units, search, statusFilter, typeFilter, sort]);
 
-  const hasActiveFilter = search.trim() !== "" || statusFilter !== "all" || typeFilter !== "all";
+  const hasActiveFilter = search.trim() !== "" || statusFilter.length > 0 || typeFilter.length > 0;
 
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -312,27 +322,16 @@ export default function UnidadesAdminPage() {
               placeholder="Pesquisar por nome…"
               ariaLabel="Pesquisar unidade por nome"
             />
-            <FilterChips
-              label="Status"
-              selected={statusFilter}
-              onSelect={setStatusFilter}
-              options={[
-                { value: "all", label: "Todos" },
-                { value: "active", label: "Ativas" },
-                { value: "inactive", label: "Inativas" },
-              ]}
-            />
-            <FilterChips
-              label="Tipo"
-              selected={typeFilter}
-              onSelect={setTypeFilter}
-              options={[
-                { value: "all", label: "Todos" },
-                { value: "MASS", label: UNIT_TYPE_LABELS.MASS },
-                { value: "VOLUME", label: UNIT_TYPE_LABELS.VOLUME },
-                { value: "UNIT", label: UNIT_TYPE_LABELS.UNIT },
-              ]}
-            />
+            <FilterBar>
+              <MultiSelectFilter label="Status" allLabel="Todas" options={[{ value: "active", label: "Ativas" }, { value: "inactive", label: "Inativas" }]} selected={statusFilter} onChange={setStatusFilter} />
+              <MultiSelectFilter
+                label="Tipo"
+                options={(Object.keys(UNIT_TYPE_LABELS) as UnitType[]).map((t) => ({ value: t, label: UNIT_TYPE_LABELS[t] }))}
+                selected={typeFilter}
+                onChange={setTypeFilter}
+              />
+              <SortSelect value={sort} options={SORT_OPTIONS} onChange={setSort} />
+            </FilterBar>
           </div>
         )}
 

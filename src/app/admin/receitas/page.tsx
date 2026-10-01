@@ -13,7 +13,8 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar, matchesFilter } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect, NAME_SORT_OPTIONS, RECENT_SORT_OPTION, compareText, sortBy } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
@@ -56,7 +57,14 @@ const EMPTY_FORM: RecipeForm = {
   items: [{ ...EMPTY_ITEM_ROW }],
 };
 
-type StatusFilter = "all" | "active" | "inactive";
+const SORT_OPTIONS = [
+  ...NAME_SORT_OPTIONS,
+  RECENT_SORT_OPTION,
+  { value: "cost-desc", label: "Maior custo total" },
+  { value: "cost-asc", label: "Menor custo total" },
+  { value: "margin-desc", label: "Maior margem" },
+  { value: "margin-asc", label: "Menor margem" },
+];
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
@@ -97,7 +105,8 @@ function ReceitasAdminPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [view, setView] = useViewMode("receitas");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<("active" | "inactive")[]>([]);
+  const [sort, setSort] = useState("name-asc");
   const [modalOpen, setModalOpen] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [form, setForm] = useState<RecipeForm>(EMPTY_FORM);
@@ -157,13 +166,32 @@ function ReceitasAdminPageContent() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return recipes
+    const rows = recipes
       .filter((r) => !term || r.name.toLowerCase().includes(term))
-      .filter((r) => statusFilter === "all" || (statusFilter === "active" ? r.active : !r.active))
-      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  }, [recipes, search, statusFilter]);
+      .filter((r) => matchesFilter(statusFilter, r.active ? "active" : "inactive"));
+    // Receita sem produto vinculado vai para o fim nas ordenações por margem.
+    const bestMargin = (id: string) => {
+      const list = margins[id] ?? [];
+      return list.length > 0 ? Math.max(...list.map((m) => m.margin)) : null;
+    };
+    const byMargin = (dir: 1 | -1) => (a: Recipe, b: Recipe) => {
+      const ma = bestMargin(a.id);
+      const mb = bestMargin(b.id);
+      if (ma === null || mb === null) return ma === null ? (mb === null ? 0 : 1) : -1;
+      return (ma - mb) * dir;
+    };
+    return sortBy(rows, sort, {
+      "name-asc": (a, b) => compareText(a.name, b.name),
+      "name-desc": (a, b) => compareText(b.name, a.name),
+      recent: (a, b) => b.createdAt.localeCompare(a.createdAt),
+      "cost-desc": (a, b) => b.totalCost - a.totalCost,
+      "cost-asc": (a, b) => a.totalCost - b.totalCost,
+      "margin-desc": byMargin(-1),
+      "margin-asc": byMargin(1),
+    });
+  }, [recipes, search, statusFilter, sort, margins]);
 
-  const hasActiveFilter = search.trim() !== "" || statusFilter !== "all";
+  const hasActiveFilter = search.trim() !== "" || statusFilter.length > 0;
   const canCreate = ingredients.length > 0 && units.length > 0;
 
   function openCreate() {
@@ -465,16 +493,10 @@ function ReceitasAdminPageContent() {
               placeholder="Pesquisar por nome…"
               ariaLabel="Pesquisar receita por nome"
             />
-            <FilterChips
-              label="Status"
-              selected={statusFilter}
-              onSelect={setStatusFilter}
-              options={[
-                { value: "all", label: "Todas" },
-                { value: "active", label: "Ativas" },
-                { value: "inactive", label: "Inativas" },
-              ]}
-            />
+            <FilterBar>
+              <MultiSelectFilter label="Status" allLabel="Todas" options={[{ value: "active", label: "Ativas" }, { value: "inactive", label: "Inativas" }]} selected={statusFilter} onChange={setStatusFilter} />
+              <SortSelect value={sort} options={SORT_OPTIONS} onChange={setSort} />
+            </FilterBar>
           </div>
         )}
 

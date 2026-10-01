@@ -12,7 +12,8 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar, activeParamFrom, STATUS_FILTER_OPTIONS } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
@@ -53,7 +54,17 @@ const EMPTY_CUSTOMER_FORM: CustomerForm = {
 
 const PAGE_SIZE = 12;
 
-type StatusFilter = "all" | "active" | "inactive";
+const SORT_OPTIONS: {
+  value: string;
+  label: string;
+  orderBy: "name" | "phone" | "createdAt";
+  orderDirection: "asc" | "desc";
+}[] = [
+  { value: "name-asc", label: "Nome (A–Z)", orderBy: "name", orderDirection: "asc" },
+  { value: "name-desc", label: "Nome (Z–A)", orderBy: "name", orderDirection: "desc" },
+  { value: "createdAt-desc", label: "Mais recentes", orderBy: "createdAt", orderDirection: "desc" },
+  { value: "phone-asc", label: "Telefone", orderBy: "phone", orderDirection: "asc" },
+];
 
 interface ConfirmAction {
   type: "deactivate" | "delete";
@@ -76,7 +87,9 @@ export default function ClientesAdminPage() {
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<("active" | "inactive")[]>([]);
+  const [sort, setSort] = useState("name-asc");
+  const sortOption = SORT_OPTIONS.find((o) => o.value === sort) ?? SORT_OPTIONS[0];
   const [page, setPage] = useState(1);
   const [view, setView] = useViewMode("clientes");
 
@@ -109,9 +122,9 @@ export default function ClientesAdminPage() {
         page,
         pageSize: PAGE_SIZE,
         search: debouncedSearch,
-        active: statusFilter === "all" ? undefined : statusFilter === "active",
-        orderBy: "name",
-        orderDirection: "asc",
+        active: activeParamFrom(statusFilter),
+        orderBy: sortOption.orderBy,
+        orderDirection: sortOption.orderDirection,
       });
       setCustomers(result.items);
       setTotal(result.total);
@@ -130,12 +143,12 @@ export default function ClientesAdminPage() {
   // Toda mudança de busca/filtro/página refaz o fetch — nunca filtra em memória (busca server-side).
   useEffect(() => {
     loadCustomers(); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [page, debouncedSearch, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, statusFilter, sort]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasActiveFilter = searchInput.trim() !== "" || statusFilter !== "all";
+  const hasActiveFilter = searchInput.trim() !== "" || statusFilter.length > 0;
 
-  function handleStatusFilterChange(value: StatusFilter) {
+  function handleStatusFilterChange(value: ("active" | "inactive")[]) {
     setStatusFilter(value);
     setPage(1);
   }
@@ -373,16 +386,10 @@ export default function ClientesAdminPage() {
               ariaLabel="Pesquisar cliente por nome ou telefone"
             />
 
-            <FilterChips
-              label="Status"
-              selected={statusFilter}
-              onSelect={handleStatusFilterChange}
-              options={[
-                { value: "all", label: "Todos" },
-                { value: "active", label: "Ativos" },
-                { value: "inactive", label: "Inativos" },
-              ]}
-            />
+            <FilterBar>
+              <MultiSelectFilter label="Status" options={STATUS_FILTER_OPTIONS} selected={statusFilter} onChange={handleStatusFilterChange} />
+              <SortSelect value={sort} options={SORT_OPTIONS} onChange={(v) => { setSort(v); setPage(1); }} />
+            </FilterBar>
           </div>
         )}
 

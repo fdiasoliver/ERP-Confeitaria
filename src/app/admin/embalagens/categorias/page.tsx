@@ -1,5 +1,6 @@
 "use client";
 
+import { SortSelect, NAME_SORT_OPTIONS, compareText, sortBy } from "@/components/admin/shared/SortSelect";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { HeaderMinimal } from "@/components/layout/Header";
@@ -34,6 +35,7 @@ export default function PackagingCategoriasAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("name-asc");
   const [view, setView] = useViewMode("embalagens-categorias");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<PackagingCategory | null>(null);
@@ -65,9 +67,12 @@ export default function PackagingCategoriasAdminPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return categories;
-    return categories.filter((c) => c.name.toLowerCase().includes(term));
-  }, [categories, search]);
+    const rows = term ? categories.filter((c) => c.name.toLowerCase().includes(term)) : categories;
+    return sortBy(rows, sort, {
+      "name-asc": (a, b) => compareText(a.name, b.name),
+      "name-desc": (a, b) => compareText(b.name, a.name),
+    });
+  }, [categories, search, sort]);
 
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -199,12 +204,17 @@ export default function PackagingCategoriasAdminPage() {
         </div>
 
         {!loading && !error && (
-          <SearchBar
-            value={search}
-            onChange={setSearch}
-            placeholder="Pesquisar por nome…"
-            ariaLabel="Pesquisar categoria por nome"
-          />
+          <div className="space-y-3">
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Pesquisar por nome…"
+              ariaLabel="Pesquisar categoria por nome"
+            />
+            <div className="sm:w-56">
+              <SortSelect value={sort} options={NAME_SORT_OPTIONS} onChange={setSort} />
+            </div>
+          </div>
         )}
 
         {loading && <LoadingState count={2} />}

@@ -11,7 +11,8 @@ import { SearchBar } from "@/components/admin/shared/SearchBar";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar, matchesFilter } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect, RECENT_SORT_OPTION, compareText, sortBy } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
@@ -136,7 +137,10 @@ function OrcamentosAdminPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [view, setView] = useViewMode("orcamentos");
-  const [statusTab, setStatusTab] = useState<"pendentes" | "recusados">("pendentes");
+  // Situação do orçamento (multisseleção). Padrão = os em aberto (pendente, em
+  // revisão, aprovado-não-confirmado); recusados só quando marcados.
+  const [quoteFilter, setQuoteFilter] = useState<QuoteStatus[]>(["PENDENTE", "EM_REVISAO", "APROVADO"]);
+  const [sort, setSort] = useState("deliveryDate-asc");
 
   const [modal, setModal] = useState<"create" | "edit" | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderDTO | null>(null);
@@ -155,11 +159,14 @@ function OrcamentosAdminPageContent() {
       setError(null);
     }
     try {
-      const rows =
-        statusTab === "pendentes"
-          ? await orderAdminApi.listOrdersByStatus("RASCUNHO")
-          : await orderAdminApi.listOrdersByQuoteStatus("RECUSADO");
-      setOrders(rows);
+      // Em aberto (Order.status = RASCUNHO) + recusados (já CANCELADO) — a
+      // situação é filtrada em memória pelo dropdown "Situação".
+      const [openRows, refusedRows] = await Promise.all([
+        orderAdminApi.listOrdersByStatus("RASCUNHO"),
+        orderAdminApi.listOrdersByQuoteStatus("RECUSADO"),
+      ]);
+      const seen = new Set(openRows.map((o) => o.id));
+      setOrders([...openRows, ...refusedRows.filter((o) => !seen.has(o.id))]);
       hasLoadedOnce.current = true;
     } catch (err) {
       if (silent) {
@@ -174,7 +181,7 @@ function OrcamentosAdminPageContent() {
 
   useEffect(() => {
     loadOrders(false); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [statusTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Dados de apoio (clientes e produtos ativos) — carregados uma única vez, usados
   // no formulário de criação. Mesmo padrão de embalagens/produtos (Promise.all).
@@ -209,11 +216,20 @@ function OrcamentosAdminPageContent() {
   // API não expõe um parâmetro de busca para este caminho de leitura.
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return orders;
-    return orders.filter(
-      (o) => o.receiverName.toLowerCase().includes(term) || String(o.orderNumber).includes(term),
-    );
-  }, [orders, search]);
+    const rows = orders
+      // Legado (quoteStatus null, criado antes do link público) conta como pendente.
+      .filter((o) => matchesFilter(quoteFilter, o.quoteStatus ?? "PENDENTE"))
+      .filter((o) => !term || o.receiverName.toLowerCase().includes(term) || String(o.orderNumber).includes(term));
+    return sortBy(rows, sort, {
+      "deliveryDate-asc": (a, b) => a.deliveryDate.localeCompare(b.deliveryDate),
+      "deliveryDate-desc": (a, b) => b.deliveryDate.localeCompare(a.deliveryDate),
+      recent: (a, b) => b.createdAt.localeCompare(a.createdAt),
+      "total-desc": (a, b) => b.total - a.total,
+      "total-asc": (a, b) => a.total - b.total,
+      "name-asc": (a, b) => compareText(a.receiverName, b.receiverName),
+      "name-desc": (a, b) => compareText(b.receiverName, a.receiverName),
+    });
+  }, [orders, search, quoteFilter, sort]);
 
   const hasActiveFilter = search.trim() !== "";
   const canCreate = customers.length > 0 && products.length > 0;
@@ -675,9 +691,7 @@ function OrcamentosAdminPageContent() {
           <p className="text-sm text-muted">
             {loading
               ? "Carregando…"
-              : statusTab === "pendentes"
-                ? `${orders.length} orçamento${orders.length !== 1 ? "s" : ""} pendente${orders.length !== 1 ? "s" : ""}`
-                : `${orders.length} orçamento${orders.length !== 1 ? "s" : ""} recusado${orders.length !== 1 ? "s" : ""}`}
+              : `${filtered.length} orçamento${filtered.length !== 1 ? "s" : ""}`}
           </p>
           <div className="flex items-center gap-2">
             {!loading && !error && <ViewToggle value={view} onChange={setView} />}
@@ -693,15 +707,30 @@ function OrcamentosAdminPageContent() {
           </div>
         </div>
 
-        <FilterChips
-          label="Status"
-          selected={statusTab}
-          onSelect={setStatusTab}
-          options={[
-            { value: "pendentes", label: "Pendentes" },
-            { value: "recusados", label: "Recusados" },
-          ]}
-        />
+        {!error && (
+          <FilterBar>
+            <MultiSelectFilter
+              label="Situação"
+              allLabel="Todas"
+              options={(Object.keys(QUOTE_STATUS_LABELS) as QuoteStatus[]).map((s) => ({ value: s, label: QUOTE_STATUS_LABELS[s] }))}
+              selected={quoteFilter}
+              onChange={setQuoteFilter}
+            />
+            <SortSelect
+              value={sort}
+              options={[
+                { value: "deliveryDate-asc", label: "Entrega (mais próxima)" },
+                { value: "deliveryDate-desc", label: "Entrega (mais distante)" },
+                RECENT_SORT_OPTION,
+                { value: "total-desc", label: "Maior valor" },
+                { value: "total-asc", label: "Menor valor" },
+                { value: "name-asc", label: "Destinatário (A–Z)" },
+                { value: "name-desc", label: "Destinatário (Z–A)" },
+              ]}
+              onChange={setSort}
+            />
+          </FilterBar>
+        )}
 
         {!error && (
           <SearchBar
@@ -716,22 +745,14 @@ function OrcamentosAdminPageContent() {
         {!loading && error && <ErrorState message={error} onRetry={() => loadOrders(false)} />}
         {!loading && !error && filtered.length === 0 && (
           <EmptyState
-            title={
-              hasActiveFilter
-                ? "Nenhum orçamento encontrado"
-                : statusTab === "pendentes"
-                  ? "Nenhum orçamento pendente"
-                  : "Nenhum orçamento recusado"
-            }
+            title={hasActiveFilter || orders.length > 0 ? "Nenhum orçamento encontrado" : "Nenhum orçamento"}
             description={
-              hasActiveFilter
-                ? "Ajuste a pesquisa para ver todos os orçamentos."
-                : statusTab === "pendentes"
-                  ? "Orçamentos aprovados e confirmados saem desta lista automaticamente."
-                  : "Orçamentos recusados pelo cliente aparecem aqui."
+              hasActiveFilter || orders.length > 0
+                ? "Ajuste a pesquisa ou a situação para ver outros orçamentos. Orçamentos confirmados saem desta lista automaticamente."
+                : "Orçamentos aprovados e confirmados saem desta lista automaticamente."
             }
-            actionLabel={hasActiveFilter || !canCreate || statusTab === "recusados" ? undefined : "+ Criar orçamento"}
-            onAction={hasActiveFilter || !canCreate || statusTab === "recusados" ? undefined : () => openCreate()}
+            actionLabel={hasActiveFilter || !canCreate ? undefined : "+ Criar orçamento"}
+            onAction={hasActiveFilter || !canCreate ? undefined : () => openCreate()}
           />
         )}
         {!loading && !error && filtered.length > 0 && (

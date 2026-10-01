@@ -11,7 +11,8 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar, matchesFilter } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect, NAME_SORT_OPTIONS, compareText, sortBy } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { DeleteCategoryDialog } from "@/components/admin/shared/DeleteCategoryDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
@@ -35,7 +36,11 @@ import * as categoryApi from "@/lib/api/productCategoryApi";
 // ── Local types ────────────────────────────────────────────────────────────────
 
 type ModalMode = "create" | "edit";
-type StatusFilter = "all" | "active" | "inactive";
+const SORT_OPTIONS = [
+  { value: "order", label: "Ordem de exibição" },
+  ...NAME_SORT_OPTIONS,
+  { value: "products-desc", label: "Mais produtos" },
+];
 interface CategoryForm { name: string; sortOrder: number; color: string; icon: string }
 const EMPTY_FORM: CategoryForm = { name: "", sortOrder: 0, color: "#E8A598", icon: "package" };
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
@@ -164,7 +169,8 @@ export default function CategoriasAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [view, setView] = useViewMode("categorias");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<("active" | "inactive")[]>([]);
+  const [sort, setSort] = useState("order");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<ProductCategoryWithCount | null>(null);
   const [form, setForm] = useState<CategoryForm>(EMPTY_FORM);
@@ -197,12 +203,18 @@ export default function CategoriasAdminPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return categories
+    const rows = categories
       .filter((c) => !term || c.name.toLowerCase().includes(term))
-      .filter((c) => statusFilter === "all" || (statusFilter === "active" ? c.isActive : !c.isActive));
-  }, [categories, search, statusFilter]);
+      .filter((c) => matchesFilter(statusFilter, c.isActive ? "active" : "inactive"));
+    return sortBy(rows, sort, {
+        order: (a, b) => a.sortOrder - b.sortOrder || compareText(a.name, b.name),
+        "name-asc": (a, b) => compareText(a.name, b.name),
+        "name-desc": (a, b) => compareText(b.name, a.name),
+        "products-desc": (a, b) => b.productCount - a.productCount || compareText(a.name, b.name),
+      });
+  }, [categories, search, statusFilter, sort]);
 
-  const hasActiveFilter = search.trim() !== "" || statusFilter !== "all";
+  const hasActiveFilter = search.trim() !== "" || statusFilter.length > 0;
 
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -415,16 +427,10 @@ export default function CategoriasAdminPage() {
               placeholder="Pesquisar por nome…"
               ariaLabel="Pesquisar categoria por nome"
             />
-            <FilterChips
-              label="Status"
-              selected={statusFilter}
-              onSelect={setStatusFilter}
-              options={[
-                { value: "all", label: "Todas" },
-                { value: "active", label: "Ativas" },
-                { value: "inactive", label: "Inativas" },
-              ]}
-            />
+            <FilterBar>
+              <MultiSelectFilter label="Status" allLabel="Todas" options={[{ value: "active", label: "Ativas" }, { value: "inactive", label: "Inativas" }]} selected={statusFilter} onChange={setStatusFilter} />
+              <SortSelect value={sort} options={SORT_OPTIONS} onChange={setSort} />
+            </FilterBar>
           </div>
         )}
 

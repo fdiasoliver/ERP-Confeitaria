@@ -30,8 +30,9 @@ function parseListParams(searchParams: URLSearchParams): ListProductsParams {
   const search = searchParams.get("search");
   if (search !== null && search.trim().length > 0) params.search = search;
 
-  const categoryId = searchParams.get("categoryId");
-  if (categoryId !== null && categoryId.trim().length > 0) params.categoryId = categoryId;
+  // Um ou vários ids separados por vírgula (filtro multisseleção).
+  const categoryIds = (searchParams.get("categoryId") ?? "").split(",").map((c) => c.trim()).filter(Boolean);
+  if (categoryIds.length > 0) params.categoryId = categoryIds.length === 1 ? categoryIds[0] : categoryIds;
 
   const active = searchParams.get("active");
   if (active !== null) params.active = active === "true";

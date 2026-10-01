@@ -28,10 +28,11 @@ function parseListParams(searchParams: URLSearchParams): ListExpensesParams {
   const status = searchParams.get("status");
   if (status === "PENDENTE" || status === "PAGO") params.status = status as ExpenseStatus;
 
-  const category = searchParams.get("category");
-  if (category !== null && EXPENSE_CATEGORIES.includes(category as ExpenseCategory)) {
-    params.category = category as ExpenseCategory;
-  }
+  // Uma ou várias categorias separadas por vírgula (filtro multisseleção).
+  const categories = (searchParams.get("category") ?? "")
+    .split(",")
+    .filter((c): c is ExpenseCategory => EXPENSE_CATEGORIES.includes(c as ExpenseCategory));
+  if (categories.length > 0) params.category = categories.length === 1 ? categories[0] : categories;
 
   const startDate = searchParams.get("startDate");
   if (startDate !== null && startDate.trim() !== "") params.startDate = new Date(`${startDate}T00:00:00`);
@@ -40,7 +41,7 @@ function parseListParams(searchParams: URLSearchParams): ListExpensesParams {
   if (endDate !== null && endDate.trim() !== "") params.endDate = new Date(`${endDate}T00:00:00`);
 
   const orderBy = searchParams.get("orderBy");
-  if (orderBy === "dueDate" || orderBy === "createdAt" || orderBy === "amount") params.orderBy = orderBy;
+  if (orderBy === "dueDate" || orderBy === "createdAt" || orderBy === "amount" || orderBy === "description") params.orderBy = orderBy;
 
   const orderDirection = searchParams.get("orderDirection");
   if (orderDirection === "asc" || orderDirection === "desc") params.orderDirection = orderDirection;

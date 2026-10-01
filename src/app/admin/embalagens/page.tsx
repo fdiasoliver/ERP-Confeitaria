@@ -13,7 +13,8 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar, activeParamFrom } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
@@ -49,7 +50,6 @@ const EMPTY_FORM: PackagingForm = {
   supplierId: "",
 };
 
-type StatusFilter = "all" | "active" | "inactive";
 const PAGE_SIZE = 12;
 
 const SORT_OPTIONS: {
@@ -58,8 +58,8 @@ const SORT_OPTIONS: {
   orderBy: "name" | "createdAt";
   orderDirection: "asc" | "desc";
 }[] = [
-  { value: "name-asc", label: "Nome (A-Z)", orderBy: "name", orderDirection: "asc" },
-  { value: "name-desc", label: "Nome (Z-A)", orderBy: "name", orderDirection: "desc" },
+  { value: "name-asc", label: "Nome (A–Z)", orderBy: "name", orderDirection: "asc" },
+  { value: "name-desc", label: "Nome (Z–A)", orderBy: "name", orderDirection: "desc" },
   { value: "createdAt-desc", label: "Mais recentes", orderBy: "createdAt", orderDirection: "desc" },
   { value: "createdAt-asc", label: "Mais antigos", orderBy: "createdAt", orderDirection: "asc" },
 ];
@@ -78,8 +78,8 @@ export default function EmbalagensAdminPage() {
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<("active" | "inactive")[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [sort, setSort] = useState<string>("name-asc");
   const [page, setPage] = useState(1);
@@ -145,8 +145,8 @@ export default function EmbalagensAdminPage() {
         page,
         pageSize: PAGE_SIZE,
         search: debouncedSearch,
-        categoryId: categoryFilter === "all" ? undefined : categoryFilter,
-        active: statusFilter === "all" ? undefined : statusFilter === "active",
+        categoryId: categoryFilter.length > 0 ? categoryFilter : undefined,
+        active: activeParamFrom(statusFilter),
         orderBy: sortOption.orderBy,
         orderDirection: sortOption.orderDirection,
       });
@@ -174,14 +174,14 @@ export default function EmbalagensAdminPage() {
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasActiveFilter = searchInput.trim() !== "" || statusFilter !== "all" || categoryFilter !== "all" || lowStockOnly;
+  const hasActiveFilter = searchInput.trim() !== "" || statusFilter.length > 0 || categoryFilter.length > 0 || lowStockOnly;
 
-  function handleStatusFilterChange(value: StatusFilter) {
+  function handleStatusFilterChange(value: ("active" | "inactive")[]) {
     setStatusFilter(value);
     setPage(1);
   }
 
-  function handleCategoryFilterChange(value: string) {
+  function handleCategoryFilterChange(value: string[]) {
     setCategoryFilter(value);
     setPage(1);
   }
@@ -455,52 +455,33 @@ export default function EmbalagensAdminPage() {
                   ariaLabel="Pesquisar embalagem por nome"
                 />
               </div>
-              <div className="md:w-56">
-                <label htmlFor="filter-sort" className="sr-only">Ordenar por</label>
-                <select
-                  id="filter-sort"
-                  className="input-field"
-                  value={sort}
-                  onChange={(e) => handleSortChange(e.target.value)}
-                >
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
             </div>
 
-            <FilterChips
-              label="Status"
-              selected={statusFilter}
-              onSelect={handleStatusFilterChange}
-              options={[
-                { value: "all", label: "Todas" },
-                { value: "active", label: "Ativas" },
-                { value: "inactive", label: "Inativas" },
-              ]}
-            />
-
-            {categories.length > 0 && (
-              <FilterChips
-                label="Categoria"
-                selected={categoryFilter}
-                onSelect={handleCategoryFilterChange}
-                options={[
-                  { value: "all", label: "Todas" },
-                  ...categories.map((c) => ({ value: c.id, label: c.name })),
-                ]}
+            <FilterBar>
+              <MultiSelectFilter
+                label="Status"
+                allLabel="Todas"
+                options={[{ value: "active", label: "Ativas" }, { value: "inactive", label: "Inativas" }]}
+                selected={statusFilter}
+                onChange={handleStatusFilterChange}
               />
-            )}
-
-            <label className="flex items-center gap-2 text-sm text-chocolate">
-              <input
-                type="checkbox"
-                checked={lowStockOnly}
-                onChange={(e) => { setLowStockOnly(e.target.checked); setPage(1); }}
+              {categories.length > 0 && (
+                <MultiSelectFilter
+                  label="Categoria"
+                  allLabel="Todas"
+                  options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                  selected={categoryFilter}
+                  onChange={handleCategoryFilterChange}
+                />
+              )}
+              <MultiSelectFilter
+                label="Estoque"
+                options={[{ value: "low", label: "Abaixo do mínimo" }]}
+                selected={lowStockOnly ? ["low"] : []}
+                onChange={(values) => { setLowStockOnly(values.length > 0); setPage(1); }}
               />
-              Somente estoque baixo
-            </label>
+              <SortSelect value={sort} options={SORT_OPTIONS} onChange={handleSortChange} />
+            </FilterBar>
           </div>
         )}
 

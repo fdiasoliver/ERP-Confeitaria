@@ -11,7 +11,8 @@ import { StatusBadge } from "@/components/admin/shared/StatusBadge";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar, matchesFilter } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect, NAME_SORT_OPTIONS, compareText, sortBy } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
@@ -26,7 +27,10 @@ import { ApiRequestError } from "@/lib/api/occasionTagApi";
 // ── Local types ────────────────────────────────────────────────────────────────
 
 type ModalMode = "create" | "edit";
-type StatusFilter = "all" | "active" | "inactive";
+const SORT_OPTIONS = [
+  { value: "order", label: "Ordem de exibição" },
+  ...NAME_SORT_OPTIONS,
+];
 interface OccasionForm { name: string; sortOrder: number; color: string; icon: string }
 const EMPTY_FORM: OccasionForm = { name: "", sortOrder: 0, color: "#E8A598", icon: "calendar" };
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
@@ -140,7 +144,8 @@ export default function OcasioesAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [view, setView] = useViewMode("ocasioes");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<("active" | "inactive")[]>([]);
+  const [sort, setSort] = useState("order");
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [editing, setEditing] = useState<OccasionTag | null>(null);
   const [form, setForm] = useState<OccasionForm>(EMPTY_FORM);
@@ -172,12 +177,17 @@ export default function OcasioesAdminPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return occasions
+    const rows = occasions
       .filter((o) => !term || o.name.toLowerCase().includes(term))
-      .filter((o) => statusFilter === "all" || (statusFilter === "active" ? o.isActive : !o.isActive));
-  }, [occasions, search, statusFilter]);
+      .filter((o) => matchesFilter(statusFilter, o.isActive ? "active" : "inactive"));
+    return sortBy(rows, sort, {
+        order: (a, b) => a.sortOrder - b.sortOrder || compareText(a.name, b.name),
+        "name-asc": (a, b) => compareText(a.name, b.name),
+        "name-desc": (a, b) => compareText(b.name, a.name),
+      });
+  }, [occasions, search, statusFilter, sort]);
 
-  const hasActiveFilter = search.trim() !== "" || statusFilter !== "all";
+  const hasActiveFilter = search.trim() !== "" || statusFilter.length > 0;
 
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -388,16 +398,10 @@ export default function OcasioesAdminPage() {
               placeholder="Pesquisar por nome…"
               ariaLabel="Pesquisar ocasião por nome"
             />
-            <FilterChips
-              label="Status"
-              selected={statusFilter}
-              onSelect={setStatusFilter}
-              options={[
-                { value: "all", label: "Todas" },
-                { value: "active", label: "Ativas" },
-                { value: "inactive", label: "Inativas" },
-              ]}
-            />
+            <FilterBar>
+              <MultiSelectFilter label="Status" allLabel="Todas" options={[{ value: "active", label: "Ativas" }, { value: "inactive", label: "Inativas" }]} selected={statusFilter} onChange={setStatusFilter} />
+              <SortSelect value={sort} options={SORT_OPTIONS} onChange={setSort} />
+            </FilterBar>
           </div>
         )}
 

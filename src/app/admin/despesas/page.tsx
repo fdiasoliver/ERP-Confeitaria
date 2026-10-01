@@ -11,7 +11,8 @@ import { SearchBar } from "@/components/admin/shared/SearchBar";
 import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
-import { FilterChips } from "@/components/admin/shared/FilterChips";
+import { MultiSelectFilter, FilterBar } from "@/components/admin/shared/MultiSelectFilter";
+import { SortSelect } from "@/components/admin/shared/SortSelect";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
@@ -52,15 +53,16 @@ interface ExpenseForm {
 
 const EMPTY_FORM: ExpenseForm = { description: "", category: "OUTROS", amount: "", dueDate: "", supplierId: "", salesChannelId: "", productCategoryId: "", notes: "" };
 
-type StatusFilter = "all" | ExpenseStatus;
-type CategoryFilter = "all" | ExpenseCategory;
 
 const PAGE_SIZE = 12;
 
-const SORT_OPTIONS: { value: string; label: string; orderBy: "dueDate" | "createdAt" | "amount"; orderDirection: "asc" | "desc" }[] = [
+const SORT_OPTIONS: { value: string; label: string; orderBy: "dueDate" | "createdAt" | "amount" | "description"; orderDirection: "asc" | "desc" }[] = [
   { value: "dueDate-asc", label: "Vencimento (mais próximo)", orderBy: "dueDate", orderDirection: "asc" },
+  { value: "description-asc", label: "Descrição (A–Z)", orderBy: "description", orderDirection: "asc" },
+  { value: "description-desc", label: "Descrição (Z–A)", orderBy: "description", orderDirection: "desc" },
   { value: "dueDate-desc", label: "Vencimento (mais distante)", orderBy: "dueDate", orderDirection: "desc" },
   { value: "amount-desc", label: "Valor (maior primeiro)", orderBy: "amount", orderDirection: "desc" },
+  { value: "amount-asc", label: "Valor (menor primeiro)", orderBy: "amount", orderDirection: "asc" },
   { value: "createdAt-desc", label: "Mais recentes", orderBy: "createdAt", orderDirection: "desc" },
 ];
 
@@ -91,8 +93,8 @@ export default function DespesasAdminPage() {
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<ExpenseStatus[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory[]>([]);
   const [sort, setSort] = useState<string>("dueDate-asc");
   const [page, setPage] = useState(1);
   const [view, setView] = useViewMode("despesas");
@@ -176,8 +178,9 @@ export default function DespesasAdminPage() {
         page,
         pageSize: PAGE_SIZE,
         search: debouncedSearch,
-        status: statusFilter === "all" ? undefined : statusFilter,
-        category: categoryFilter === "all" ? undefined : categoryFilter,
+        // Duas situações marcadas = todas (a API recebe um único status).
+        status: statusFilter.length === 1 ? statusFilter[0] : undefined,
+        category: categoryFilter.length > 0 ? categoryFilter : undefined,
         orderBy: sortOption.orderBy,
         orderDirection: sortOption.orderDirection,
       });
@@ -204,10 +207,10 @@ export default function DespesasAdminPage() {
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasActiveFilter = searchInput.trim() !== "" || statusFilter !== "all" || categoryFilter !== "all";
+  const hasActiveFilter = searchInput.trim() !== "" || statusFilter.length > 0 || categoryFilter.length > 0;
 
-  function handleStatusFilterChange(value: StatusFilter) { setStatusFilter(value); setPage(1); }
-  function handleCategoryFilterChange(value: CategoryFilter) { setCategoryFilter(value); setPage(1); }
+  function handleStatusFilterChange(value: ExpenseStatus[]) { setStatusFilter(value); setPage(1); }
+  function handleCategoryFilterChange(value: ExpenseCategory[]) { setCategoryFilter(value); setPage(1); }
   function handleSortChange(value: string) { setSort(value); setPage(1); }
 
   // ── Formulário de criar/editar ─────────────────────────────────────────────
@@ -424,30 +427,25 @@ export default function DespesasAdminPage() {
               <div className="md:flex-1">
                 <SearchBar value={searchInput} onChange={setSearchInput} placeholder="Pesquisar por descrição…" ariaLabel="Pesquisar despesa por descrição" />
               </div>
-              <div className="md:w-64">
-                <label htmlFor="filter-sort" className="sr-only">Ordenar por</label>
-                <select id="filter-sort" className="input-field" value={sort} onChange={(e) => handleSortChange(e.target.value)}>
-                  {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
             </div>
 
-            <FilterChips
-              label="Status"
-              selected={statusFilter}
-              onSelect={handleStatusFilterChange}
-              options={[
-                { value: "all", label: "Todas" },
-                { value: "PENDENTE", label: "Pendentes" },
-                { value: "PAGO", label: "Pagas" },
-              ]}
-            />
-            <FilterChips
-              label="Categoria"
-              selected={categoryFilter}
-              onSelect={handleCategoryFilterChange}
-              options={[{ value: "all", label: "Todas" }, ...(Object.entries(EXPENSE_CATEGORY_LABELS) as [ExpenseCategory, string][]).map(([value, label]) => ({ value, label }))]}
-            />
+            <FilterBar>
+              <MultiSelectFilter
+                label="Situação"
+                allLabel="Todas"
+                options={[{ value: "PENDENTE", label: "Pendentes" }, { value: "PAGO", label: "Pagas" }]}
+                selected={statusFilter}
+                onChange={handleStatusFilterChange}
+              />
+              <MultiSelectFilter
+                label="Categoria"
+                allLabel="Todas"
+                options={(Object.entries(EXPENSE_CATEGORY_LABELS) as [ExpenseCategory, string][]).map(([value, label]) => ({ value, label }))}
+                selected={categoryFilter}
+                onChange={handleCategoryFilterChange}
+              />
+              <SortSelect value={sort} options={SORT_OPTIONS} onChange={handleSortChange} />
+            </FilterBar>
           </div>
         )}
 

@@ -5,7 +5,7 @@ export interface ListUsersParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  role?: UserRole;
+  role?: UserRole | UserRole[]; // lista = qualquer um (filtro multisseleção)
   active?: boolean;
   orderBy?: "name" | "createdAt";
   orderDirection?: "asc" | "desc";
@@ -21,7 +21,7 @@ export interface PagedResult<T> {
 function buildWhere(params: Pick<ListUsersParams, "search" | "role" | "active">): Prisma.UserWhereInput {
   return {
     ...(params.active !== undefined ? { active: params.active } : {}),
-    ...(params.role ? { role: params.role } : {}),
+    ...(params.role ? { role: Array.isArray(params.role) ? { in: params.role } : params.role } : {}),
     ...(params.search
       ? {
           OR: [

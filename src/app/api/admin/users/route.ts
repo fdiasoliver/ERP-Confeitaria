@@ -24,8 +24,9 @@ function parseListParams(searchParams: URLSearchParams): ListUsersParams {
   const search = searchParams.get("search");
   if (search !== null && search.trim().length > 0) params.search = search;
 
-  const role = searchParams.get("role");
-  if (role !== null && isRole(role)) params.role = role;
+  // Um ou vários papéis separados por vírgula (filtro multisseleção).
+  const roles = (searchParams.get("role") ?? "").split(",").filter(isRole);
+  if (roles.length > 0) params.role = roles.length === 1 ? roles[0] : roles;
 
   const active = searchParams.get("active");
   if (active !== null) params.active = active === "true";

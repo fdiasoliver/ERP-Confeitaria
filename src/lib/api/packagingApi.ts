@@ -48,7 +48,7 @@ export interface ListPackagingsParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  categoryId?: string;
+  categoryId?: string | string[];
   active?: boolean;
   orderBy?: "name" | "createdAt";
   orderDirection?: "asc" | "desc";
@@ -76,7 +76,7 @@ function buildQuery(params: ListPackagingsParams): string {
   if (params.page !== undefined) search.set("page", String(params.page));
   if (params.pageSize !== undefined) search.set("pageSize", String(params.pageSize));
   if (params.search !== undefined && params.search.trim() !== "") search.set("search", params.search);
-  if (params.categoryId !== undefined && params.categoryId !== "") search.set("categoryId", params.categoryId);
+  if (params.categoryId !== undefined && params.categoryId.length > 0) search.set("categoryId", [params.categoryId].flat().join(","));
   if (params.active !== undefined) search.set("active", String(params.active));
   if (params.orderBy !== undefined) search.set("orderBy", params.orderBy);
   if (params.orderDirection !== undefined) search.set("orderDirection", params.orderDirection);
