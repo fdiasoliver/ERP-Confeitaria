@@ -12,6 +12,9 @@ import { ApiRequestError, type Product, type ProductInput } from "@/lib/api/prod
 import * as productCategoryApi from "@/lib/api/productCategoryApi";
 import * as recipeApi from "@/lib/api/recipeApi";
 import type { Recipe } from "@/lib/api/recipeApi";
+import * as packagingApi from "@/lib/api/packagingApi";
+import type { Packaging } from "@/lib/api/packagingApi";
+import * as productPackagingApi from "@/lib/api/productPackagingApi";
 import { UploadImage } from "@/components/admin/config/UploadImage";
 import { Field, Section } from "@/components/admin/config/FormPrimitives";
 import { PageContainer } from "@/components/admin/shared/PageContainer";
@@ -36,6 +39,14 @@ interface RecipeLinkForm {
   quantity: string;
 }
 
+// Embalagens vinculadas — `linkId` presente só para vínculos já salvos
+// (ProductPackaging.id), usado para atualizar/remover no salvamento.
+interface PackagingLinkForm {
+  linkId?: string;
+  packagingId: string;
+  quantity: string;
+}
+
 interface ProductForm {
   name: string;
   description: string;
@@ -45,6 +56,7 @@ interface ProductForm {
   leadTimeDays: string;
   featured: boolean;
   recipes: RecipeLinkForm[];
+  packagings: PackagingLinkForm[];
 }
 
 const EMPTY_FORM: ProductForm = {
@@ -56,6 +68,7 @@ const EMPTY_FORM: ProductForm = {
   leadTimeDays: "0",
   featured: false,
   recipes: [],
+  packagings: [],
 };
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -163,6 +176,9 @@ function ProdutosAdminPageContent() {
   const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [packagings, setPackagings] = useState<Packaging[]>([]);
+  // Vínculos de embalagem como estavam ao abrir a edição — base do diff no salvamento.
+  const [originalPackagingLinks, setOriginalPackagingLinks] = useState<PackagingLinkForm[]>([]);
 
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -174,12 +190,14 @@ function ProdutosAdminPageContent() {
   useEffect(() => {
     (async () => {
       try {
-        const [categoryRows, recipeRows] = await Promise.all([
+        const [categoryRows, recipeRows, packagingRows] = await Promise.all([
           productCategoryApi.listCategories(),
           recipeApi.listRecipes(),
+          packagingApi.listActivePackagings(),
         ]);
         setCategories(categoryRows);
         setRecipes(recipeRows);
+        setPackagings(packagingRows);
       } catch {
         toast.error("Erro ao carregar categorias e receitas de apoio.");
       }
@@ -275,6 +293,7 @@ function ProdutosAdminPageContent() {
     setForm(EMPTY_FORM);
     setFormErrors({});
     setEditing(null);
+    setOriginalPackagingLinks([]);
     setModal("create");
   }
 
@@ -289,9 +308,20 @@ function ProdutosAdminPageContent() {
       leadTimeDays: String(product.leadTimeDays),
       featured: product.featured,
       recipes: product.recipes.map((r) => ({ recipeId: r.recipeId, quantity: String(r.quantity) })),
+      packagings: [],
     });
     setFormErrors({});
+    setOriginalPackagingLinks([]);
     setModal("edit");
+    // Vínculos com o id do ProductPackaging (o ProductDTO não traz o id do vínculo).
+    productPackagingApi
+      .listProductPackagings(product.id)
+      .then((links) => {
+        const rows = links.map((l) => ({ linkId: l.id, packagingId: l.packagingId, quantity: String(l.quantity) }));
+        setOriginalPackagingLinks(rows);
+        setForm((prev) => ({ ...prev, packagings: rows }));
+      })
+      .catch(() => toast.error("Erro ao carregar as embalagens do produto."));
   }
 
   function closeModal() {
@@ -300,7 +330,54 @@ function ProdutosAdminPageContent() {
     setFormErrors({});
   }
 
-  function setField<K extends keyof Omit<ProductForm, "recipes">>(key: K, value: ProductForm[K]) {
+  function setPackagingField(index: number, key: "packagingId" | "quantity", value: string) {
+    setForm((prev) => ({
+      ...prev,
+      packagings: prev.packagings.map((p, i) => (i === index ? { ...p, [key]: value } : p)),
+    }));
+    setFormErrors((prev) => {
+      const n = { ...prev };
+      delete n[`packagings[${index}].${key}`];
+      delete n.packagings;
+      return n;
+    });
+  }
+
+  function addPackagingRow() {
+    setForm((prev) => ({ ...prev, packagings: [...prev.packagings, { packagingId: "", quantity: "1" }] }));
+  }
+
+  function removePackagingRow(index: number) {
+    setForm((prev) => ({ ...prev, packagings: prev.packagings.filter((_, i) => i !== index) }));
+  }
+
+  // Sincroniza os vínculos de embalagem com a API (remove, atualiza quantidade,
+  // adiciona) — ProductPackaging tem rotas próprias, fora do payload do produto.
+  async function syncPackagings(productId: string) {
+    const current = form.packagings;
+    const keptIds = new Set(current.map((p) => p.linkId).filter(Boolean));
+    for (const original of originalPackagingLinks) {
+      if (original.linkId && !keptIds.has(original.linkId)) {
+        await productPackagingApi.removeProductPackaging(productId, original.linkId);
+      }
+    }
+    for (const row of current) {
+      const quantity = parseFloat(row.quantity);
+      const original = originalPackagingLinks.find((o) => o.linkId && o.linkId === row.linkId);
+      if (original && row.linkId) {
+        if (original.packagingId !== row.packagingId) {
+          await productPackagingApi.removeProductPackaging(productId, row.linkId);
+          await productPackagingApi.addProductPackaging(productId, { packagingId: row.packagingId, quantity });
+        } else if (parseFloat(original.quantity) !== quantity) {
+          await productPackagingApi.updateProductPackaging(productId, row.linkId, { quantity });
+        }
+      } else {
+        await productPackagingApi.addProductPackaging(productId, { packagingId: row.packagingId, quantity });
+      }
+    }
+  }
+
+  function setField<K extends keyof Omit<ProductForm, "recipes" | "packagings">>(key: K, value: ProductForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setFormErrors((prev) => { const n = { ...prev }; delete n[key]; return n; });
   }
@@ -355,6 +432,15 @@ function ProdutosAdminPageContent() {
     const ids = form.recipes.map((r) => r.recipeId).filter(Boolean);
     if (new Set(ids).size !== ids.length) errs.recipes = "O produto não pode ter a mesma receita repetida.";
 
+    form.packagings.forEach((row, index) => {
+      if (!row.packagingId) errs[`packagings[${index}].packagingId`] = "Selecione uma embalagem.";
+      const qty = parseFloat(row.quantity);
+      if (row.quantity.trim() === "" || Number.isNaN(qty)) errs[`packagings[${index}].quantity`] = "Informe a quantidade.";
+      else if (qty <= 0) errs[`packagings[${index}].quantity`] = "Deve ser maior que zero.";
+    });
+    const packagingIds = form.packagings.map((p) => p.packagingId).filter(Boolean);
+    if (new Set(packagingIds).size !== packagingIds.length) errs.packagings = "O produto não pode ter a mesma embalagem repetida.";
+
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -385,10 +471,12 @@ function ProdutosAdminPageContent() {
       };
 
       if (modal === "create") {
-        await productApi.createProduct(input);
+        const created = await productApi.createProduct(input);
+        await syncPackagings(created.id);
         toast.success("Produto criado com sucesso.", { id: toastId });
       } else if (editing) {
         await productApi.updateProduct(editing.id, input);
+        await syncPackagings(editing.id);
         toast.success("Produto atualizado.", { id: toastId });
       }
       closeModal();
@@ -935,6 +1023,90 @@ function ProdutosAdminPageContent() {
                 </>
               );
             })()}
+          </Section>
+
+          <Section title="Embalagens vinculadas" className="md:col-span-2">
+            <div className="-mt-1 flex items-center justify-between">
+              <p className="text-xs text-muted">Opcional — o custo das embalagens entra no custo do produto.</p>
+              <button
+                type="button"
+                onClick={addPackagingRow}
+                disabled={submitting || packagings.length === 0}
+                className="flex items-center gap-1 text-sm font-semibold text-chocolate underline disabled:opacity-50"
+              >
+                <IconPlus /> Adicionar embalagem
+              </button>
+            </div>
+            {formErrors.packagings && <p className="text-xs text-rose">{formErrors.packagings}</p>}
+            {packagings.length === 0 && (
+              <p className="text-xs text-muted">
+                Nenhuma embalagem ativa cadastrada —{" "}
+                <Link href="/admin/embalagens" className="font-semibold text-chocolate underline">
+                  cadastre uma embalagem primeiro
+                </Link>.
+              </p>
+            )}
+            {packagings.length > 0 && form.packagings.length === 0 && (
+              <p className="text-xs text-muted">Nenhuma embalagem vinculada (opcional).</p>
+            )}
+            <div className="space-y-3 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
+              {form.packagings.map((row, index) => {
+                const selected = packagings.find((p) => p.id === row.packagingId);
+                return (
+                  <div key={index} className="rounded-xl border border-sand p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
+                        <IconPackage /> Embalagem {index + 1}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => removePackagingRow(index)}
+                        disabled={submitting}
+                        aria-label={`Remover embalagem ${index + 1}`}
+                        className="text-xs font-semibold text-rose underline-offset-2 hover:underline disabled:opacity-50"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-2">
+                        <select
+                          className={`input-field ${formErrors[`packagings[${index}].packagingId`] ? "border-rose" : ""}`}
+                          value={row.packagingId}
+                          onChange={(e) => setPackagingField(index, "packagingId", e.target.value)}
+                          disabled={submitting}
+                          aria-label={`Embalagem da linha ${index + 1}`}
+                        >
+                          <option value="">Selecione a embalagem…</option>
+                          {packagings.map((p) => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <input
+                        type="number"
+                        step="1"
+                        min={1}
+                        className={`input-field ${formErrors[`packagings[${index}].quantity`] ? "border-rose" : ""}`}
+                        value={row.quantity}
+                        onChange={(e) => setPackagingField(index, "quantity", e.target.value)}
+                        placeholder="Qtd."
+                        disabled={submitting}
+                        aria-label={`Quantidade da embalagem ${index + 1}`}
+                      />
+                    </div>
+                    {(formErrors[`packagings[${index}].packagingId`] || formErrors[`packagings[${index}].quantity`]) && (
+                      <p className="mt-1 text-xs text-rose">
+                        {formErrors[`packagings[${index}].packagingId`] ?? formErrors[`packagings[${index}].quantity`]}
+                      </p>
+                    )}
+                    {selected && (
+                      <p className="mt-1 text-xs text-muted">Custo unitário: {formatCurrency(selected.unitCost)}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </Section>
 
           {modal === "edit" && editing && (

@@ -339,7 +339,7 @@ export default function ProdutoDetailPage({ params }: { params: Promise<{ id: st
           </div>
           <p className="mb-4 text-sm text-muted">{product.categoryName}</p>
 
-          <div className="mb-4 grid grid-cols-3 gap-2 text-center">
+          <div className="mb-4 grid grid-cols-2 gap-2 text-center md:grid-cols-4">
             <div className="rounded-lg bg-sand/60 px-2 py-2">
               <p className="text-base font-semibold leading-none text-chocolate">{formatCurrency(product.basePrice)}</p>
               <p className="mt-1 text-[10px] text-muted">Preço praticado</p>
@@ -351,6 +351,12 @@ export default function ProdutoDetailPage({ params }: { params: Promise<{ id: st
             <div className="rounded-lg bg-sand/60 px-2 py-2">
               <p className="text-base font-semibold leading-none text-chocolate">{(product.margin * 100).toFixed(0)}%</p>
               <p className="mt-1 text-[10px] text-muted">Margem real</p>
+            </div>
+            <div className="rounded-lg bg-sand/60 px-2 py-2">
+              <p className={`text-base font-semibold leading-none ${product.basePrice - product.costPrice < 0 ? "text-rose" : "text-chocolate"}`}>
+                {formatCurrency(product.basePrice - product.costPrice)}
+              </p>
+              <p className="mt-1 text-[10px] text-muted">Lucro real</p>
             </div>
           </div>
 
