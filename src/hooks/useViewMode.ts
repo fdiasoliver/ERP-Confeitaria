@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import type { ViewMode } from "@/components/shared/ViewToggle";
 
-const STORAGE_PREFIX = "admin-view:";
+// Prefixo versionado: trocado de "admin-view:" para "admin-view-v2:" quando a
+// visão padrão passou a ser Lista (01/10/2026) — descarta as escolhas salvas
+// enquanto o padrão era Cards, para todos começarem em Lista.
+const STORAGE_PREFIX = "admin-view-v2:";
+const LEGACY_PREFIX = "admin-view:";
 
 function readStored(key: string): ViewMode | null {
   try {
+    window.localStorage.removeItem(LEGACY_PREFIX + key);
     const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
     return raw === "grid" || raw === "list" ? raw : null;
   } catch {
@@ -16,9 +21,9 @@ function readStored(key: string): ViewMode | null {
  * navegador — preferência por dispositivo, não sincronizada entre usuários/telas.
  * Inicializa sempre em `default` no primeiro render (server e client precisam
  * bater, senão o React acusa hydration mismatch) e só lê o valor salvo depois de
- * montado, em um efeito — por isso a visão pode "piscar" de Cards para Lista no
- * primeiro carregamento se o usuário tinha escolhido Lista antes. */
-export function useViewMode(key: string, defaultMode: ViewMode = "grid"): [ViewMode, (mode: ViewMode) => void] {
+ * montado, em um efeito — por isso a visão pode "piscar" de Lista para Cards no
+ * primeiro carregamento se o usuário tinha escolhido Cards antes. */
+export function useViewMode(key: string, defaultMode: ViewMode = "list"): [ViewMode, (mode: ViewMode) => void] {
   const [view, setView] = useState<ViewMode>(defaultMode);
 
   useEffect(() => {
