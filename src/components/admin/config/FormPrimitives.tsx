@@ -3,6 +3,7 @@
 import type { StoreConfigInput } from "@/lib/types";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { useInEntityForm } from "@/components/admin/shared/EntityForm";
 
 export type FormSetter = <K extends keyof StoreConfigInput>(
   key: K,
@@ -52,6 +53,17 @@ export function Section({
   className?: string;
   children: React.ReactNode;
 }) {
+  const inEntityForm = useInEntityForm();
+  // Dentro do EntityForm (tela cheia, já num card branco): bloco com borda,
+  // sem card próprio — evita card dentro de card.
+  if (inEntityForm) {
+    return (
+      <section className={`rounded-xl border border-sand p-4${className ? ` ${className}` : ""}`}>
+        <h2 className="font-display mb-4 text-base font-semibold text-chocolate">{title}</h2>
+        <div className="space-y-4">{children}</div>
+      </section>
+    );
+  }
   return (
     <Card className={`shadow-card gap-0 rounded-2xl p-5${className ? ` ${className}` : ""}`}>
       <h2 className="font-display mb-4 text-base font-semibold text-chocolate">{title}</h2>

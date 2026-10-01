@@ -1,21 +1,32 @@
 "use client";
 
-import { useRef } from "react";
+import { createContext, useContext, useRef } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+/** `true` dentro de um EntityForm — `Section` (FormPrimitives) usa para se
+ * desenhar como bloco com borda dentro do card do formulário, em vez de um
+ * card próprio (evita card dentro de card). */
+export const EntityFormContext = createContext(false);
+export function useInEntityForm(): boolean {
+  return useContext(EntityFormContext);
+}
+
 /**
- * Largura no desktop (01/10/2026 — cadastro e edição com o mesmo layout largo):
- * `wide` (padrão) = até 896px, campos em 2 colunas a partir de `md`; filhos que
- * precisam da linha inteira usam `md:col-span-2`. `compact` = 512px, 1 coluna,
- * só para formulários de 1–2 campos.
+ * Formulário de criação/edição de entidade em **tela cheia** (01/10/2026 —
+ * pedido do Product Owner: cadastro e edição com o mesmo layout da página de
+ * detalhe, ex. /admin/produtos/[id], nunca um pop-up). Ocupa toda a área de
+ * conteúdo à direita da Sidebar (`md:left-60`, mesma largura fixa de
+ * Sidebar.tsx) e a tela inteira no celular: cabeçalho com "←" + título, campos
+ * num card branco e barra de ações fixa no rodapé.
  *
- * Modal de criação/edição de entidade — bottom sheet em mobile, centralizado em
- * desktop (DESIGN_SYSTEM.md #7). Radix Dialog (via shadcn/ui, ADR-025) fornece
- * trap de foco, fechamento por Escape/overlay e aria-* de graça — a alternância
- * bottom-sheet↔dialog é resolvida aqui com Tailwind responsivo, já que nenhuma
- * primitiva shadcn cobre os dois modos sozinha (Sprint DS.5.2).
+ * `wide` (padrão): campos em 2 colunas a partir de `md`; filhos que precisam da
+ * linha inteira usam `md:col-span-2`. `compact`: 1 coluna, card mais estreito,
+ * para formulários de 1–2 campos.
+ *
+ * Radix Dialog não-modal: foco inicial no primeiro campo e `Escape` fecham como
+ * antes, mas a Sidebar continua clicável (navegar para outra tela descarta o
+ * formulário, como numa página). Clique fora não fecha.
  */
 export function EntityForm({
   title,
@@ -37,16 +48,17 @@ export function EntityForm({
   children: React.ReactNode;
 }) {
   const fieldsRef = useRef<HTMLDivElement>(null);
+  const widthClass = size === "wide" ? "max-w-7xl" : "max-w-2xl";
 
   return (
     <DialogPrimitive.Root
       open
+      modal={false}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/40 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
         <DialogPrimitive.Content
           onOpenAutoFocus={(e) => {
             const first = fieldsRef.current?.querySelector<HTMLElement>("input, select, textarea");
@@ -55,48 +67,54 @@ export function EntityForm({
               first.focus();
             }
           }}
-          className={`fixed inset-x-0 bottom-0 z-40 max-h-[90vh] w-full overflow-y-auto rounded-t-3xl bg-card px-5 pb-8 pt-5 outline-none data-open:animate-in data-open:slide-in-from-bottom-10 data-closed:animate-out data-closed:slide-out-to-bottom-10 md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100%-3rem)] ${size === "wide" ? "md:max-w-4xl md:px-7" : "md:max-w-lg"} md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:data-open:slide-in-from-bottom-0 md:data-closed:slide-out-to-bottom-0`}
+          onInteractOutside={(e) => e.preventDefault()}
+          className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-cream outline-none data-open:animate-in data-open:fade-in-0 md:left-60"
         >
-          <div className="mb-5 flex items-center justify-between">
-            <DialogPrimitive.Title className="font-display text-lg font-semibold text-chocolate">
-              {title}
-            </DialogPrimitive.Title>
-            <DialogPrimitive.Close asChild>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Fechar">
-                <XIcon />
-              </Button>
-            </DialogPrimitive.Close>
-          </div>
+          <header className="sticky top-0 z-10 border-b border-sand bg-card px-5 py-4">
+            <div className={`mx-auto flex items-center gap-3 ${widthClass}`}>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={submitting}
+                aria-label="Voltar"
+                className="text-sm text-muted hover:text-chocolate disabled:opacity-50"
+              >
+                ←
+              </button>
+              <DialogPrimitive.Title className="font-display text-lg font-semibold text-chocolate">
+                {title}
+              </DialogPrimitive.Title>
+            </div>
+          </header>
 
-          <div
-            ref={fieldsRef}
-            className={
-              size === "wide"
-                ? "space-y-4 md:grid md:grid-cols-2 md:items-start md:gap-x-6 md:gap-y-4 md:space-y-0"
-                : "space-y-4"
-            }
-          >
-            {children}
-          </div>
+          <EntityFormContext.Provider value={true}>
+            <div className={`mx-auto w-full flex-1 p-5 ${widthClass}`}>
+              <div className="shadow-card rounded-2xl bg-white p-5 md:p-6">
+                <div
+                  ref={fieldsRef}
+                  className={
+                    size === "wide"
+                      ? "space-y-4 md:grid md:grid-cols-2 md:items-start md:gap-x-6 md:gap-y-4 md:space-y-0"
+                      : "space-y-4"
+                  }
+                >
+                  {children}
+                </div>
+              </div>
+            </div>
+          </EntityFormContext.Provider>
 
-          <div className={`mt-6 flex gap-3${size === "wide" ? " md:ml-auto md:max-w-md" : ""}`}>
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={onClose}
-              disabled={submitting}
-            >
-              {cancelLabel}
-            </Button>
-            <Button
-              type="button"
-              className="flex-1"
-              onClick={onSubmit}
-              disabled={submitting}
-            >
-              {submitting ? "Salvando…" : submitLabel}
-            </Button>
+          <div className="sticky bottom-0 border-t border-sand bg-card/95 px-5 py-3 backdrop-blur">
+            <div className={`mx-auto flex gap-3 ${widthClass}`}>
+              <div className="flex w-full gap-3 md:ml-auto md:max-w-md">
+                <Button type="button" variant="outline" className="flex-1" onClick={onClose} disabled={submitting}>
+                  {cancelLabel}
+                </Button>
+                <Button type="button" className="flex-1" onClick={onSubmit} disabled={submitting}>
+                  {submitting ? "Salvando…" : submitLabel}
+                </Button>
+              </div>
+            </div>
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
