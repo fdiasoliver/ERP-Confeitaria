@@ -14,7 +14,7 @@ import { LoadingState } from "@/components/admin/shared/LoadingState";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
 import { ViewToggle } from "@/components/shared/ViewToggle";
-import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
+import { DeleteCategoryDialog } from "@/components/admin/shared/DeleteCategoryDialog";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
 import { useViewMode } from "@/hooks/useViewMode";
 import type { ValidationError } from "@/lib/types";
@@ -41,7 +41,7 @@ export default function PackagingCategoriasAdminPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<PackagingCategory | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionLoading] = useState<string | null>(null); // exclusão agora tem estado próprio no DeleteCategoryDialog
 
   async function loadCategories(silent = false) {
     if (!silent) {
@@ -131,27 +131,6 @@ export default function PackagingCategoriasAdminPage() {
       }
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function handleDeleteConfirm() {
-    if (!confirmDelete) return;
-    const category = confirmDelete;
-    setConfirmDelete(null);
-    setActionLoading(category.id);
-    const toastId = toast.loading("Excluindo categoria…");
-    try {
-      await categoryApi.deletePackagingCategory(category.id);
-      toast.success("Categoria excluída.", { id: toastId });
-      await loadCategories(true);
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.code === "CATEGORY_HAS_PACKAGINGS") {
-        toast.error(err.message, { id: toastId });
-      } else {
-        toast.error(err instanceof Error ? err.message : "Erro ao excluir categoria.", { id: toastId });
-      }
-    } finally {
-      setActionLoading(null);
     }
   }
 
@@ -282,18 +261,20 @@ export default function PackagingCategoriasAdminPage() {
       )}
 
       {confirmDelete && (
-        <ConfirmDialog
-          title="Excluir categoria?"
-          description={
-            <>
-              A categoria <strong className="text-chocolate">{'"'}{confirmDelete.name}{'"'}</strong> será excluída permanentemente. Categorias com embalagens vinculadas não podem ser excluídas.
-            </>
-          }
-          cancelLabel="Cancelar"
-          confirmLabel="Excluir"
-          busy={actionLoading === confirmDelete.id}
+        <DeleteCategoryDialog
+          category={confirmDelete}
+          options={categories}
+          itemsLabel="embalagens" itemLabel="embalagem"
+          allowNoCategory
+          onDelete={async (transferTo) => {
+            await categoryApi.deletePackagingCategory(confirmDelete.id, transferTo);
+          }}
           onCancel={() => setConfirmDelete(null)}
-          onConfirm={handleDeleteConfirm}
+          onDeleted={async () => {
+            setConfirmDelete(null);
+            toast.success("Categoria excluída.");
+            await loadCategories(true);
+          }}
         />
       )}
     </PageContainer>

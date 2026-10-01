@@ -9,6 +9,7 @@ import {
   PackagingCategoryValidationFailedError,
   DuplicatePackagingCategoryNameError,
   PackagingCategoryHasPackagingsError,
+  InvalidTransferTargetError,
 } from "@/lib/packagingCategoryService";
 
 export async function PATCH(
@@ -41,19 +42,26 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const denied = await requireProductionChain();
   if (denied) return denied;
 
   const { id } = await params;
+  // ?transferTo=<id> move os itens vinculados para outra categoria;
+  // ?transferTo=none deixa-os sem categoria; ausente = exclusão sem transferência.
+  const rawTransfer = request.nextUrl.searchParams.get("transferTo");
+  const transferTo = rawTransfer === null ? undefined : rawTransfer === "none" ? null : rawTransfer;
 
   try {
-    await deletePackagingCategory(id);
+    await deletePackagingCategory(id, transferTo);
     return ok({ id });
   } catch (err) {
     if (err instanceof PackagingCategoryNotFoundError) return notFound("Categoria de embalagem não encontrada.");
+    if (err instanceof InvalidTransferTargetError) {
+      return badRequest([{ field: "transferTo", code: "INVALID_TARGET", message: err.message }]);
+    }
     if (err instanceof PackagingCategoryHasPackagingsError) {
       return conflict(
         "CATEGORY_HAS_PACKAGINGS",

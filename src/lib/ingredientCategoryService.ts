@@ -11,6 +11,7 @@ import {
   createIngredientCategory as dbCreateIngredientCategory,
   updateIngredientCategory as dbUpdateIngredientCategory,
   deleteIngredientCategory as dbDeleteIngredientCategory,
+  transferIngredientsAndDeleteCategory,
 } from "@/lib/repositories/ingredientCategoryRepository";
 import { countIngredientsByCategory } from "@/lib/repositories/ingredientRepository";
 import type { IngredientCategory as PrismaIngredientCategory } from "@prisma/client";
@@ -38,6 +39,14 @@ export class DuplicateIngredientCategoryNameError extends Error {
 export class IngredientCategoryHasIngredientsError extends Error {
   constructor(public id: string, public count: number) {
     super(`Categoria possui ${count} ingrediente(s) vinculado(s) e não pode ser excluída.`);
+  }
+}
+
+/** Destino inválido para a transferência na exclusão (a própria categoria,
+ * inexistente ou — em produto — inativa/ausente). */
+export class InvalidTransferTargetError extends Error {
+  constructor(message: string) {
+    super(message);
   }
 }
 
@@ -100,12 +109,21 @@ export async function updateIngredientCategory(
 // para ProductCategory, adaptado para exclusão física em vez de bloqueio de desativação,
 // já que esta entidade não tem ciclo de vida ativo/inativo no schema atual).
 
-export async function deleteIngredientCategory(id: string): Promise<void> {
+// `transferTo`: undefined = sem transferência (bloqueia se houver vínculos);
+// string = id da categoria de destino; null = ingredientes ficam sem categoria.
+export async function deleteIngredientCategory(id: string, transferTo?: string | null): Promise<void> {
   const existing = await findIngredientCategoryById(id);
   if (!existing) throw new IngredientCategoryNotFoundError(id);
 
   const count = await countIngredientsByCategory(id);
-  if (count > 0) throw new IngredientCategoryHasIngredientsError(id, count);
-
-  await dbDeleteIngredientCategory(id);
+  if (count === 0) {
+    await dbDeleteIngredientCategory(id);
+    return;
+  }
+  if (transferTo === undefined) throw new IngredientCategoryHasIngredientsError(id, count);
+  if (transferTo !== null) {
+    if (transferTo === id) throw new InvalidTransferTargetError("Escolha uma categoria diferente da que será excluída.");
+    if (!(await findIngredientCategoryById(transferTo))) throw new InvalidTransferTargetError("Categoria de destino não encontrada.");
+  }
+  await transferIngredientsAndDeleteCategory(id, transferTo);
 }

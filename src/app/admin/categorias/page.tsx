@@ -13,6 +13,7 @@ import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { FilterChips } from "@/components/admin/shared/FilterChips";
 import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
+import { DeleteCategoryDialog } from "@/components/admin/shared/DeleteCategoryDialog";
 import { EntityCard } from "@/components/admin/shared/EntityCard";
 import { EntityTable, type EntityColumn } from "@/components/shared/EntityTable";
 import { ViewToggle } from "@/components/shared/ViewToggle";
@@ -170,6 +171,7 @@ export default function CategoriasAdminPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState<ProductCategoryWithCount | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<ProductCategoryWithCount | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   async function loadCategories(silent = false) {
@@ -333,6 +335,15 @@ export default function CategoriasAdminPage() {
             {busy ? "…" : "Ativar"}
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(cat)}
+          disabled={busy}
+          aria-label={`Excluir categoria ${cat.name}`}
+          className={`${base} border border-rose/30 text-rose transition-colors hover:bg-rose/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose disabled:opacity-50`}
+        >
+          Excluir
+        </button>
       </>
     );
   }
@@ -507,6 +518,23 @@ export default function CategoriasAdminPage() {
           confirmLabel="Desativar"
           onConfirm={handleDeactivateConfirm}
           onCancel={() => setConfirmDeactivate(null)}
+        />
+      )}
+
+      {confirmDelete && (
+        <DeleteCategoryDialog
+          category={confirmDelete}
+          options={categories.filter((c) => c.isActive)}
+          itemsLabel="produtos" itemLabel="produto"
+          onDelete={async (transferTo) => {
+            await categoryApi.deleteCategory(confirmDelete.id, transferTo ?? undefined);
+          }}
+          onCancel={() => setConfirmDelete(null)}
+          onDeleted={async () => {
+            setConfirmDelete(null);
+            toast.success("Categoria excluída.");
+            await loadCategories(true);
+          }}
         />
       )}
     </PageContainer>

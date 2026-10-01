@@ -27,3 +27,14 @@ export async function updateIngredientCategory(
 export async function deleteIngredientCategory(id: string): Promise<void> {
   await prisma.ingredientCategory.delete({ where: { id } });
 }
+
+// Exclusão com transferência (01/10/2026): move os itens vinculados para a
+// categoria de destino (ou para "sem categoria", quando `targetId` é null) e
+// exclui a categoria na mesma transação — nada muda se uma etapa falhar.
+export async function transferIngredientsAndDeleteCategory(id: string, targetId: string | null): Promise<number> {
+  return prisma.$transaction(async (tx) => {
+    const moved = await tx.ingredient.updateMany({ where: { categoryId: id }, data: { categoryId: targetId } });
+    await tx.ingredientCategory.delete({ where: { id } });
+    return moved.count;
+  });
+}

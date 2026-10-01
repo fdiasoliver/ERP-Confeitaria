@@ -45,6 +45,9 @@ export async function updatePackagingCategory(
   });
 }
 
-export async function deletePackagingCategory(id: string): Promise<{ id: string }> {
-  return request<{ id: string }>(`/api/admin/packaging-categories/${id}`, { method: "DELETE" });
+/** `transferTo`: id da categoria de destino, `null` = sem categoria, omitido =
+ * sem transferência (409 CATEGORY_HAS_* com `details.count` se houver vínculos). */
+export async function deletePackagingCategory(id: string, transferTo?: string | null): Promise<{ id: string }> {
+  const query = transferTo === undefined ? "" : `?transferTo=${transferTo === null ? "none" : encodeURIComponent(transferTo)}`;
+  return request<{ id: string }>(`/api/admin/packaging-categories/${id}${query}`, { method: "DELETE" });
 }

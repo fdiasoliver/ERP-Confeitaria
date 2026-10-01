@@ -11,6 +11,7 @@ import {
   activateCategory,
   deactivateCategory,
   countProductsByCategory,
+  transferProductsAndDeleteCategory,
 } from "@/lib/repositories/productCategoryRepository";
 import type { ProductCategory as PrismaProductCategory } from "@prisma/client";
 
@@ -37,6 +38,19 @@ export class SlugConflictError extends Error {
 export class CategoryHasProductsError extends Error {
   constructor(public id: string, public count: number) {
     super(`Categoria possui ${count} produto(s) vinculado(s) e não pode ser desativada.`);
+  }
+}
+
+export class CategoryInUseError extends Error {
+  constructor(public id: string, public count: number) {
+    super(`Categoria possui ${count} produto(s) vinculado(s). Escolha a categoria para onde eles serão movidos.`);
+  }
+}
+/** Destino inválido para a transferência na exclusão (a própria categoria,
+ * inexistente ou — em produto — inativa/ausente). */
+export class InvalidTransferTargetError extends Error {
+  constructor(message: string) {
+    super(message);
   }
 }
 
@@ -170,4 +184,23 @@ export async function deactivateProductCategory(id: string): Promise<ProductCate
 
   const raw = await deactivateCategory(id);
   return mapToProductCategory(raw);
+}
+
+// ─── Exclusão (01/10/2026) ────────────────────────────────────────────────────
+// Sem produtos: exclui direto. Com produtos: exige `transferTo` (categoria ativa
+// de destino) — produtos e despesas da categoria são movidos para ela na mesma
+// transação da exclusão (Product.categoryId é obrigatório).
+export async function deleteProductCategory(id: string, transferTo?: string | null): Promise<void> {
+  const existing = await findCategoryById(id);
+  if (!existing) throw new NotFoundError(id);
+
+  const count = await countProductsByCategory(id);
+  if (count > 0) {
+    if (!transferTo) throw new CategoryInUseError(id, count);
+    if (transferTo === id) throw new InvalidTransferTargetError("Escolha uma categoria diferente da que será excluída.");
+    const target = await findCategoryById(transferTo);
+    if (!target) throw new InvalidTransferTargetError("Categoria de destino não encontrada.");
+    if (!target.isActive) throw new InvalidTransferTargetError("A categoria de destino precisa estar ativa.");
+  }
+  await transferProductsAndDeleteCategory(id, count > 0 ? (transferTo as string) : null);
 }

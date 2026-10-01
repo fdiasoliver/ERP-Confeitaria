@@ -11,6 +11,7 @@ import {
   createPackagingCategory as dbCreatePackagingCategory,
   updatePackagingCategory as dbUpdatePackagingCategory,
   deletePackagingCategory as dbDeletePackagingCategory,
+  transferPackagingsAndDeleteCategory,
 } from "@/lib/repositories/packagingCategoryRepository";
 import { countPackagingsByCategory } from "@/lib/repositories/packagingRepository";
 import type { PackagingCategory as PrismaPackagingCategory } from "@prisma/client";
@@ -45,6 +46,14 @@ export class PackagingCategoryHasPackagingsError extends Error {
     public count: number,
   ) {
     super(`Categoria possui ${count} embalagem(ns) vinculada(s) e não pode ser excluída.`);
+  }
+}
+
+/** Destino inválido para a transferência na exclusão (a própria categoria,
+ * inexistente ou — em produto — inativa/ausente). */
+export class InvalidTransferTargetError extends Error {
+  constructor(message: string) {
+    super(message);
   }
 }
 
@@ -102,12 +111,21 @@ export async function updatePackagingCategory(
 
 // ─── Exclusão ─────────────────────────────────────────────────────────────────
 
-export async function deletePackagingCategory(id: string): Promise<void> {
+// `transferTo`: undefined = sem transferência (bloqueia se houver vínculos);
+// string = id da categoria de destino; null = embalagens ficam sem categoria.
+export async function deletePackagingCategory(id: string, transferTo?: string | null): Promise<void> {
   const existing = await findPackagingCategoryById(id);
   if (!existing) throw new PackagingCategoryNotFoundError(id);
 
   const count = await countPackagingsByCategory(id);
-  if (count > 0) throw new PackagingCategoryHasPackagingsError(id, count);
-
-  await dbDeletePackagingCategory(id);
+  if (count === 0) {
+    await dbDeletePackagingCategory(id);
+    return;
+  }
+  if (transferTo === undefined) throw new PackagingCategoryHasPackagingsError(id, count);
+  if (transferTo !== null) {
+    if (transferTo === id) throw new InvalidTransferTargetError("Escolha uma categoria diferente da que será excluída.");
+    if (!(await findPackagingCategoryById(transferTo))) throw new InvalidTransferTargetError("Categoria de destino não encontrada.");
+  }
+  await transferPackagingsAndDeleteCategory(id, transferTo);
 }

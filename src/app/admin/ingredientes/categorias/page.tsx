@@ -10,7 +10,7 @@ import type { ValidationError } from "@/lib/types";
 import { EmptyState } from "@/components/admin/shared/EmptyState";
 import { ErrorState } from "@/components/admin/shared/ErrorState";
 import { SearchBar } from "@/components/admin/shared/SearchBar";
-import { ConfirmDialog } from "@/components/admin/shared/ConfirmDialog";
+import { DeleteCategoryDialog } from "@/components/admin/shared/DeleteCategoryDialog";
 import { EntityForm } from "@/components/admin/shared/EntityForm";
 import * as categoryApi from "@/lib/api/ingredientCategoryApi";
 import { ApiRequestError, type IngredientCategory } from "@/lib/api/ingredientCategoryApi";
@@ -79,7 +79,7 @@ export default function IngredientCategoriasAdminPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<IngredientCategory | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionLoading] = useState<string | null>(null); // exclusão agora tem estado próprio no DeleteCategoryDialog
 
   async function loadCategories(silent = false) {
     if (!silent) {
@@ -172,27 +172,6 @@ export default function IngredientCategoriasAdminPage() {
     }
   }
 
-  async function handleDeleteConfirm() {
-    if (!confirmDelete) return;
-    const category = confirmDelete;
-    setConfirmDelete(null);
-    setActionLoading(category.id);
-    const toastId = toast.loading("Excluindo categoria…");
-    try {
-      await categoryApi.deleteIngredientCategory(category.id);
-      toast.success("Categoria excluída.", { id: toastId });
-      await loadCategories(true);
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.code === "CATEGORY_HAS_INGREDIENTS") {
-        toast.error(err.message, { id: toastId });
-      } else {
-        toast.error(err instanceof Error ? err.message : "Erro ao excluir categoria.", { id: toastId });
-      }
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
   return (
     <PageContainer>
       <HeaderMinimal title="Categorias de Ingrediente" />
@@ -276,18 +255,20 @@ export default function IngredientCategoriasAdminPage() {
       )}
 
       {confirmDelete && (
-        <ConfirmDialog
-          title="Excluir categoria?"
-          description={
-            <>
-              A categoria <strong className="text-chocolate">{'"'}{confirmDelete.name}{'"'}</strong> será excluída permanentemente. Categorias com ingredientes vinculados não podem ser excluídas.
-            </>
-          }
-          cancelLabel="Cancelar"
-          confirmLabel="Excluir"
-          busy={actionLoading === confirmDelete.id}
+        <DeleteCategoryDialog
+          category={confirmDelete}
+          options={categories}
+          itemsLabel="ingredientes" itemLabel="ingrediente"
+          allowNoCategory
+          onDelete={async (transferTo) => {
+            await categoryApi.deleteIngredientCategory(confirmDelete.id, transferTo);
+          }}
           onCancel={() => setConfirmDelete(null)}
-          onConfirm={handleDeleteConfirm}
+          onDeleted={async () => {
+            setConfirmDelete(null);
+            toast.success("Categoria excluída.");
+            await loadCategories(true);
+          }}
         />
       )}
     </PageContainer>

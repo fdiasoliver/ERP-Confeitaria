@@ -4,10 +4,16 @@ interface ApiSuccess<T> { success: true; data: T }
 interface ApiError { success: false; error: { code: string; message: string; details?: unknown } }
 type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
+export class ApiRequestError extends Error {
+  constructor(public code: string, message: string, public details?: unknown) {
+    super(message);
+  }
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...options?.headers } });
   const json: ApiResponse<T> = await res.json();
-  if (!json.success) throw new Error(json.error.message);
+  if (!json.success) throw new ApiRequestError(json.error.code, json.error.message, json.error.details);
   return json.data;
 }
 
@@ -40,4 +46,11 @@ export async function activateCategory(id: string): Promise<ProductCategory> {
 
 export async function deactivateCategory(id: string): Promise<ProductCategory> {
   return request<ProductCategory>(`/api/admin/categories/${id}/deactivate`, { method: "PATCH" });
+}
+
+/** Exclui a categoria; com produtos vinculados exige `transferTo` (categoria
+ * ativa de destino) — senão 409 CATEGORY_HAS_PRODUCTS com `details.count`. */
+export async function deleteCategory(id: string, transferTo?: string): Promise<{ id: string }> {
+  const query = transferTo ? `?transferTo=${encodeURIComponent(transferTo)}` : "";
+  return request<{ id: string }>(`/api/admin/categories/${id}${query}`, { method: "DELETE" });
 }
